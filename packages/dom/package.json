@@ -1,0 +1,25 @@
+{
+  "name": "@dxjs/dom",
+  "version": "0.0.1",
+  "description": "The dxjs safe reactive renderer: html`` tagged templates bound through escaped DOM sinks. No eval, no inline handlers, no innerHTML of data — strict-CSP safe.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "//exports": "Dev points at TS source. F2 adds a build and switches default to ./dist/index.js.",
+  "files": ["dist", "src", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1"
+  },
+  "keywords": ["dxjs", "dom", "reactive", "template", "csp"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/dom"
+  }
+}

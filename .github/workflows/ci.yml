@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: install (workspace links + happy-dom for DOM tests)
+        run: npm install
       - name: no-eval gate (CSP safety)
         run: node scripts/no-eval-gate.mjs
       - name: unit tests (node:test, native TS)

@@ -1,0 +1,26 @@
+{
+  "name": "@dxjs/component",
+  "version": "0.0.1",
+  "description": "dxjs component + lifecycle layer: function components, mount, onMount. Over @dxjs/dom and @dxjs/core.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "//exports": "Dev points at TS source. F2 adds a build and switches default to ./dist/index.js.",
+  "files": ["dist", "src", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1",
+    "@dxjs/dom": "0.0.1"
+  },
+  "keywords": ["dxjs", "component", "lifecycle"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/component"
+  }
+}

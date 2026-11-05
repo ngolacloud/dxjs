@@ -20,5 +20,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git"
+  },
+  "devDependencies": {
+    "happy-dom": "^15.11.7"
   }
 }

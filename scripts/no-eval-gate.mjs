@@ -36,6 +36,10 @@ let violations = 0;
 for (const file of walk(PKGS)) {
   const lines = readFileSync(file, "utf8").split("\n");
   lines.forEach((line, i) => {
+    // Escape hatch for the ONE legitimate static-template innerHTML (the html``
+    // compiler sets <template>.innerHTML from developer string literals, never
+    // data — CSP-safe). Must be annotated `dx-allow-innerHTML` on the line.
+    if (line.includes("dx-allow-innerHTML")) return;
     // ignore line comments so documentation of the ban does not trip the gate
     const code = line.replace(/\/\/.*$/, "");
     for (const { re, msg } of RULES) {

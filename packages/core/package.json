@@ -6,10 +6,11 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     }
   },
+  "//exports": "Dev points at TS source (Node runs TS natively). F2 adds a build and switches default to ./dist/index.js.",
   "files": [
     "dist",
     "src",

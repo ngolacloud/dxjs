@@ -16,10 +16,22 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | Package | What | State |
 |---|---|---|
 | `@dxjs/core` | signals / computed / effect / batch / owner tree | **F0 — done & green** |
-| `@dxjs/dom` | `html` + bind + escape + teardown | planned (F1) |
-| `@dxjs/component` | components, lifecycle, router | planned (F1) |
+| `@dxjs/dom` | `html` + reactive bindings (escaped sinks) + teardown | **F1 — done & green** |
+| `@dxjs/component` | function components, `mount`, `onMount` | **F1 — done & green** (router next) |
 | `@dxjs/transport` | REST + Connect/gRPC + multiplexed SSE | planned (F3) |
 | `@dxjs/server` | SSR streaming + hydration + edge adapters | planned (F2/F4) |
+
+```ts
+import { signal } from "@dxjs/core";
+import { html } from "@dxjs/dom";
+import { component, mount } from "@dxjs/component";
+
+const Counter = component(() => {
+  const n = signal(0);
+  return html`<button @click=${() => n.update((x) => x + 1)}>n = ${() => n()}</button>`;
+});
+mount(Counter, document.querySelector("#app"), {}); // reactive, CSP-safe, no eval
+```
 
 ## Develop
 

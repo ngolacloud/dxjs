@@ -11,7 +11,11 @@ import { gzipSync } from "node:zlib";
 const ROOT = new URL("..", import.meta.url).pathname;
 
 // package entry -> budget in bytes (gzip)
-const BUDGETS = [{ name: "@dxjs/core", dir: "packages/core/src", budget: 2048 }];
+const BUDGETS = [
+  { name: "@dxjs/core", dir: "packages/core/src", budget: 2048 },
+  { name: "@dxjs/dom", dir: "packages/dom/src", budget: 3072 },
+  { name: "@dxjs/component", dir: "packages/component/src", budget: 1024 },
+];
 
 function collectSource(dir) {
   let out = "";
