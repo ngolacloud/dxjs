@@ -1,0 +1,26 @@
+{
+  "name": "@dxjs/server",
+  "version": "0.0.1",
+  "description": "dxjs SSR string renderer + hydration. DOM-free renderToString for Node and edge runtimes; escaped, CSP-safe output.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "//exports": "Dev points at TS source. F2 build switches default to ./dist/index.js.",
+  "files": ["dist", "src", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1",
+    "@dxjs/dom": "0.0.1"
+  },
+  "keywords": ["dxjs", "ssr", "edge", "render"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/server"
+  }
+}

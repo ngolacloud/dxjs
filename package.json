@@ -12,7 +12,10 @@
     "node": ">=22"
   },
   "scripts": {
+    "build": "node scripts/build.mjs",
     "test": "node --test packages/*/test/*.test.ts",
+    "test:csp": "node scripts/build.mjs && node --test e2e/csp/csp.test.mjs",
+    "test:csp:chrome": "node scripts/build.mjs && DXJS_PW_CHANNEL=chrome node --test e2e/csp/csp.test.mjs",
     "gate:no-eval": "node scripts/no-eval-gate.mjs",
     "gate:size": "node scripts/size.mjs",
     "check": "npm run gate:no-eval && npm test && npm run gate:size"
@@ -22,6 +25,8 @@
     "url": "https://github.com/ngolacloud/dxjs.git"
   },
   "devDependencies": {
-    "happy-dom": "^15.11.7"
+    "esbuild": "^0.28.2",
+    "happy-dom": "^15.11.7",
+    "playwright": "^1.65.0"
   }
 }

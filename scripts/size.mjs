@@ -1,66 +1,68 @@
-// size gate — measures the gzipped size of each package entry against a budget.
+// size gate — REAL minified+gzipped bundle size per package, via esbuild.
 //
-// Preferred path: bundle+minify with esbuild when it is installed (CI). Local
-// fallback: strip TS types with Node's built-in stripper + a light minify, then
-// gzip — a close provisional upper bound (real min+gzip is smaller). The number
-// is labelled PROVISIONAL when the fallback is used.
+// Each package entry is bundled with @dxjs/* marked external (so a package is
+// measured on its own code, not its workspace deps), minified, and gzipped.
+// Falls back to a provisional type-strip estimate only if esbuild is absent.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-// package entry -> budget in bytes (gzip)
 const BUDGETS = [
-  { name: "@dxjs/core", dir: "packages/core/src", budget: 2048 },
-  { name: "@dxjs/dom", dir: "packages/dom/src", budget: 3072 },
-  { name: "@dxjs/component", dir: "packages/component/src", budget: 2560 },
+  { name: "@dxjs/core", entry: "packages/core/src/index.ts", budget: 2048 },
+  { name: "@dxjs/dom", entry: "packages/dom/src/index.ts", budget: 3072 },
+  { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
+  { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 2048 },
 ];
 
-function collectSource(dir) {
-  let out = "";
-  for (const name of readdirSync(dir)) {
-    const p = join(dir, name);
-    if (statSync(p).isDirectory()) out += collectSource(p);
-    else if (/\.ts$/.test(name)) out += readFileSync(p, "utf8") + "\n";
-  }
-  return out;
+async function sizeWithEsbuild(esbuild, entry) {
+  const res = await esbuild.build({
+    entryPoints: [join(ROOT, entry)],
+    bundle: true,
+    minify: true,
+    format: "esm",
+    platform: "browser",
+    target: "es2021",
+    external: ["@dxjs/*"],
+    write: false,
+    legalComments: "none",
+  });
+  return gzipSync(Buffer.from(res.outputFiles[0].text)).length;
 }
 
-async function stripTypes(code) {
-  try {
-    const mod = await import("node:module");
-    if (typeof mod.stripTypeScriptTypes === "function") {
-      return { code: mod.stripTypeScriptTypes(code, { mode: "strip" }), stripped: true };
-    }
-  } catch {
-    /* fall through */
+function provisional(entryDir) {
+  let src = "";
+  const dir = join(ROOT, entryDir);
+  for (const n of readdirSync(dir)) {
+    const p = join(dir, n);
+    if (statSync(p).isDirectory()) continue;
+    if (/\.ts$/.test(n)) src += readFileSync(p, "utf8");
   }
-  return { code, stripped: false };
+  const min = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/[ \t]+/g, " ");
+  return gzipSync(Buffer.from(min)).length;
 }
 
-// Conservative minify: drop block/line comments and collapse runs of blank
-// space. Not a real minifier — only for a provisional local estimate.
-function lightMinify(code) {
-  return code
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{2,}/g, "\n")
-    .replace(/^\s+|\s+$/gm, "")
-    .trim();
+let esbuild = null;
+try {
+  esbuild = await import("esbuild");
+} catch {
+  /* fallback */
 }
 
 let failed = 0;
-for (const { name, dir, budget } of BUDGETS) {
-  const raw = collectSource(join(ROOT, dir));
-  const { code, stripped } = await stripTypes(raw);
-  const min = lightMinify(code);
-  const gz = gzipSync(Buffer.from(min)).length;
-  const label = stripped ? "provisional (type-stripped + light-minify + gzip)" : "PROVISIONAL (types kept)";
+for (const { name, entry, budget } of BUDGETS) {
+  let gz;
+  let label;
+  if (esbuild) {
+    gz = await sizeWithEsbuild(esbuild, entry);
+    label = "real (esbuild bundle + minify + gzip)";
+  } else {
+    gz = provisional(entry.replace(/\/index\.ts$/, ""));
+    label = "PROVISIONAL (no esbuild)";
+  }
   const ok = gz <= budget;
-  const mark = ok ? "✓" : "✗";
-  console.log(`${mark} ${name}: ${gz} B gzip / budget ${budget} B  [${label}]`);
+  console.log(`${ok ? "✓" : "✗"} ${name}: ${gz} B gzip / budget ${budget} B  [${label}]`);
   if (!ok) failed++;
 }
 

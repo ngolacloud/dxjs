@@ -18,8 +18,12 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | `@dxjs/core` | signals / computed / effect / batch / owner tree | **F0 — done & green** |
 | `@dxjs/dom` | `html` + reactive bindings (escaped sinks) + teardown | **F1 — done & green** |
 | `@dxjs/component` | function components, `mount`, `onMount`, `createRouter` | **F1 — done & green** |
+| `@dxjs/server` | `renderToString` (DOM-free SSR) + basic `hydrate` | **F2 — done & green** |
 | `@dxjs/transport` | REST + Connect/gRPC + multiplexed SSE | planned (F3) |
-| `@dxjs/server` | SSR streaming + hydration + edge adapters | planned (F2/F4) |
+
+**Real bundle sizes** (esbuild min+gzip): core 1.0 KB · dom 1.2 KB · component 1.1 KB · server 0.7 KB. A full reactive app (core+dom+component) is **~2.8 KB gzip** — vs ~45 KB for React+ReactDOM.
+
+**Proven under a strict CSP in a real browser** (`e2e/csp`): the demo renders and reacts under `default-src 'none'; script-src 'self'` — **no `unsafe-eval`, no `unsafe-inline`** — with zero CSP violations and injected data escaped (no XSS). This is the premise the StillJS audit said `eval`-based engines cannot meet.
 
 ```ts
 import { signal } from "@dxjs/core";

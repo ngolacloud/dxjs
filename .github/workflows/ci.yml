@@ -19,5 +19,20 @@ jobs:
         run: node scripts/no-eval-gate.mjs
       - name: unit tests (node:test, native TS)
         run: node --test packages/*/test/*.test.ts
-      - name: size budget gate
+      - name: size budget gate (real esbuild min+gzip)
         run: node scripts/size.mjs
+      - name: build (esbuild → dist + demo bundle)
+        run: node scripts/build.mjs
+
+  csp-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - name: install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: strict-CSP browser proof (no eval / no inline / XSS-safe)
+        run: node scripts/build.mjs && node --test e2e/csp/csp.test.mjs
