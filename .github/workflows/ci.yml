@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: no-eval gate (CSP safety)
+        run: node scripts/no-eval-gate.mjs
+      - name: unit tests (node:test, native TS)
+        run: node --test packages/*/test/*.test.ts
+      - name: size budget gate
+        run: node scripts/size.mjs

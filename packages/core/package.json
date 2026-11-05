@@ -1,0 +1,31 @@
+{
+  "name": "@dxjs/core",
+  "version": "0.0.1",
+  "description": "Fine-grained reactivity for dxjs: signals, computeds, effects, batching, and a disposable owner tree. Zero runtime dependencies, no eval, deterministic teardown.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "keywords": [
+    "dxjs",
+    "reactive",
+    "signals",
+    "ngolacloud",
+    "fine-grained"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/core"
+  }
+}

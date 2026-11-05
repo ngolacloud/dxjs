@@ -1,0 +1,24 @@
+{
+  "name": "dxjs-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "dxjs — a lean, secure, fine-grained reactive UI engine for NgolaCloud.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test packages/*/test/*.test.ts",
+    "gate:no-eval": "node scripts/no-eval-gate.mjs",
+    "gate:size": "node scripts/size.mjs",
+    "check": "npm run gate:no-eval && npm test && npm run gate:size"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git"
+  }
+}
