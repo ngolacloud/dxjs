@@ -54,3 +54,13 @@ export function mount<P>(comp: Component<P>, host: Element, props: P): () => voi
 }
 
 export { onCleanup } from "@dxjs/core";
+
+export {
+  createRouter,
+  type Router,
+  type Route,
+  type RouteContext,
+  type RouterOptions,
+  type Guard,
+  type Match,
+} from "./router.ts";

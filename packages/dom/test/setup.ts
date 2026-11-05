@@ -13,6 +13,17 @@ g.Element = win.Element;
 g.HTMLElement = win.HTMLElement;
 g.Event = win.Event;
 g.CustomEvent = win.CustomEvent;
+// Router needs these on the global scope (as they are in a browser).
+g.location = win.location;
+g.history = win.history;
+g.addEventListener = win.addEventListener.bind(win);
+g.removeEventListener = win.removeEventListener.bind(win);
+g.dispatchEvent = win.dispatchEvent.bind(win);
+
+/** Fire a popstate (simulate back/forward) after setting history state. */
+export function popstate(): void {
+  win.dispatchEvent(new win.Event("popstate"));
+}
 
 export function body(): Element {
   const host = win.document.createElement("div");

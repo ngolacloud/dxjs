@@ -14,7 +14,7 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const BUDGETS = [
   { name: "@dxjs/core", dir: "packages/core/src", budget: 2048 },
   { name: "@dxjs/dom", dir: "packages/dom/src", budget: 3072 },
-  { name: "@dxjs/component", dir: "packages/component/src", budget: 1024 },
+  { name: "@dxjs/component", dir: "packages/component/src", budget: 2560 },
 ];
 
 function collectSource(dir) {

@@ -17,7 +17,7 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 |---|---|---|
 | `@dxjs/core` | signals / computed / effect / batch / owner tree | **F0 — done & green** |
 | `@dxjs/dom` | `html` + reactive bindings (escaped sinks) + teardown | **F1 — done & green** |
-| `@dxjs/component` | function components, `mount`, `onMount` | **F1 — done & green** (router next) |
+| `@dxjs/component` | function components, `mount`, `onMount`, `createRouter` | **F1 — done & green** |
 | `@dxjs/transport` | REST + Connect/gRPC + multiplexed SSE | planned (F3) |
 | `@dxjs/server` | SSR streaming + hydration + edge adapters | planned (F2/F4) |
 
