@@ -20,6 +20,7 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | `@dxjs/component` | function components, `mount`, `onMount`, `createRouter` | **F1 — done & green** |
 | `@dxjs/server` | `renderToString` (DOM-free SSR) + fine-grained `hydrate` | **F2 — done & green** |
 | `@dxjs/transport` | REST (`createClient`), `resource`, multiplexed SSE (`createLiveSource`), Connect (gRPC) | **F3 — done & green** |
+| `@dxjs/canvas` | reactive node-graph: model + geometry + Canvas-2D renderer + drag/connect/pan/zoom (data pipelines, architecture diagrams) | **F5 — done & green** |
 
 **Real bundle sizes** (esbuild min+gzip): core 1.0 KB · dom 1.2 KB · component 1.1 KB · server 0.7 KB. A full reactive app (core+dom+component) is **~2.8 KB gzip** — vs ~45 KB for React+ReactDOM.
 
