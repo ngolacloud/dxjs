@@ -38,3 +38,5 @@ jobs:
         run: node scripts/build.mjs && node --test e2e/csp/csp.test.mjs e2e/csp/canvas.test.mjs e2e/csp/chart.test.mjs e2e/csp/vanilla.test.mjs e2e/csp/live.test.mjs e2e/csp/dash.test.mjs
       - name: docs site proof (dogfooded dxjs app under strict CSP)
         run: node docs/build.mjs && node --test docs/test/docs.test.mjs
+      - name: delonix-dx-console proof-of-concept (dashboard + containers under strict CSP)
+        run: node examples/delonix-dx-console/build.mjs && node --test examples/delonix-dx-console/test/console.test.mjs

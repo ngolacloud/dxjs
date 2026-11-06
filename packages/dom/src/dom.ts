@@ -157,6 +157,12 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
   parent.insertBefore(anchor, comment);
   parent.removeChild(comment);
 
+  // The live parent AT INSERT TIME. A top-level child binding is first instantiated
+  // inside the template's DocumentFragment, then render()/mount() MOVES the nodes
+  // (anchor included) into the host — so the original `parent` becomes stale. The
+  // anchor always travels with its siblings, so its current parent is authoritative.
+  const into = (): ParentNode & Node => (anchor.parentNode as (ParentNode & Node) | null) ?? parent;
+
   let current: ChildNode[] = [];
   let currentDisposers: Disposer[] = [];
 
@@ -169,9 +175,10 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
 
   const place = (v: unknown): void => {
     const items = Array.isArray(v) ? v : [v];
+    const host = into();
     for (const item of items) {
       const inst = renderOne(item);
-      for (const n of inst.nodes) parent.insertBefore(n, anchor);
+      for (const n of inst.nodes) host.insertBefore(n, anchor);
       current.push(...inst.nodes);
       currentDisposers.push(inst.dispose);
     }
@@ -203,7 +210,8 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
           rows.delete(k);
         }
       }
-      for (const row of ordered) for (const n of row.nodes) parent.insertBefore(n, anchor);
+      const host = into();
+      for (const row of ordered) for (const n of row.nodes) host.insertBefore(n, anchor);
     }));
     ds.push(() => {
       for (const [, row] of rows) row.dispose();
