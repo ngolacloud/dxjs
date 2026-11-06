@@ -1,0 +1,27 @@
+{
+  "name": "@dxjs/ui",
+  "version": "0.0.1",
+  "description": "A styled, CSP-safe component kit for the NgolaCloud/Seiva console: app shell, stat cards, and a sortable/searchable/paginated data table.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./ui.css": "./ui.css"
+  },
+  "//exports": "Dev points at TS source. The stylesheet ships as ./ui.css and is linked same-origin (style-src 'self').",
+  "files": ["dist", "src", "ui.css", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1",
+    "@dxjs/dom": "0.0.1"
+  },
+  "keywords": ["dxjs", "ui", "components", "admin", "table", "csp"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/ui"
+  }
+}

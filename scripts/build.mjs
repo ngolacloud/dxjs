@@ -1,7 +1,7 @@
 // build — esbuild → minified ESM. Per-package dist (cross @dxjs deps external),
 // plus the single bundle the strict-CSP browser proof (e2e/csp) loads.
 import { build } from "esbuild";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, copyFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
@@ -21,7 +21,11 @@ for (const p of PKGS) {
 }
 
 // The strict-CSP demo apps, fully bundled (no externals) for the browser proofs.
-for (const name of ["app", "canvas.app", "live.app"]) {
+// The @dxjs/ui stylesheet, served same-origin by the demo (style-src 'self').
+copyFileSync(join(ROOT, "packages/ui/ui.css"), join(ROOT, "e2e/csp/dash.css"));
+console.log("copied @dxjs/ui ui.css → e2e/csp/dash.css");
+
+for (const name of ["app", "canvas.app", "live.app", "dash.app"]) {
   await build({
     ...common,
     entryPoints: [join(ROOT, `e2e/csp/${name}.ts`)],

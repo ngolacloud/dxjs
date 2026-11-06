@@ -1,0 +1,205 @@
+// @dxjs/ui — a styled, CSP-safe component kit for the NgolaCloud/Seiva console.
+//
+// Components only toggle CSS CLASSES (the look lives in the served `ui.css`), so
+// they run under a strict CSP (`style-src 'self'`, no inline styles). They build
+// on @dxjs/dom's safe sinks and @dxjs/core signals — no eval, output escaped,
+// deterministic teardown.
+
+import { signal, computed, type Accessor } from "@dxjs/core";
+import { html, list, type TemplateResult } from "@dxjs/dom";
+
+export type Tone = "pos" | "neg" | "warn" | "mut";
+type Maybe<T> = T | Accessor<T>;
+const read = <T,>(v: Maybe<T>): T => (typeof v === "function" ? (v as () => T)() : v);
+
+// --- App shell ------------------------------------------------------------
+export interface NavItem {
+  label: string;
+  active?: boolean;
+  onSelect?: () => void;
+}
+export interface AppShellOptions {
+  brand: string;
+  nav: Maybe<NavItem[]>;
+  user?: { name: string; initials: string };
+  search?: { placeholder?: string; onInput?: (value: string) => void };
+  content: Maybe<TemplateResult>;
+}
+
+/** A dashboard shell: dark sidebar nav + top bar (search + user) + content. */
+export function appShell(o: AppShellOptions): TemplateResult {
+  const navItem = (item: NavItem): TemplateResult =>
+    html`<button class=${item.active ? "dx-nav-item is-active" : "dx-nav-item"} @click=${() => item.onSelect?.()}>
+      <span class="dx-dot"></span>${item.label}
+    </button>`;
+  const user = o.user
+    ? html`<div class="dx-user"><span class="dx-avatar">${o.user.initials}</span>${o.user.name}</div>`
+    : "";
+  const search = o.search
+    ? html`<div class="dx-search"><input placeholder=${o.search.placeholder ?? "Search…"} @input=${(e: Event) =>
+        o.search!.onInput?.((e.target as HTMLInputElement).value)} /></div>`
+    : html`<div class="dx-search"></div>`;
+  return html`<div class="dx-shell">
+    <aside class="dx-side">
+      <div class="dx-brand">${o.brand}</div>
+      <nav class="dx-nav">${list(() => read(o.nav), (i) => i.label, navItem)}</nav>
+    </aside>
+    <div class="dx-main">
+      <header class="dx-top">${search}${user}</header>
+      <main class="dx-content">${() => read(o.content)}</main>
+    </div>
+  </div>`;
+}
+
+// --- Stat cards -----------------------------------------------------------
+export interface StatCardOptions {
+  label: string;
+  value: Maybe<string>;
+  delta?: Maybe<string>;
+  tone?: Tone;
+}
+
+/** A single KPI tile. */
+export function statCard(o: StatCardOptions): TemplateResult {
+  const tone = `dx-stat-delta is-${o.tone ?? "mut"}`;
+  return html`<div class="dx-stat">
+    <div class="dx-stat-label">${o.label}</div>
+    <div class="dx-stat-value">${() => read(o.value)}</div>
+    ${o.delta ? html`<div class=${tone}>${() => read(o.delta!)}</div>` : ""}
+  </div>`;
+}
+
+/** A responsive grid of stat cards. */
+export function statGrid(cards: StatCardOptions[]): TemplateResult {
+  return html`<div class="dx-stats">${list(cards, (c) => c.label, statCard)}</div>`;
+}
+
+// --- Card -----------------------------------------------------------------
+export function card(o: { title?: string; body: Maybe<TemplateResult> }): TemplateResult {
+  return html`<section class="dx-card">
+    ${o.title ? html`<div class="dx-card-head"><h2 class="dx-card-title">${o.title}</h2></div>` : ""}
+    <div class="dx-card-body">${() => read(o.body)}</div>
+  </section>`;
+}
+
+/** A status pill. */
+export function pill(label: string, tone: Tone = "mut"): TemplateResult {
+  return html`<span class=${`dx-pill is-${tone}`}>${label}</span>`;
+}
+
+// --- Data table -----------------------------------------------------------
+export interface Column<T> {
+  key: string;
+  label: string;
+  sortable?: boolean;
+  numeric?: boolean;
+  /** Sort/filter/display value (defaults to `row[key]`). */
+  value?: (row: T) => string | number;
+  /** Custom cell content (defaults to the string value). */
+  render?: (row: T) => TemplateResult | string;
+}
+export interface DataTableOptions<T> {
+  columns: Column<T>[];
+  rows: Maybe<T[]>;
+  rowKey: (row: T) => string | number;
+  title?: string;
+  search?: boolean;
+  pageSize?: number;
+  /** Extra toolbar content, e.g. an Export button. */
+  toolbar?: TemplateResult;
+}
+
+const cellValue = <T,>(col: Column<T>, row: T): string | number =>
+  col.value ? col.value(row) : ((row as Record<string, unknown>)[col.key] as string | number) ?? "";
+
+/** A sortable, searchable, paginated data table (keyed rows). */
+export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
+  const query = signal("");
+  const sortKey = signal<string | null>(null);
+  const sortDesc = signal(false);
+  const page = signal(0);
+  const pageSize = o.pageSize ?? 10;
+
+  const filtered = computed(() => {
+    const q = query().trim().toLowerCase();
+    const rows = read(o.rows);
+    if (!q) return rows;
+    return rows.filter((r) => o.columns.some((c) => String(cellValue(c, r)).toLowerCase().includes(q)));
+  });
+  const sorted = computed(() => {
+    const key = sortKey();
+    const rows = filtered();
+    if (!key) return rows;
+    const col = o.columns.find((c) => c.key === key);
+    if (!col) return rows;
+    const dir = sortDesc() ? -1 : 1;
+    return [...rows].sort((a, b) => {
+      const av = cellValue(col, a);
+      const bv = cellValue(col, b);
+      if (typeof av === "number" && typeof bv === "number") return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  });
+  const total = computed(() => sorted().length);
+  const pageCount = computed(() => Math.max(1, Math.ceil(total() / pageSize)));
+  const paged = computed(() => {
+    const p = Math.min(page(), pageCount() - 1);
+    return sorted().slice(p * pageSize, p * pageSize + pageSize);
+  });
+
+  const toggleSort = (col: Column<T>): void => {
+    if (!col.sortable) return;
+    if (sortKey() === col.key) sortDesc.set(!sortDesc());
+    else {
+      sortKey.set(col.key);
+      sortDesc.set(false);
+    }
+    page.set(0);
+  };
+
+  const header = (col: Column<T>): TemplateResult => {
+    const cls = col.sortable ? "is-sortable" : "";
+    const arrow = (): string => (sortKey() === col.key ? (sortDesc() ? "▼" : "▲") : "");
+    return html`<th class=${cls} @click=${() => toggleSort(col)}>
+      ${col.label}<span class="dx-arrow">${arrow}</span>
+    </th>`;
+  };
+
+  const row = (r: T): TemplateResult =>
+    html`<tr>${list(
+      o.columns,
+      (c) => c.key,
+      (c) => html`<td class=${c.numeric ? "dx-num" : ""}>${c.render ? c.render(r) : String(cellValue(c, r))}</td>`,
+    )}</tr>`;
+
+  const from = (): number => (total() === 0 ? 0 : Math.min(page(), pageCount() - 1) * pageSize + 1);
+  const to = (): number => Math.min(from() + pageSize - 1, total());
+
+  return html`<section class="dx-card">
+    ${o.title ? html`<div class="dx-card-head"><h2 class="dx-card-title">${o.title}</h2></div>` : ""}
+    <div class="dx-tbl-toolbar">
+      ${o.search === false
+        ? ""
+        : html`<div class="dx-tbl-search"><input placeholder="Search…" @input=${(e: Event) => {
+            query.set((e.target as HTMLInputElement).value);
+            page.set(0);
+          }} /></div>`}
+      <div class="dx-spacer"></div>
+      ${o.toolbar ?? ""}
+    </div>
+    <div class="dx-tbl-wrap">
+      <table class="dx-tbl">
+        <thead><tr>${list(o.columns, (c) => c.key, header)}</tr></thead>
+        <tbody>${list(() => paged(), (r) => o.rowKey(r), row)}</tbody>
+      </table>
+    </div>
+    ${() => (total() === 0 ? html`<div class="dx-tbl-empty">No records match your filter.</div>` : "")}
+    <div class="dx-tbl-foot">
+      <span>Showing ${from} – ${to} of ${total}</span>
+      <div class="dx-spacer"></div>
+      <button class="dx-btn" ?disabled=${() => page() <= 0} @click=${() => page.set(Math.max(0, page() - 1))}>‹ Prev</button>
+      <span>Page ${() => Math.min(page(), pageCount() - 1) + 1} / ${pageCount}</span>
+      <button class="dx-btn" ?disabled=${() => page() >= pageCount() - 1} @click=${() => page.set(Math.min(pageCount() - 1, page() + 1))}>Next ›</button>
+    </div>
+  </section>`;
+}
