@@ -42,6 +42,13 @@ test("dxjs liveSignal: multiplexed SSE updates per component under strict CSP", 
       timeout: 5000,
     });
 
+    // Folded deltas: server pushes increments; client folds a running total.
+    await page.evaluate(() => fetch("/push?topic=delta&value=5"));
+    await page.evaluate(() => fetch("/push?topic=delta&value=3"));
+    await page.waitForFunction(() => document.getElementById("total").textContent === "total=8", {
+      timeout: 5000,
+    });
+
     // Still a single connection after updates (no reconnection storm).
     const stats = await page.evaluate(async () => (await (await fetch("/stats")).json()).connections);
     assert.equal(stats, 1, "one multiplexed connection carries both topics");

@@ -57,6 +57,22 @@ test("connection closes when the last topic unsubscribes", () => {
   assert.equal(es.closed, true, "idle connection closed");
 });
 
+test("fold accumulates deltas (real-feed pattern)", () => {
+  FakeEventSource.instances = [];
+  createRoot((dispose) => {
+    const live = createLiveSource("/events", { EventSource: FakeEventSource as unknown as typeof EventSource });
+    const total = live.signal<number>("delta", {
+      initial: 0,
+      fold: (prev, d) => prev + (d as number),
+    });
+    const es = FakeEventSource.instances[0];
+    es.emit("delta", "5");
+    es.emit("delta", "3");
+    assert.equal(total(), 8, "deltas folded into a running total");
+    dispose();
+  });
+});
+
 test("malformed frame is ignored (keeps last good value)", () => {
   FakeEventSource.instances = [];
   createRoot((dispose) => {

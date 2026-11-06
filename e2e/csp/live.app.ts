@@ -11,10 +11,13 @@ const live = createLiveSource("/events");
 const App = component(() => {
   const ticker = live.signal<number>("ticker", { initial: 0 });
   const status = live.signal<string>("status", { initial: "unknown" });
+  // A folded accumulator: the server pushes DELTAS, the client folds a running total.
+  const total = live.signal<number>("delta", { initial: 0, fold: (prev, d) => prev + (d as number) });
   return html`
     <div>
       <p id="ticker">ticker=${() => ticker()}</p>
       <p id="status">status=${() => status()}</p>
+      <p id="total">total=${() => total()}</p>
     </div>`;
 });
 

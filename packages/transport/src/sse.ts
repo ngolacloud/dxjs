@@ -18,8 +18,11 @@ export interface LiveSourceConfig {
 
 export interface TopicOptions<T> {
   initial: T;
-  /** Parse the raw event data. Default: JSON.parse. */
-  parse?: (raw: string) => T;
+  /** Parse the raw event data. Default: JSON.parse. With `fold`, this yields a delta. */
+  parse?: (raw: string) => unknown;
+  /** Fold each incoming delta into the current value — the real-feed pattern
+   * (servers push increments, not whole state). Without it, each event replaces. */
+  fold?: (prev: T, delta: unknown) => T;
 }
 
 export interface LiveSource {
@@ -41,11 +44,13 @@ export function createLiveSource(url: string, config: LiveSourceConfig = {}): Li
   return {
     signal<T>(topic: string, options: TopicOptions<T>): Accessor<T> {
       const s = signal<T>(options.initial);
-      const parse = options.parse ?? ((raw: string): T => JSON.parse(raw) as T);
+      const parse = options.parse ?? ((raw: string): unknown => JSON.parse(raw));
+      const fold = options.fold;
       const conn = ensure();
       const handler = (ev: Event): void => {
         try {
-          s.set(parse((ev as MessageEvent).data));
+          const delta = parse((ev as MessageEvent).data);
+          s.update((prev) => (fold ? fold(prev, delta) : (delta as T)));
         } catch {
           /* ignore malformed frames */
         }
