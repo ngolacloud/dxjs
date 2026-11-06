@@ -131,6 +131,26 @@ function renderOne(v: unknown): Instance {
   return { nodes: [text], dispose: () => {} };
 }
 
+/** A keyed list: reconciled by `key` so stable rows keep their DOM node identity
+ * across add/remove/reorder (new rows rendered, gone rows disposed, no full
+ * rebuild). Use as a child: html`<ul>${list(items, (i) => i.id, (i) => html`…`)}</ul>`. */
+export interface ListResult<T> {
+  readonly _dxlist: true;
+  readonly items: (() => T[]) | T[];
+  readonly key: (item: T, index: number) => unknown;
+  readonly render: (item: T, index: number) => TemplateResult;
+}
+export function list<T>(
+  items: (() => T[]) | T[],
+  key: (item: T, index: number) => unknown,
+  render: (item: T, index: number) => TemplateResult,
+): ListResult<T> {
+  return { _dxlist: true, items, key, render };
+}
+function isList(v: unknown): v is ListResult<unknown> {
+  return !!v && typeof v === "object" && (v as { _dxlist?: unknown })._dxlist === true;
+}
+
 function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
   const parent = comment.parentNode as ParentNode & Node;
   const anchor = document.createTextNode("");
@@ -156,6 +176,41 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
       currentDisposers.push(inst.dispose);
     }
   };
+
+  // Keyed list: reuse rows by key (identity preserved), reorder by moving nodes.
+  if (isList(value)) {
+    const lr = value as ListResult<unknown>;
+    const rows = new Map<unknown, { nodes: ChildNode[]; dispose: Disposer }>();
+    ds.push(effect(() => {
+      const arr = typeof lr.items === "function" ? lr.items() : lr.items;
+      const seen = new Set<unknown>();
+      const ordered: Array<{ nodes: ChildNode[]; dispose: Disposer }> = [];
+      arr.forEach((item, i) => {
+        const k = lr.key(item, i);
+        seen.add(k);
+        let row = rows.get(k);
+        if (!row) {
+          const inst = instantiate(lr.render(item, i));
+          row = { nodes: inst.nodes, dispose: inst.dispose };
+          rows.set(k, row);
+        }
+        ordered.push(row);
+      });
+      for (const [k, row] of rows) {
+        if (!seen.has(k)) {
+          row.dispose();
+          for (const n of row.nodes) if (n.parentNode) n.parentNode.removeChild(n);
+          rows.delete(k);
+        }
+      }
+      for (const row of ordered) for (const n of row.nodes) parent.insertBefore(n, anchor);
+    }));
+    ds.push(() => {
+      for (const [, row] of rows) row.dispose();
+      rows.clear();
+    });
+    return;
+  }
 
   ds.push(effect(() => {
     const v = val(value);

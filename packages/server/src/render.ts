@@ -38,7 +38,18 @@ function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child"> {
   return ctx;
 }
 
+function isList(v: unknown): v is {
+  items: (() => unknown[]) | unknown[];
+  render: (item: unknown, i: number) => TemplateResult;
+} {
+  return !!v && typeof v === "object" && (v as { _dxlist?: unknown })._dxlist === true;
+}
+
 function childToString(value: unknown): string {
+  if (isList(value)) {
+    const arr = typeof value.items === "function" ? untrack(() => (value.items as () => unknown[])()) : value.items;
+    return arr.map((item, i) => renderToString(value.render(item, i))).join("");
+  }
   const v = unwrap(value);
   if (v == null || v === false || v === true || v === "") return "";
   if (isTemplate(v)) return renderToString(v);
