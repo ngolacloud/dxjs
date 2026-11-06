@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test packages/*/test/*.test.ts",
+    "test": "node --test packages/*/test/*.test.ts examples/*/test/*.test.ts",
     "test:csp": "node scripts/build.mjs && node --test e2e/csp/csp.test.mjs",
     "test:csp:chrome": "node scripts/build.mjs && DXJS_PW_CHANNEL=chrome node --test e2e/csp/csp.test.mjs",
     "gate:no-eval": "node scripts/no-eval-gate.mjs",

@@ -18,7 +18,7 @@ jobs:
       - name: no-eval gate (CSP safety)
         run: node scripts/no-eval-gate.mjs
       - name: unit tests (node:test, native TS)
-        run: node --test packages/*/test/*.test.ts
+        run: node --test packages/*/test/*.test.ts examples/*/test/*.test.ts
       - name: size budget gate (real esbuild min+gzip)
         run: node scripts/size.mjs
       - name: build (esbuild → dist + demo bundle)

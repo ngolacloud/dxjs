@@ -18,9 +18,12 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | `@dxjs/core` | signals / computed / effect / batch / owner tree | **F0 — done & green** |
 | `@dxjs/dom` | `html` + reactive bindings (escaped sinks) + teardown | **F1 — done & green** |
 | `@dxjs/component` | function components, `mount`, `onMount`, `createRouter` | **F1 — done & green** |
-| `@dxjs/server` | `renderToString` (DOM-free SSR) + fine-grained `hydrate` | **F2 — done & green** |
+| `@dxjs/server` | `renderToString` (DOM-free SSR) + fine-grained `hydrate` (text, nested templates & lists) | **F2 — done & green** |
 | `@dxjs/transport` | REST (`createClient`), `resource`, multiplexed SSE (`createLiveSource`), Connect (gRPC) | **F3 — done & green** |
+| `@dxjs/edge` | Web-fetch edge handlers, Node listener adapter, **native gRPC** over `node:http2` (reads trailers) | **F4 — done & green** |
 | `@dxjs/canvas` | reactive node-graph: model + geometry + Canvas-2D renderer + drag/connect/pan/zoom (data pipelines, architecture diagrams) | **F5 — done & green** |
+
+An example admin UI that reproduces the Seiva Console Admin on dxjs lives in [`examples/seiva-console`](examples/seiva-console) (CSP-clean; consumes `/admin/registry.json` + `/openapi.json`).
 
 **Real bundle sizes** (esbuild min+gzip): core 1.0 KB · dom 1.2 KB · component 1.1 KB · server 0.7 KB. A full reactive app (core+dom+component) is **~2.8 KB gzip** — vs ~45 KB for React+ReactDOM.
 
