@@ -17,7 +17,9 @@
 // first effect run we therefore drop the server nodes inside the range and render
 // the current value fresh via `@dxjs/dom`; thereafter the range is driven
 // reactively. Text children are likewise re-materialised on the first run (same
-// content → no visible change). `hydrateReplace` remains the whole-host fallback.
+// content → no visible change). A `list()` child is reconciled BY KEY after the
+// first-run rebuild, so rows keep their DOM node identity across add/remove/
+// reorder. `hydrateReplace` remains the whole-host fallback.
 
 import { effect, createRoot, onCleanup } from "@dxjs/core";
 import { render, type TemplateResult } from "@dxjs/dom";
@@ -32,6 +34,15 @@ function val(v: unknown): unknown {
 
 function isTemplate(v: unknown): v is TemplateResult {
   return !!v && typeof v === "object" && (v as { _dx?: unknown })._dx === true;
+}
+
+interface ListMarker {
+  items: (() => unknown[]) | unknown[];
+  key: (item: unknown, index: number) => unknown;
+  render: (item: unknown, index: number) => TemplateResult;
+}
+function isList(v: unknown): v is ListMarker {
+  return !!v && typeof v === "object" && (v as { _dxlist?: unknown })._dxlist === true;
 }
 
 function collectComments(root: Node, out: Comment[]): void {
@@ -88,10 +99,54 @@ function renderValue(item: unknown): { nodes: ChildNode[]; dispose: Disposer } {
 }
 
 function attachChildRange(open: Comment, close: Comment, value: unknown, ds: Disposer[]): void {
-  // Only reactive values need wiring; a static child keeps its SSR output.
-  if (typeof value !== "function") return;
   const parent = open.parentNode;
   if (!parent) return;
+
+  // A keyed list: drop the SSR content once, then reconcile by key so rows keep
+  // their DOM node identity across add/remove/reorder (same policy as the client
+  // renderer's list()).
+  if (isList(value)) {
+    const lr = value;
+    let n = open.nextSibling;
+    while (n && n !== close) {
+      const next = n.nextSibling;
+      parent.removeChild(n);
+      n = next;
+    }
+    const rows = new Map<unknown, { nodes: ChildNode[]; dispose: Disposer }>();
+    ds.push(effect(() => {
+      const arr = typeof lr.items === "function" ? lr.items() : lr.items;
+      const seen = new Set<unknown>();
+      const ordered: Array<{ nodes: ChildNode[]; dispose: Disposer }> = [];
+      arr.forEach((item, i) => {
+        const k = lr.key(item, i);
+        seen.add(k);
+        let row = rows.get(k);
+        if (!row) {
+          row = renderValue(lr.render(item, i));
+          rows.set(k, row);
+        }
+        ordered.push(row);
+      });
+      for (const [k, row] of rows) {
+        if (!seen.has(k)) {
+          row.dispose();
+          for (const node of row.nodes) if (node.parentNode) node.parentNode.removeChild(node);
+          rows.delete(k);
+        }
+      }
+      for (const row of ordered) for (const node of row.nodes) parent.insertBefore(node, close);
+    }));
+    ds.push(() => {
+      for (const [, row] of rows) row.dispose();
+      rows.clear();
+    });
+    return;
+  }
+
+  // Otherwise only reactive (function) children need wiring; a static child keeps
+  // its SSR output.
+  if (typeof value !== "function") return;
 
   let current: ChildNode[] = [];
   let currentDisposers: Disposer[] = [];
