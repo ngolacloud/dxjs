@@ -5,3 +5,4 @@ e2e/csp/app.js
 .DS_Store
 coverage/
 e2e/csp/canvas.app.js
+e2e/csp/live.app.js

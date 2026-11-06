@@ -34,5 +34,5 @@ jobs:
       - run: npm install
       - name: install Chromium for Playwright
         run: npx playwright install --with-deps chromium
-      - name: strict-CSP browser proofs (render + canvas; no eval / no inline / XSS-safe)
-        run: node scripts/build.mjs && node --test e2e/csp/csp.test.mjs e2e/csp/canvas.test.mjs
+      - name: strict-CSP browser proofs (render + canvas + live SSE)
+        run: node scripts/build.mjs && node --test e2e/csp/csp.test.mjs e2e/csp/canvas.test.mjs e2e/csp/live.test.mjs

@@ -21,7 +21,7 @@ for (const p of PKGS) {
 }
 
 // The strict-CSP demo apps, fully bundled (no externals) for the browser proofs.
-for (const name of ["app", "canvas.app"]) {
+for (const name of ["app", "canvas.app", "live.app"]) {
   await build({
     ...common,
     entryPoints: [join(ROOT, `e2e/csp/${name}.ts`)],
