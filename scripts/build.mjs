@@ -20,10 +20,12 @@ for (const p of PKGS) {
   console.log(`built @dxjs/${p} → dist/index.js`);
 }
 
-// The strict-CSP demo app, fully bundled (no externals) for the browser proof.
-await build({
-  ...common,
-  entryPoints: [join(ROOT, "e2e/csp/app.ts")],
-  outfile: join(ROOT, "e2e/csp/app.js"),
-});
-console.log("built e2e/csp/app.js");
+// The strict-CSP demo apps, fully bundled (no externals) for the browser proofs.
+for (const name of ["app", "canvas.app"]) {
+  await build({
+    ...common,
+    entryPoints: [join(ROOT, `e2e/csp/${name}.ts`)],
+    outfile: join(ROOT, `e2e/csp/${name}.js`),
+  });
+  console.log(`built e2e/csp/${name}.js`);
+}

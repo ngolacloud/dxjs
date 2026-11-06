@@ -4,3 +4,4 @@ e2e/csp/app.js
 *.tsbuildinfo
 .DS_Store
 coverage/
+e2e/csp/canvas.app.js
