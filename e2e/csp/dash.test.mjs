@@ -28,6 +28,20 @@ test("dxjs/ui dashboard renders & the table works under strict CSP", async () =>
     assert.equal((await page.$$(".dx-stat")).length, 8, "eight KPI tiles");
     assert.equal((await page.$$("tbody tr")).length, 8, "first page shows pageSize rows");
 
+    // Two Chart.js charts rendered and actually painted (non-blank canvases).
+    const painted = await page.evaluate(() =>
+      [...document.querySelectorAll("canvas.dx-chart")].map((c) => {
+        const ctx = c.getContext("2d");
+        if (!c.width || !c.height) return 0;
+        const d = ctx.getImageData(0, 0, c.width, c.height).data;
+        let n = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] !== 0) n++;
+        return n;
+      }),
+    );
+    assert.equal(painted.length, 2, "two dashboard charts");
+    assert.ok(painted.every((n) => n > 500), `both charts painted (got ${painted})`);
+
     // The stylesheet actually applied (dark sidebar) — proves style-src 'self' loaded dash.css.
     const sideBg = await page.$eval(".dx-side", (el) => getComputedStyle(el).backgroundColor);
     assert.notEqual(sideBg, "rgba(0, 0, 0, 0)", "sidebar is styled by the linked stylesheet");

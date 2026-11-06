@@ -48,6 +48,28 @@ test("appShell renders brand + nav + content, and nav click fires onSelect", () 
   assert.equal(picked, "Companies");
 });
 
+test("appShell nav reflects a reactive active selection", () => {
+  const host = body();
+  const active = signal("a");
+  render(
+    appShell({
+      brand: "X",
+      nav: () => [
+        { label: "Alpha", active: active() === "a", onSelect: () => active.set("a") },
+        { label: "Beta", active: active() === "b", onSelect: () => active.set("b") },
+      ],
+      content: html`<p>c</p>`,
+    }),
+    host,
+  );
+  const find = (t: string) => [...host.querySelectorAll(".dx-nav-item")].find((b) => b.textContent!.includes(t))!;
+  assert.ok(find("Alpha").classList.contains("is-active"), "Alpha active initially");
+  // Reactive: changing the signal moves the highlight (keyed list() would not re-render it).
+  active.set("b");
+  assert.ok(find("Beta").classList.contains("is-active"), "Beta active after selection");
+  assert.ok(!find("Alpha").classList.contains("is-active"), "Alpha no longer active");
+});
+
 test("appShell renders a topbar slot in place of search", () => {
   const host = body();
   render(

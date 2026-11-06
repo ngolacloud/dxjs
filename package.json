@@ -18,6 +18,8 @@
     "test:csp:chrome": "node scripts/build.mjs && DXJS_PW_CHANNEL=chrome node --test e2e/csp/csp.test.mjs",
     "gate:no-eval": "node scripts/no-eval-gate.mjs",
     "gate:size": "node scripts/size.mjs",
+    "docs:build": "node docs/build.mjs",
+    "docs:test:chrome": "node docs/build.mjs && DXJS_PW_CHANNEL=chrome node --test docs/test/docs.test.mjs",
     "check": "npm run gate:no-eval && npm test && npm run gate:size"
   },
   "repository": {

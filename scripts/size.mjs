@@ -75,3 +75,24 @@ if (failed) {
   process.exit(1);
 }
 console.log("size gate PASSED.");
+
+// @dxjs/charts is EXEMPT from the budget gate: it carries a runtime dependency
+// (chart.js), a deliberate trade for a mature charting engine. We still MEASURE it
+// (chart.js bundled in) so a regression is visible — it just never fails the gate.
+if (esbuild) {
+  try {
+    const res = await esbuild.build({
+      entryPoints: [join(ROOT, "packages/charts/src/index.ts")],
+      bundle: true,
+      minify: true,
+      format: "esm",
+      target: "es2021",
+      external: ["@dxjs/*", "node:*"], // chart.js IS bundled → real shipped size
+      write: false,
+    });
+    const gz = gzipSync(res.outputFiles[0].contents).length;
+    console.log(`ℹ @dxjs/charts: ${gz} B gzip (chart.js bundled; exempt from the size budget)`);
+  } catch {
+    /* informational only */
+  }
+}

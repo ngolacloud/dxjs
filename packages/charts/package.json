@@ -1,0 +1,29 @@
+{
+  "name": "@dxjs/charts",
+  "version": "0.0.1",
+  "description": "CSP-safe chart components for dxjs: a thin, signal-reactive wrapper over Chart.js (bar / line / pie / doughnut) rendered to a <canvas>.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./charts.css": "./charts.css"
+  },
+  "//exports": "Dev points at TS source. The stylesheet ships as ./charts.css and is linked same-origin (style-src 'self'). Chart.js draws to <canvas> (no eval, no inline style), so the kit runs under a strict CSP.",
+  "files": ["dist", "src", "charts.css", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1",
+    "@dxjs/dom": "0.0.1",
+    "@dxjs/component": "0.0.1",
+    "chart.js": "^4.6.1"
+  },
+  "keywords": ["dxjs", "charts", "chart.js", "canvas", "csp", "dashboard"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/charts"
+  }
+}

@@ -47,7 +47,7 @@ export function appShell(o: AppShellOptions): TemplateResult {
   return html`<div class="dx-shell">
     <aside class="dx-side">
       <div class="dx-brand">${o.brand}</div>
-      <nav class="dx-nav">${list(() => read(o.nav), (i) => i.label, navItem)}</nav>
+      <nav class="dx-nav">${() => read(o.nav).map(navItem)}</nav>
     </aside>
     <div class="dx-main">
       <header class="dx-top">${left}${user}</header>
