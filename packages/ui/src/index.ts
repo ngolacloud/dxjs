@@ -8,6 +8,9 @@
 import { signal, computed, type Accessor } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
 
+export { virtualList, visibleRange } from "./virtual.ts";
+export type { VirtualListOptions, VisibleRange } from "./virtual.ts";
+
 export type Tone = "pos" | "neg" | "warn" | "mut";
 type Maybe<T> = T | Accessor<T>;
 const read = <T,>(v: Maybe<T>): T => (typeof v === "function" ? (v as () => T)() : v);

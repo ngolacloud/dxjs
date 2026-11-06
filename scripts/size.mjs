@@ -17,7 +17,9 @@ const BUDGETS = [
   { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 3072 },
   { name: "@dxjs/canvas", entry: "packages/canvas/src/index.ts", budget: 3072 },
   { name: "@dxjs/edge", entry: "packages/edge/src/index.ts", budget: 3072 },
-  { name: "@dxjs/ui", entry: "packages/ui/src/index.ts", budget: 4096 },
+  { name: "@dxjs/ui", entry: "packages/ui/src/index.ts", budget: 5120 },
+  { name: "@dxjs/query", entry: "packages/query/src/index.ts", budget: 2048 },
+  { name: "@dxjs/forms", entry: "packages/forms/src/index.ts", budget: 2048 },
 ];
 
 async function sizeWithEsbuild(esbuild, entry) {

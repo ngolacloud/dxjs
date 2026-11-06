@@ -22,8 +22,12 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | `@dxjs/transport` | REST (`createClient`), `resource`, multiplexed SSE (`createLiveSource`), Connect (gRPC) | **F3 — done & green** |
 | `@dxjs/edge` | Web-fetch edge handlers, Node listener adapter, **native gRPC** over `node:http2` (reads trailers) | **F4 — done & green** |
 | `@dxjs/canvas` | reactive node-graph: model + geometry + Canvas-2D renderer + drag/connect/pan/zoom (data pipelines, architecture diagrams) | **F5 — done & green** |
-| `@dxjs/ui` | styled, CSP-safe component kit: appShell, statGrid, card, pill, sortable/searchable/paginated dataTable | **done & green** |
+| `@dxjs/ui` | styled, CSP-safe component kit: appShell, statGrid, card, pill, sortable/searchable/paginated dataTable, **virtualList** | **done & green** |
 | `@dxjs/charts` | CSP-safe charts (bar/line/pie/doughnut) — a signal-reactive wrapper over Chart.js, rendered to `<canvas>` | **done & green** |
+| `@dxjs/query` | cached, deduped, stale-while-revalidate async queries with key invalidation (↔ react-query) | **done & green** |
+| `@dxjs/forms` | signal-reactive forms: values, touched/dirty/error, submit + a zod-compatible validator (↔ react-hook-form) | **done & green** |
+
+`@dxjs/core` also ships **`createContext`/`provide`/`inject`** (DI by construction scope) and **`onError`** (error boundaries over the owner tree) — see `docs/parity/react-parity.md`.
 
 An example admin UI that reproduces the Seiva Console Admin on dxjs lives in [`examples/seiva-console`](examples/seiva-console) (CSP-clean; consumes `/admin/registry.json` + `/openapi.json`).
 

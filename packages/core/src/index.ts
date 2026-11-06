@@ -11,7 +11,11 @@ export {
   batch,
   untrack,
   onCleanup,
+  onError,
   createRoot,
 } from "./graph.ts";
 
 export type { Signal, Accessor, EqualsFn, SignalOptions } from "./graph.ts";
+
+export { createContext, provide, inject } from "./context.ts";
+export type { Context } from "./context.ts";

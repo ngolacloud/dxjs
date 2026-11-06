@@ -14,3 +14,5 @@ export * from "@dxjs/core";
 export * from "@dxjs/dom";
 export * from "@dxjs/component";
 export * from "@dxjs/ui";
+export * from "@dxjs/query";
+export * from "@dxjs/forms";

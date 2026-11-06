@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { signal } from "@dxjs/core";
 import { html, render } from "@dxjs/dom";
-import { appShell, statGrid, dataTable } from "../src/index.ts";
+import { appShell, statGrid, dataTable, visibleRange } from "../src/index.ts";
 
 interface Company {
   id: string;
@@ -128,4 +128,24 @@ test("dataTable paginates, searches and sorts", () => {
   search.value = "Company Z0";
   search.dispatchEvent(new Event("input"));
   assert.ok(rowCount() <= 2, "search narrows the result set");
+});
+
+test("visibleRange windows rows by scroll position (with overscan)", () => {
+  // 1000 rows, 40px each, 400px viewport → 10 visible; overscan 4.
+  const atTop = visibleRange(0, 40, 400, 1000, 4);
+  assert.equal(atTop.start, 0, "no rows above the top");
+  assert.equal(atTop.end, 14, "10 visible + 4 overscan below");
+
+  // Scrolled to row 100 (scrollTop 4000).
+  const mid = visibleRange(4000, 40, 400, 1000, 4);
+  assert.equal(mid.start, 96, "100 - 4 overscan");
+  assert.equal(mid.end, 114, "100 + 10 + 4");
+
+  // Near the end clamps to the row count.
+  const end = visibleRange(39600, 40, 400, 1000, 4);
+  assert.equal(end.end, 1000, "clamped to count");
+
+  // Empty / degenerate inputs.
+  assert.deepEqual(visibleRange(0, 40, 400, 0), { start: 0, end: 0 });
+  assert.deepEqual(visibleRange(0, 0, 400, 10), { start: 0, end: 0 });
 });

@@ -1,10 +1,12 @@
 // The documentation pages — each a dxjs component. The live examples use the real
 // primitives (dogfooding): what you read in the code pane is what renders beside it.
-import { signal, computed } from "@dxjs/core";
+import { signal, computed, effect, createContext, provide, inject, onError } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
 import { component, onMount, type Component } from "@dxjs/component";
-import { statGrid, dataTable, pill } from "@dxjs/ui";
+import { statGrid, dataTable, pill, virtualList } from "@dxjs/ui";
 import { chart } from "@dxjs/charts";
+import { createQueryClient, query } from "@dxjs/query";
+import { createForm } from "@dxjs/forms";
 import { renderToString } from "@dxjs/server";
 import { example, p, h2 } from "./example.ts";
 
@@ -129,14 +131,30 @@ html\`<div>\${evil}</div>\`  // rendered as TEXT, never parsed`,
 });
 
 // --- component -------------------------------------------------------------
+const DemoTheme = createContext("light");
 const ComponentPage = component(() => {
   const mounted = signal("(waiting…)");
   onMount(() => {
     mounted.set("onMount fired ✓");
     return () => {};
   });
+
+  // Context (DI by construction scope): provide during construction, inject reads it.
+  let themed = "light";
+  provide(DemoTheme, "dark", () => {
+    themed = inject(DemoTheme);
+  });
+
+  // Error boundary: register onError BEFORE the guarded work; a thrown effect is caught.
+  const status = signal("running ✓");
+  onError((e) => status.set("boundary caught: " + (e as Error).message));
+  const trigger = signal(0);
+  effect(() => {
+    if (trigger() > 0) throw new Error("render failed");
+  });
+
   return html`
-    ${head("@dxjs/component", "Function components that run once, mount/onMount/onCleanup lifecycle, and a History-API router with lazy routes and UX guards.")}
+    ${head("@dxjs/component", "Function components that run once; mount/onMount/onCleanup; onError error boundaries; createContext DI; and a History-API router.")}
     ${example({
       title: "component + onMount",
       code: `const App = component(() => {
@@ -157,6 +175,26 @@ mount(App, host, {});`,
 ], { fallback: "/" });
 router.outlet(document.getElementById("app"));`,
       note: "History-API routing, params, lazy (code-split) routes, and UX-only guards — this very site swaps pages by re-mounting a component per selection.",
+    })}
+    ${example({
+      title: "createContext / provide / inject (DI)",
+      code: `const Theme = createContext("light");
+provide(Theme, "dark", () => {
+  const t = inject(Theme);   // "dark" during construction
+});`,
+      view: html`<span class="demo-out">inject(Theme) = <b class="badge">${themed}</b></span>`,
+      note: "Read at the top of a component (like useContext) and close over the value.",
+    })}
+    ${example({
+      title: "onError (error boundary)",
+      code: `onError(e => status.set("caught: " + e.message));
+effect(() => { if (trigger() > 0) throw new Error("render failed"); });
+// clicking re-runs the effect → it throws → the boundary catches it`,
+      view: html`<div class="demo-row">
+        <button class="demo-btn" @click=${() => trigger.update((x) => x + 1)}>Trigger error</button>
+        <span class="demo-out">${() => status()}</span>
+      </div>`,
+      note: "Errors thrown by descendant effects/computeds propagate to the nearest onError; register it before the work it guards.",
     })}
   `;
 });
@@ -209,6 +247,23 @@ const UiPage = component(() => html`
       pageSize: 5,
     }),
   })}
+  ${example({
+    title: "virtualList — 10,000 rows, a handful of DOM nodes",
+    code: `virtualList({
+  rows: bigArray,        // 10,000 items
+  rowHeight: 36, height: 300,
+  key: (_, i) => i,
+  render: (row, i) => html\`#\${i} — \${row}\`,
+})`,
+    view: virtualList<string>({
+      rows: Array.from({ length: 10000 }, (_, i) => `item ${i}`),
+      rowHeight: 36,
+      height: 300,
+      key: (_, i) => i,
+      render: (row, i) => html`<span class="demo-out">#${i} — ${row}</span>`,
+    }),
+    note: "Scroll it: only the visible window (+overscan) is ever in the DOM. Sizing is applied via the CSSOM, so it stays CSP-clean.",
+  })}
 `);
 
 // --- charts ----------------------------------------------------------------
@@ -250,6 +305,81 @@ const ChartsPage = component(() => html`
     note: "Pass an accessor (() => spec) to make the chart update reactively when a signal changes.",
   })}
 `);
+
+// --- query -----------------------------------------------------------------
+const QueryPage = component(() => {
+  const client = createQueryClient();
+  let hits = 0;
+  // A fake async "server": counts fetches so cache/dedupe is visible.
+  const q = query(client, ["profile"], async () => {
+    hits++;
+    await new Promise((r) => setTimeout(r, 120));
+    return `loaded #${hits}`;
+  }, { staleTime: Infinity });
+  return html`
+    ${head("@dxjs/query", "Cached, deduped, stale-while-revalidate async queries with key invalidation — the signal-reactive answer to react-query.")}
+    ${example({
+      title: "query() — cache + refetch + invalidate",
+      code: `const client = createQueryClient();
+const q = query(client, ["profile"], fetchProfile,
+  { staleTime: Infinity });
+// q.data() · q.isLoading() · q.isFetching() · q.refetch()
+client.invalidate(["profile"]);   // refetch live observers`,
+      view: html`<div class="demo-row">
+        <span class="demo-out">${() => (q.isFetching() ? "fetching…" : (q.data() ?? "—"))}</span>
+        <button class="demo-btn" @click=${() => void q.refetch()}>refetch</button>
+        <button class="demo-btn" @click=${() => void client.invalidate(["profile"])}>invalidate</button>
+      </div>`,
+      note: "Fetcher-agnostic: pass any () => Promise. Concurrent queries for one key share a single request; cached data shows immediately while a background refetch runs.",
+    })}
+  `;
+});
+
+// --- forms -----------------------------------------------------------------
+interface Signup extends Record<string, unknown> { email: string; password: string; }
+const FormsPage = component(() => {
+  const result = signal("(not submitted)");
+  const f = createForm<Signup>({
+    initial: { email: "", password: "" },
+    validate: (v) => {
+      const e: Partial<Record<keyof Signup, string>> = {};
+      if (!v.email.includes("@")) e.email = "enter a valid email";
+      if (v.password.length < 6) e.password = "min 6 characters";
+      return e;
+    },
+  });
+  const submit = f.handleSubmit((v) => result.set("submitted: " + v.email));
+  const emailFld = f.field("email");
+  const passFld = f.field("password");
+  return html`
+    ${head("@dxjs/forms", "Signal-reactive forms: values, touched/dirty/error, submit, and a zod-compatible validator — the dxjs answer to react-hook-form.")}
+    ${example({
+      title: "createForm() — validated login",
+      code: `const f = createForm({ initial: { email: "", password: "" },
+  validate: zodValidate(LoginSchema) });  // or a plain fn
+const submit = f.handleSubmit(v => save(v));
+html\`<input @input=\${f.field("email").onInput}
+  @blur=\${f.field("email").onBlur} />\``,
+      view: html`<form class="demo-form" @submit=${submit}>
+        <div class="demo-row">
+          <input class="demo-input" placeholder="email"
+            @input=${emailFld.onInput} @blur=${emailFld.onBlur} />
+          <span class="demo-out">${() => (f.touched("email")() && f.error("email")()) || ""}</span>
+        </div>
+        <div class="demo-row">
+          <input class="demo-input" type="password" placeholder="password"
+            @input=${passFld.onInput} @blur=${passFld.onBlur} />
+          <span class="demo-out">${() => (f.touched("password")() && f.error("password")()) || ""}</span>
+        </div>
+        <div class="demo-row">
+          <button class="demo-btn" type="submit" ?disabled=${() => !f.isValid()}>Sign up</button>
+          <span class="demo-out">${() => result()}</span>
+        </div>
+      </form>`,
+      note: "errors/isValid/dirty are computeds over the field signals; validate with a plain function or adapt a zod schema via zodValidate (no zod dependency).",
+    })}
+  `;
+});
 
 // --- server ----------------------------------------------------------------
 const ServerPage = component(() => {
@@ -305,9 +435,9 @@ const ParityPage = component(() => html`
   ${p("Short answer: for that console it is viable. The core (reactivity, DOM, components, router, SSR, transport, node-graph, charts) is covered, at ~16× smaller bundles and under a strict CSP React can't meet without eval/unsafe-inline.")}
   ${h2("Covered")}
   ${p("signals ↔ useState/zustand · computed/effect ↔ useMemo/useEffect · html ↔ JSX · component/onMount ↔ hooks · createRouter ↔ react-router (basics) · renderToString/hydrate ↔ SSR · transport REST/SSE/gRPC · @dxjs/canvas ↔ @xyflow/react · @dxjs/ui · @dxjs/charts. And zod, i18next, xterm, dexie work as-is (framework-agnostic).")}
-  ${h2("Gaps to close before migrating (prioritised)")}
-  ${p("1. a query/cache layer over resource (↔ react-query) · 2. list virtualization (↔ react-virtual) · 3. a forms helper (fields + zod) · 4. onError (error boundaries) · 5. createContext (DI; a module-scoped signal covers the immediate need).")}
-  ${p("Full write-up: docs/parity/react-parity.md.")}
+  ${h2("The gaps — now built ✓")}
+  ${p("1. ✓ @dxjs/query (cache/dedupe/SWR/invalidate ↔ react-query) · 2. ✓ virtualList in @dxjs/ui (↔ react-virtual) · 3. ✓ @dxjs/forms (fields + zodValidate) · 4. ✓ onError error boundaries (@dxjs/core) · 5. ✓ createContext/provide/inject (@dxjs/core).")}
+  ${p("Still optional: nested routes/typed loaders, signals DevTools, defineElement — none blocks the migration. Full write-up: docs/parity/react-parity.md.")}
 `);
 
 export const pages: Page[] = [
@@ -317,6 +447,8 @@ export const pages: Page[] = [
   { id: "component", label: "@dxjs/component", group: "Packages", view: ComponentPage },
   { id: "ui", label: "@dxjs/ui", group: "Packages", view: UiPage },
   { id: "charts", label: "@dxjs/charts", group: "Packages", view: ChartsPage },
+  { id: "query", label: "@dxjs/query", group: "Packages", view: QueryPage },
+  { id: "forms", label: "@dxjs/forms", group: "Packages", view: FormsPage },
   { id: "transport", label: "@dxjs/transport", group: "Packages", view: TransportPage },
   { id: "server", label: "@dxjs/server", group: "Packages", view: ServerPage },
   { id: "canvas", label: "@dxjs/canvas", group: "Packages", view: CanvasPage },

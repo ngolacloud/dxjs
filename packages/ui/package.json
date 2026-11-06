@@ -16,7 +16,8 @@
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1",
-    "@dxjs/dom": "0.0.1"
+    "@dxjs/dom": "0.0.1",
+    "@dxjs/component": "0.0.1"
   },
   "keywords": ["dxjs", "ui", "components", "admin", "table", "csp"],
   "repository": {

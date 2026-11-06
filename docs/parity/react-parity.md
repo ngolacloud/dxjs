@@ -5,10 +5,13 @@
 >
 > **Resposta curta:** para *este* console, **é viável** — o núcleo (reactividade,
 > DOM, componentes, router, SSR, transporte, grafo de nós, gráficos) está coberto
-> por dxjs com tamanho e segurança (CSP estrita) muito superiores. **Não é um
-> *drop-in* hoje:** faltam ~5 peças bem delimitadas (contexto/DI, *error
-> boundaries*, uma camada de *cache* de dados, virtualização de listas e um
-> *helper* de formulários). Nenhuma é um obstáculo de fundo; são adições focadas.
+> por dxjs com tamanho e segurança (CSP estrita) muito superiores.
+>
+> **Actualização (2026-11-06):** as ~5 peças que faltavam foram **construídas** —
+> `createContext`/`onError` no `@dxjs/core`, `@dxjs/query` (cache/dedupe/SWR),
+> `virtualList` no `@dxjs/ui`, e `@dxjs/forms` (campos + validação zod-compatível).
+> Resta, como opcional, router aninhado/*loaders* tipados. O gap funcional para
+> *este* console está essencialmente **fechado**.
 
 Este documento mede o dxjs **contra o que o delonix-console realmente usa** (não
 contra o React em abstracto). Stack actual do console (React): `react`/`react-dom`,
@@ -113,15 +116,18 @@ mas ainda sem implementação.
 ## 3. Veredicto e recomendação
 
 **Veredicto:** a reescrita do delonix-console em dxjs é **viável e vantajosa**
-(tamanho, segurança CSP, SSE), **não** sendo um *drop-in* hoje. O caminho crítico é
-pequeno e bem definido.
+(tamanho, segurança CSP, SSE). O caminho crítico — ~5 adições — está **construído**.
 
-**Construir *antes* de migrar o console (por prioridade):**
-1. **`@dxjs/query`** — *cache*/dedupe/invalidação sobre `resource`. *(maior impacto)*
-2. **`virtualList`** — virtualização para logs/listas longas.
-3. **`@dxjs/forms`** — campos+`zod`+estados por campo.
-4. **`onError`** — *error boundaries* por subárvore.
-5. **`createContext`** — DI por subárvore *(opcional; signal-módulo cobre o imediato)*.
+**Construído nesta campanha (já disponível):**
+1. ✅ **`@dxjs/query`** — *cache*/dedupe/invalidação/SWR sobre um *fetcher*. *(maior impacto)*
+2. ✅ **`virtualList`** (`@dxjs/ui`) — virtualização para logs/listas longas.
+3. ✅ **`@dxjs/forms`** — campos + `zodValidate` + estados por campo (touched/dirty/error).
+4. ✅ **`onError`** (`@dxjs/core`) — *error boundaries* pela owner-tree.
+5. ✅ **`createContext`/`provide`/`inject`** (`@dxjs/core`) — DI por âmbito de construção.
+
+**Ainda por fazer (opcional, por secção, quando exigido):** router aninhado +
+*layouts* e *loaders* tipados; DevTools de signals; `defineElement` (custom
+elements/shadow). Nenhum bloqueia a migração — avaliam-se quando uma secção os pedir.
 
 **Reutilizar tal-qual (sem port):** `zod`, `i18next` (core), `@xterm/xterm`, `dexie`.
 **Já cobertos:** reactividade, DOM, componentes, router (básico), SSR, REST/SSE/gRPC,

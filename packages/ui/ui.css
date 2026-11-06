@@ -118,3 +118,11 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .op .out:empty { display: none; }
 .op .out { font-family: var(--dx-mono); white-space: pre-wrap; font-size: 13px; padding: 8px 10px; border: 1px dashed var(--dx-line); border-radius: 8px; color: var(--dx-mut); }
 .rowmsg { font-size: 12.5px; padding: 8px 2px 0; }
+
+/* --- Virtual list ------------------------------------------------------- */
+/* Dynamic sizing (viewport height, sizer height, window offset, row height) is
+   set via the CSSOM in JS — CSP-safe. Only static layout lives here. */
+.dx-vlist { position: relative; overflow-y: auto; border: 1px solid var(--dx-line); border-radius: var(--dx-radius); background: var(--dx-panel); }
+.dx-vlist-sizer { width: 1px; }
+.dx-vlist-win { position: absolute; top: 0; left: 0; right: 0; }
+.dx-vlist-row { height: var(--dxv-h); box-sizing: border-box; overflow: hidden; display: flex; align-items: center; padding: 0 16px; border-top: 1px solid var(--dx-line2); font-size: 14px; }

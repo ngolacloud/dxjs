@@ -77,6 +77,20 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     const px = await page.evaluate(painted);
     assert.ok(px.length >= 1 && px.every((n) => n > 500), `charts painted on the charts page (${px})`);
 
+    // @dxjs/ui virtualList: 10,000 items but only a small window is in the DOM.
+    await page.click(".dx-nav-item >> text=@dxjs/ui");
+    await page.waitForSelector(".dx-vlist-row", { timeout: 5000 });
+    const domRows = await page.$$eval(".dx-vlist-row", (els) => els.length);
+    assert.ok(domRows > 0 && domRows < 60, `virtualized: few DOM rows for 10k items (got ${domRows})`);
+    // Scroll and confirm it still renders a small window (and different rows).
+    const firstBefore = await page.textContent(".dx-vlist-row");
+    await page.$eval(".dx-vlist", (el) => (el.scrollTop = 3600));
+    await page.waitForTimeout(60);
+    const domRows2 = await page.$$eval(".dx-vlist-row", (els) => els.length);
+    const firstAfter = await page.textContent(".dx-vlist-row");
+    assert.ok(domRows2 < 60, `still windowed after scroll (got ${domRows2})`);
+    assert.notEqual(firstAfter, firstBefore, "scrolling moved the window");
+
     const csp = await page.evaluate(() => window.__csp || []);
     assert.deepEqual(csp, [], `CSP violations: ${JSON.stringify(csp)}`);
     assert.deepEqual(pageErrors, [], `page errors: ${JSON.stringify(pageErrors)}`);

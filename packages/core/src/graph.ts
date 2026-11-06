@@ -38,6 +38,8 @@ type State = typeof CLEAN | typeof CHECK | typeof DIRTY;
 interface Scope {
   owned: Node[] | null;
   cleanups: Array<() => void> | null;
+  parent: Node | null; // enclosing owner at creation (for error-boundary walk)
+  errorHandlers: Array<(err: unknown) => void> | null;
 }
 
 interface Node extends Scope {
@@ -85,6 +87,8 @@ function makeNode<T>(
     queued: false,
     owned: null,
     cleanups: null,
+    parent: CurrentScope as Node | null, // the enclosing owner at creation time
+    errorHandlers: null,
   };
 }
 
@@ -149,11 +153,22 @@ function update(node: Node): void {
   Listener = node;
   CurrentScope = node;
   let result: unknown;
+  let threw = false;
+  let error: unknown;
   try {
     result = node.fn!();
+  } catch (e) {
+    threw = true;
+    error = e;
   } finally {
     Listener = prevListener;
     CurrentScope = prevScope;
+  }
+  if (threw) {
+    // Route to the nearest error boundary (onError) up the owner tree; if none,
+    // rethrow so it surfaces to the caller (a write's flush or the initial run).
+    if (!runErrorHandlers(node, error)) throw error;
+    return;
   }
   if (node.effect) {
     // An effect may return a cleanup function (run before the next pass/dispose).
@@ -165,6 +180,24 @@ function update(node: Node): void {
     // CHECK from the push phase, so no re-propagation/scheduling is needed here).
     if (node.observers) for (const o of node.observers) if (o.state < DIRTY) o.state = DIRTY;
   }
+}
+
+// --- error boundaries -----------------------------------------------------
+/** Walk from `node` up the owner tree to the nearest scope with error handlers;
+ * run them (untracked) and report handled. Returns false if none exists. */
+function runErrorHandlers(node: Node, err: unknown): boolean {
+  let s: Node | null = node;
+  while (s) {
+    const hs = s.errorHandlers;
+    if (hs && hs.length) {
+      untrack(() => {
+        for (const h of hs) h(err);
+      });
+      return true;
+    }
+    s = s.parent;
+  }
+  return false;
 }
 
 // --- teardown -------------------------------------------------------------
@@ -276,6 +309,16 @@ export function untrack<T>(fn: () => T): T {
 /** Register a cleanup for the current owner (effect, computed, or root). */
 export function onCleanup(fn: () => void): void {
   if (CurrentScope) (CurrentScope.cleanups ||= []).push(fn);
+}
+
+/**
+ * Register an error handler on the current owner scope — an error boundary. An
+ * error thrown by a descendant effect/computed propagates up the owner tree to
+ * the nearest handler (which runs untracked). With no handler the error is
+ * rethrown to the caller. Register it BEFORE the work it should guard.
+ */
+export function onError(handler: (err: unknown) => void): void {
+  if (CurrentScope) ((CurrentScope as Node).errorHandlers ||= []).push(handler);
 }
 
 /**
