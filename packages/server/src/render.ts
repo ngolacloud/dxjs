@@ -72,16 +72,47 @@ function appendAttr(out: string, value: unknown): string {
   return quoted ? `${out}${escape(v)}` : `${out.slice(0, m.index)}${name}="${escape(v)}"`;
 }
 
+export interface RenderOptions {
+  /**
+   * Emit hydration markers so `hydrate` can attach reactive bindings to this
+   * exact output: `<!--dx:i-->…<!--/dx:i-->` around dynamic children and
+   * `data-dxh-i` on elements with a bound attribute/event. Default false.
+   */
+  hydratable?: boolean;
+}
+
 /** Render a view to an HTML string (escaped, CSP-safe markup). */
-export function renderToString(view: TemplateResult): string {
+export function renderToString(view: TemplateResult, options: RenderOptions = {}): string {
   const { strings, values } = view;
   const ctx = scanContexts(strings);
   let out = "";
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
     if (i < values.length) {
-      out = ctx[i] === "child" ? out + childToString(values[i]) : appendAttr(out, values[i]);
+      if (ctx[i] === "child") {
+        const content = childToString(values[i]); // nested templates render markerless
+        out += options.hydratable ? `<!--dx:${i}-->${content}<!--/dx:${i}-->` : content;
+      } else {
+        out = appendAttr(out, values[i]);
+        if (options.hydratable) out += ` data-dxh-${i}=""`;
+      }
     }
   }
   return out;
+}
+
+/** The per-value binding plan of a template, derived from its static strings. */
+export function planParts(
+  strings: ReadonlyArray<string>,
+): Array<{ kind: "child" } | { kind: "attr"; name: string }> {
+  const ctx = scanContexts(strings);
+  const parts: Array<{ kind: "child" } | { kind: "attr"; name: string }> = [];
+  for (let i = 0; i < ctx.length; i++) {
+    if (ctx[i] === "child") parts.push({ kind: "child" });
+    else {
+      const m = /([.@?]?[A-Za-z_][\w:-]*)=("?)$/.exec(strings[i] as string);
+      parts.push({ kind: "attr", name: m ? (m[1] as string) : "" });
+    }
+  }
+  return parts;
 }

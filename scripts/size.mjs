@@ -14,6 +14,7 @@ const BUDGETS = [
   { name: "@dxjs/dom", entry: "packages/dom/src/index.ts", budget: 3072 },
   { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
   { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 2048 },
+  { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 3072 },
 ];
 
 async function sizeWithEsbuild(esbuild, entry) {

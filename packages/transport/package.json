@@ -1,0 +1,25 @@
+{
+  "name": "@dxjs/transport",
+  "version": "0.0.1",
+  "description": "dxjs transport: typed REST client, reactive resource (AbortController-tied), multiplexed SSE liveSignal, and a Connect (gRPC) unary client.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "//exports": "Dev points at TS source. F2 build switches default to ./dist/index.js.",
+  "files": ["dist", "src", "README.md"],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "0.0.1"
+  },
+  "keywords": ["dxjs", "transport", "rest", "sse", "grpc", "connect"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/transport"
+  }
+}

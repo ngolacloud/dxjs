@@ -18,8 +18,8 @@ rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 | `@dxjs/core` | signals / computed / effect / batch / owner tree | **F0 — done & green** |
 | `@dxjs/dom` | `html` + reactive bindings (escaped sinks) + teardown | **F1 — done & green** |
 | `@dxjs/component` | function components, `mount`, `onMount`, `createRouter` | **F1 — done & green** |
-| `@dxjs/server` | `renderToString` (DOM-free SSR) + basic `hydrate` | **F2 — done & green** |
-| `@dxjs/transport` | REST + Connect/gRPC + multiplexed SSE | planned (F3) |
+| `@dxjs/server` | `renderToString` (DOM-free SSR) + fine-grained `hydrate` | **F2 — done & green** |
+| `@dxjs/transport` | REST (`createClient`), `resource`, multiplexed SSE (`createLiveSource`), Connect (gRPC) | **F3 — done & green** |
 
 **Real bundle sizes** (esbuild min+gzip): core 1.0 KB · dom 1.2 KB · component 1.1 KB · server 0.7 KB. A full reactive app (core+dom+component) is **~2.8 KB gzip** — vs ~45 KB for React+ReactDOM.
 
