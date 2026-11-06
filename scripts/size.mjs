@@ -16,6 +16,7 @@ const BUDGETS = [
   { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 2048 },
   { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 3072 },
   { name: "@dxjs/canvas", entry: "packages/canvas/src/index.ts", budget: 3072 },
+  { name: "@dxjs/edge", entry: "packages/edge/src/index.ts", budget: 3072 },
 ];
 
 async function sizeWithEsbuild(esbuild, entry) {
@@ -26,7 +27,7 @@ async function sizeWithEsbuild(esbuild, entry) {
     format: "esm",
     platform: "browser",
     target: "es2021",
-    external: ["@dxjs/*"],
+    external: ["@dxjs/*", "node:*"],
     write: false,
     legalComments: "none",
   });
