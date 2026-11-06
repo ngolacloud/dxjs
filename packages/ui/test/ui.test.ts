@@ -48,6 +48,20 @@ test("appShell renders brand + nav + content, and nav click fires onSelect", () 
   assert.equal(picked, "Companies");
 });
 
+test("appShell renders a topbar slot in place of search", () => {
+  const host = body();
+  render(
+    appShell({
+      brand: "Seiva Admin",
+      nav: [{ label: "Accounts", active: true }],
+      topbar: html`<div class="dx-search"><input id="token" /></div>`,
+      content: html`<p>body</p>`,
+    }),
+    host,
+  );
+  assert.ok(host.querySelector(".dx-top #token"), "the topbar content lives in the top bar");
+});
+
 test("dataTable paginates, searches and sorts", () => {
   const host = body();
   const rows = signal(companies(12));

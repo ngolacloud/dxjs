@@ -84,18 +84,20 @@ test("renders a table, create form, escapes values, and sends the bearer", async
   fire(tokenInput, "change");
   await settle();
 
-  // The resource table rendered with its label.
+  // The console is dressed in @dxjs/ui: the shell + the resource's dataTable,
+  // whose card title carries the resource label.
+  assert.ok(host.querySelector(".dx-shell"), "the @dxjs/ui app shell rendered");
   const h2 = host.querySelector(".res h2");
   assert.ok(h2, "a resource card rendered");
   assert.match(h2!.textContent ?? "", /Widgets/);
-  assert.ok(host.querySelector("table.tbl"), "a data table rendered (resource has a list op + can.view)");
+  assert.ok(host.querySelector("table.dx-tbl"), "a @dxjs/ui data table rendered (resource has a list op + can.view)");
 
   // can.create is true → the create form is present.
   assert.ok(host.querySelector("form.create"), "the create form appears when can.create is true");
 
   // XSS safety: the malicious value is TEXT, not a parsed element.
   assert.equal(host.querySelector("img"), null, "no <img> element was ever created from row data");
-  const cells = [...host.querySelectorAll("table.tbl td")].map((td) => td.textContent ?? "");
+  const cells = [...host.querySelectorAll("table.dx-tbl td")].map((td) => td.textContent ?? "");
   assert.ok(cells.some((t) => t.includes("<img")), "the raw markup shows up as inert text in a cell");
   assert.equal((globalThis as Record<string, unknown>).__pwned, undefined, "the onerror handler never ran");
 

@@ -98,3 +98,20 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dx-tbl-foot { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--dx-line2); color: var(--dx-mut); font-size: 13px; }
 .dx-tbl-foot .dx-spacer { flex: 1; }
 .dx-tbl-empty { padding: 32px 20px; text-align: center; color: var(--dx-mut); }
+
+/* --- Admin console (resources + operation forms) ----------------------- */
+.muted { color: var(--dx-mut); }
+.res { margin-bottom: 24px; }
+.op { display: flex; flex-direction: column; gap: 10px; }
+.op + .op { padding-top: 14px; border-top: 1px solid var(--dx-line2); margin-top: 4px; }
+.op .sig { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.op .m { font-weight: 700; font-size: 12px; padding: 3px 9px; border-radius: 6px; background: var(--dx-accent-weak); color: var(--dx-accent); letter-spacing: .03em; }
+.op .path { font-family: var(--dx-mono); font-size: 13.5px; color: var(--dx-ink); }
+.op .fields { display: grid; gap: 10px; }
+.op .fields label { display: grid; gap: 4px; font-size: 13px; color: var(--dx-mut); }
+.op input, .op .dx-input { padding: 8px 12px; border: 1px solid var(--dx-line); border-radius: 9px; font: inherit; background: #fff; color: var(--dx-ink); }
+.op input:focus-visible, .op .dx-input:focus-visible { outline: 2px solid var(--dx-accent); outline-offset: 1px; border-color: var(--dx-accent); }
+.op button { align-self: flex-start; }
+.op .out:empty { display: none; }
+.op .out { font-family: var(--dx-mono); white-space: pre-wrap; font-size: 13px; padding: 8px 10px; border: 1px dashed var(--dx-line); border-radius: 8px; color: var(--dx-mut); }
+.rowmsg { font-size: 12.5px; padding: 8px 2px 0; }

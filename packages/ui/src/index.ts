@@ -23,10 +23,13 @@ export interface AppShellOptions {
   nav: Maybe<NavItem[]>;
   user?: { name: string; initials: string };
   search?: { placeholder?: string; onInput?: (value: string) => void };
+  /** Extra top-bar content on the left (e.g. a token field). Takes the place of
+   *  `search` when no `search` is given. */
+  topbar?: Maybe<TemplateResult>;
   content: Maybe<TemplateResult>;
 }
 
-/** A dashboard shell: dark sidebar nav + top bar (search + user) + content. */
+/** A dashboard shell: dark sidebar nav + top bar (search/topbar + user) + content. */
 export function appShell(o: AppShellOptions): TemplateResult {
   const navItem = (item: NavItem): TemplateResult =>
     html`<button class=${item.active ? "dx-nav-item is-active" : "dx-nav-item"} @click=${() => item.onSelect?.()}>
@@ -35,17 +38,19 @@ export function appShell(o: AppShellOptions): TemplateResult {
   const user = o.user
     ? html`<div class="dx-user"><span class="dx-avatar">${o.user.initials}</span>${o.user.name}</div>`
     : "";
-  const search = o.search
+  const left = o.search
     ? html`<div class="dx-search"><input placeholder=${o.search.placeholder ?? "Search…"} @input=${(e: Event) =>
         o.search!.onInput?.((e.target as HTMLInputElement).value)} /></div>`
-    : html`<div class="dx-search"></div>`;
+    : o.topbar
+      ? html`${() => read(o.topbar!)}`
+      : html`<div class="dx-search"></div>`;
   return html`<div class="dx-shell">
     <aside class="dx-side">
       <div class="dx-brand">${o.brand}</div>
       <nav class="dx-nav">${list(() => read(o.nav), (i) => i.label, navItem)}</nav>
     </aside>
     <div class="dx-main">
-      <header class="dx-top">${search}${user}</header>
+      <header class="dx-top">${left}${user}</header>
       <main class="dx-content">${() => read(o.content)}</main>
     </div>
   </div>`;
