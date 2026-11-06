@@ -6,3 +6,4 @@ e2e/csp/app.js
 coverage/
 e2e/csp/canvas.app.js
 e2e/csp/live.app.js
+e2e/live-seiva/app.js
