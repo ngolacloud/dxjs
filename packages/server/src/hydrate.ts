@@ -4,13 +4,20 @@
 // this attaches dxjs reactivity to the EXISTING nodes instead of re-rendering:
 //   - bound attributes/properties/booleans/events are wired onto the element the
 //     SSR marked with `data-dxh-i` (first run is idempotent → no flash);
-//   - reactive TEXT children are managed between the `<!--dx:i-->…<!--/dx:i-->`
-//     comments the SSR emitted.
-// Static markup is never touched (node identity preserved).
+//   - reactive children managed between the `<!--dx:i-->…<!--/dx:i-->` comments
+//     the SSR emitted — TEXT, a nested TEMPLATE, or a LIST (array of
+//     templates/values). Reactive updates (add/remove/reorder/swap) are reflected
+//     surgically and nested scopes are torn down on each change and on dispose.
+// Static markup OUTSIDE a managed range is never touched (node identity
+// preserved — e.g. a `<ul>` parent of a reactive list stays the same node).
 //
-// Scope: reactive children that produce ELEMENTS (nested templates / lists) are
-// not attached here — they keep their SSR output. Use `hydrateReplace` when you
-// need full reactive fidelity over such content.
+// Adoption note: element-producing children are handled by MANAGED REPLACE, not
+// in-place adoption. The SSR emits nested templates markerless (no `data-dxh`
+// inside a range), so there is nothing to attach fine-grained bindings to. On the
+// first effect run we therefore drop the server nodes inside the range and render
+// the current value fresh via `@dxjs/dom`; thereafter the range is driven
+// reactively. Text children are likewise re-materialised on the first run (same
+// content → no visible change). `hydrateReplace` remains the whole-host fallback.
 
 import { effect, createRoot, onCleanup } from "@dxjs/core";
 import { render, type TemplateResult } from "@dxjs/dom";
@@ -21,6 +28,10 @@ type Disposer = () => void;
 
 function val(v: unknown): unknown {
   return typeof v === "function" ? (v as () => unknown)() : v;
+}
+
+function isTemplate(v: unknown): v is TemplateResult {
+  return !!v && typeof v === "object" && (v as { _dx?: unknown })._dx === true;
 }
 
 function collectComments(root: Node, out: Comment[]): void {
@@ -59,12 +70,44 @@ function attachAttr(el: Element, name: string, value: unknown, ds: Disposer[]): 
   }));
 }
 
-function attachTextRange(open: Comment, close: Comment, value: unknown, ds: Disposer[]): void {
-  // Only reactive values need wiring; a static child keeps its SSR text.
+// Materialise a single child value (template | primitive | empty) into live
+// nodes plus a disposer. A template is rendered via `@dxjs/dom` into a detached
+// holder, then its nodes are moved into the managed range; the disposer (which
+// tears down the nested effects/listeners and removes the nodes by reference)
+// keeps working after the move.
+function renderValue(item: unknown): { nodes: ChildNode[]; dispose: Disposer } {
+  if (item == null || item === false || item === true || item === "") {
+    return { nodes: [], dispose: () => {} };
+  }
+  if (isTemplate(item)) {
+    const holder = document.createElement("div");
+    const dispose = render(item, holder);
+    return { nodes: Array.from(holder.childNodes), dispose };
+  }
+  return { nodes: [document.createTextNode(String(item))], dispose: () => {} };
+}
+
+function attachChildRange(open: Comment, close: Comment, value: unknown, ds: Disposer[]): void {
+  // Only reactive values need wiring; a static child keeps its SSR output.
   if (typeof value !== "function") return;
   const parent = open.parentNode;
   if (!parent) return;
-  const clear = (): void => {
+
+  let current: ChildNode[] = [];
+  let currentDisposers: Disposer[] = [];
+  let adopted = false;
+
+  // Remove the nodes we currently manage (and tear down their nested scopes).
+  const clearManaged = (): void => {
+    for (const d of currentDisposers) d();
+    currentDisposers = [];
+    for (const n of current) if (n.parentNode) n.parentNode.removeChild(n);
+    current = [];
+  };
+
+  // Drop whatever the server emitted inside the range (done once, on first run —
+  // element content cannot be adopted in place because it is markerless).
+  const clearSsr = (): void => {
     let n = open.nextSibling;
     while (n && n !== close) {
       const next = n.nextSibling;
@@ -72,12 +115,27 @@ function attachTextRange(open: Comment, close: Comment, value: unknown, ds: Disp
       n = next;
     }
   };
+
+  const insert = (v: unknown): void => {
+    const items = Array.isArray(v) ? v : [v];
+    for (const item of items) {
+      const inst = renderValue(item);
+      for (const n of inst.nodes) parent.insertBefore(n, close);
+      current.push(...inst.nodes);
+      currentDisposers.push(inst.dispose);
+    }
+  };
+
   ds.push(effect(() => {
     const v = val(value);
-    clear();
-    const text = v == null || v === false || v === true ? "" : String(v);
-    parent.insertBefore(document.createTextNode(text), close);
+    clearManaged();
+    if (!adopted) {
+      clearSsr();
+      adopted = true;
+    }
+    insert(v);
   }));
+  ds.push(clearManaged);
 }
 
 /**
@@ -104,7 +162,7 @@ export function hydrate(view: TemplateResult, host: Element): Disposer {
       } else {
         const open = comments.find((c) => c.data === `dx:${i}`);
         const close = comments.find((c) => c.data === `/dx:${i}`);
-        if (open && close) attachTextRange(open, close, value, ds);
+        if (open && close) attachChildRange(open, close, value, ds);
       }
     }
     onCleanup(() => {
@@ -115,9 +173,9 @@ export function hydrate(view: TemplateResult, host: Element): Disposer {
 }
 
 /**
- * Full-fidelity fallback: clear the host and render fresh. Use when the view has
- * reactive element-producing children (nested templates/lists) that the
- * fine-grained `hydrate` does not attach.
+ * Whole-host fallback: clear the host and render fresh. `hydrate` now manages
+ * reactive element/list children itself (via managed replace), so reach for this
+ * only when you deliberately want to discard the entire SSR tree and re-render.
  */
 export function hydrateReplace(view: TemplateResult, host: Element): Disposer {
   host.textContent = "";
