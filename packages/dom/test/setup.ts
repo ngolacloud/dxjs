@@ -13,6 +13,8 @@ g.Element = win.Element;
 g.HTMLElement = win.HTMLElement;
 g.Event = win.Event;
 g.CustomEvent = win.CustomEvent;
+g.KeyboardEvent = win.KeyboardEvent;
+g.MouseEvent = win.MouseEvent;
 // Router needs these on the global scope (as they are in a browser).
 g.location = win.location;
 g.history = win.history;
