@@ -26,9 +26,9 @@ const TSC = existsSync(localTsc) ? localTsc : "tsc";
 // Dependency-ordered: a package's @dxjs deps (and so their emitted .d.ts) come first.
 const PKGS = [
   { name: "core" },
-  { name: "devtools" }, // deps: core
   { name: "i18n" }, // deps: core
   { name: "dom" },
+  { name: "devtools" }, // deps: core, dom — MUST come after dom (its .d.ts is needed)
   // jsx ships three entry points (barrel + the two JSX runtimes the transform imports).
   { name: "jsx", entries: ["index", "jsx-runtime", "jsx-dev-runtime"] },
   { name: "component" },
