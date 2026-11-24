@@ -10,6 +10,7 @@ import { html, list, type TemplateResult } from "@dxjs/dom";
 
 export { virtualList, visibleRange } from "./virtual.ts";
 export type { VirtualListOptions, VisibleRange } from "./virtual.ts";
+export { createThemeController, type Theme, type ThemeController } from "./theme.ts";
 
 export type Tone = "pos" | "neg" | "warn" | "mut";
 type Maybe<T> = T | Accessor<T>;

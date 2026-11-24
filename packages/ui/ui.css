@@ -22,6 +22,67 @@
   --dx-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 2px 8px rgba(15, 23, 42, .05);
   --dx-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --dx-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Typographic scale (1.2 "minor third") — the Cloud Shell's type system. */
+  --dx-text-xs: 12px;
+  --dx-text-sm: 13.5px;
+  --dx-text-md: 15px;
+  --dx-text-lg: 18px;
+  --dx-text-xl: 22px;
+  --dx-text-2xl: 27px;
+  --dx-leading-tight: 1.25;
+  --dx-leading-normal: 1.5;
+  --dx-weight-normal: 400;
+  --dx-weight-medium: 500;
+  --dx-weight-semibold: 600;
+  --dx-weight-bold: 700;
+
+  /* Spacing scale (4px base) — consistent rhythm across the shell. */
+  --dx-space-1: 4px;
+  --dx-space-2: 8px;
+  --dx-space-3: 12px;
+  --dx-space-4: 16px;
+  --dx-space-5: 24px;
+  --dx-space-6: 32px;
+  --dx-space-7: 48px;
+}
+
+/* --- Dark theme ---------------------------------------------------------- */
+/* Token overrides only — every component keeps using the same var() names, so
+   dark mode is a palette swap, not a restyle. The OS preference is the default;
+   an explicit data-theme (set by createThemeController) wins in both directions. */
+:root[data-theme="dark"] {
+  --dx-bg: #0b1120;
+  --dx-panel: #111827;
+  --dx-ink: #e5e7eb;
+  --dx-mut: #94a3b8;
+  --dx-line: #1f2937;
+  --dx-line2: #172033;
+  --dx-accent: #3b82f6;
+  --dx-accent-weak: #16233f;
+  --dx-side: #060a14;
+  --dx-side-ink: #cbd5e1;
+  --dx-side-ink-dim: #64748b;
+  --dx-side-active: #1e293b;
+  --dx-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px rgba(0, 0, 0, .35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --dx-bg: #0b1120;
+    --dx-panel: #111827;
+    --dx-ink: #e5e7eb;
+    --dx-mut: #94a3b8;
+    --dx-line: #1f2937;
+    --dx-line2: #172033;
+    --dx-accent: #3b82f6;
+    --dx-accent-weak: #16233f;
+    --dx-side: #060a14;
+    --dx-side-ink: #cbd5e1;
+    --dx-side-ink-dim: #64748b;
+    --dx-side-active: #1e293b;
+    --dx-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 10px rgba(0, 0, 0, .35);
+  }
 }
 
 * { box-sizing: border-box; }
