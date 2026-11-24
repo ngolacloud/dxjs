@@ -45,10 +45,53 @@ function isList(v: unknown): v is {
   return !!v && typeof v === "object" && (v as { _dxlist?: unknown })._dxlist === true;
 }
 
+// --- async boundaries: Suspense + Error boundary --------------------------
+// Light marker objects (like list/template) the renderer recognises. They let a
+// view declare async content and error isolation without any DOM or framework
+// coupling — the SAME markers work in the sync string path and the stream.
+
+/** An async content boundary: `fallback` shows synchronously (or in the sync
+ *  render); `load()` resolves the real content during streaming. */
+export interface SuspenseResult {
+  readonly _dxsuspense: true;
+  fallback: unknown;
+  load: () => unknown | Promise<unknown>;
+}
+export function suspense(fallback: unknown, load: () => unknown | Promise<unknown>): SuspenseResult {
+  return { _dxsuspense: true, fallback, load };
+}
+function isSuspense(v: unknown): v is SuspenseResult {
+  return !!v && typeof v === "object" && (v as { _dxsuspense?: unknown })._dxsuspense === true;
+}
+
+/** An error boundary: if rendering `children` throws (sync) or rejects (stream),
+ *  `fallback(err)` is rendered instead — atomically, never a half-written child. */
+export interface ErrorBoundaryResult {
+  readonly _dxerror: true;
+  children: unknown;
+  fallback: (err: unknown) => unknown;
+}
+export function errorBoundary(children: unknown, fallback: (err: unknown) => unknown): ErrorBoundaryResult {
+  return { _dxerror: true, children, fallback };
+}
+function isErrorBoundary(v: unknown): v is ErrorBoundaryResult {
+  return !!v && typeof v === "object" && (v as { _dxerror?: unknown })._dxerror === true;
+}
+
 function childToString(value: unknown): string {
   if (isList(value)) {
     const arr = typeof value.items === "function" ? untrack(() => (value.items as () => unknown[])()) : value.items;
     return arr.map((item, i) => renderToString(value.render(item, i))).join("");
+  }
+  // Sync render can't await: a Suspense shows its fallback.
+  if (isSuspense(value)) return childToString(value.fallback);
+  // Error boundary: render children; on throw, render the fallback (atomic).
+  if (isErrorBoundary(value)) {
+    try {
+      return childToString(value.children);
+    } catch (err) {
+      return childToString(value.fallback(err));
+    }
   }
   const v = unwrap(value);
   if (v == null || v === false || v === true || v === "") return "";
@@ -110,6 +153,103 @@ export function renderToString(view: TemplateResult, options: RenderOptions = {}
     }
   }
   return out;
+}
+
+// --- streaming SSR --------------------------------------------------------
+// `renderToStream` renders to a Web `ReadableStream` (edge-ready), flushing the
+// shell up to the first pending Suspense immediately and streaming each boundary
+// IN DOCUMENT ORDER as its `load()` resolves. In-order streaming needs no inline
+// swap script, so it stays strict-CSP safe (unlike out-of-order techniques). An
+// attribute binding never crosses a chunk boundary — the buffer is flushed only
+// at CHILD positions, which are always safe split points.
+
+async function* streamChild(value: unknown): AsyncGenerator<string> {
+  if (isSuspense(value)) {
+    yield* streamChild(await value.load());
+    return;
+  }
+  if (isErrorBoundary(value)) {
+    // Buffer the subtree so a mid-stream throw/reject yields ONLY the fallback.
+    try {
+      const parts: string[] = [];
+      for await (const c of streamChild(value.children)) parts.push(c);
+      for (const c of parts) yield c;
+    } catch (err) {
+      yield* streamChild(value.fallback(err));
+    }
+    return;
+  }
+  if (isList(value)) {
+    const arr =
+      typeof value.items === "function" ? untrack(() => (value.items as () => unknown[])()) : value.items;
+    for (let i = 0; i < arr.length; i++) yield* streamView(value.render(arr[i], i));
+    return;
+  }
+  const v = unwrap(value);
+  if (v == null || v === false || v === true || v === "") return;
+  if (isTemplate(v)) {
+    yield* streamView(v);
+    return;
+  }
+  if (Array.isArray(v)) {
+    for (const x of v) yield* streamChild(x);
+    return;
+  }
+  yield escape(String(v));
+}
+
+async function* streamView(view: TemplateResult): AsyncGenerator<string> {
+  const { strings, values } = view;
+  const ctx = scanContexts(strings);
+  let out = "";
+  for (let i = 0; i < strings.length; i++) {
+    out += strings[i];
+    if (i < values.length) {
+      if (ctx[i] === "child") {
+        if (out) {
+          yield out; // flush the shell before awaiting any async child
+          out = "";
+        }
+        yield* streamChild(values[i]);
+      } else {
+        out = appendAttr(out, values[i]); // attribute: edits the un-yielded buffer
+      }
+    }
+  }
+  if (out) yield out;
+}
+
+/** Render a view to an async string generator, awaiting Suspense boundaries. */
+export function renderToChunks(view: TemplateResult): AsyncGenerator<string> {
+  return streamView(view);
+}
+
+/** Render a view to a complete HTML string, awaiting every Suspense boundary. */
+export async function renderToStringAsync(view: TemplateResult): Promise<string> {
+  let html = "";
+  for await (const chunk of streamView(view)) html += chunk;
+  return html;
+}
+
+/** Render a view to a Web `ReadableStream<Uint8Array>` (edge-ready), streaming
+ *  the shell first and each Suspense boundary in document order as it resolves. */
+export function renderToStream(view: TemplateResult): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const gen = streamView(view);
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { value, done } = await gen.next();
+        if (done) controller.close();
+        else controller.enqueue(encoder.encode(value));
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+    cancel() {
+      void gen.return(undefined);
+    },
+  });
 }
 
 /** The per-value binding plan of a template, derived from its static strings. */
