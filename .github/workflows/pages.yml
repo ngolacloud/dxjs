@@ -1,0 +1,48 @@
+name: pages
+
+# Publishes the dxjs documentation site (itself a dxjs app) to GitHub Pages.
+# The site is static — `npm run docs:build` emits docs/dist (bundle + CSS +
+# index.html with a strict-CSP meta tag). One-time setup: repo Settings → Pages
+# → Source: "GitHub Actions". Deploys on push to main, or on manual dispatch.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Least privilege for the Pages deployment.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One live deployment at a time; let an in-progress run finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: install (workspace links @dxjs/* → packages/*)
+        run: npm install
+      - name: build the docs site (esbuild → docs/dist, strict-CSP safe)
+        run: npm run docs:build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
