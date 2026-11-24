@@ -71,7 +71,9 @@ function attachAttr(el: Element, name: string, value: unknown, ds: Disposer[]): 
   }
   if (prefix === "?") {
     const attr = name.slice(1);
-    ds.push(effect(() => el.toggleAttribute(attr, !!val(value))));
+    ds.push(effect(() => {
+      el.toggleAttribute(attr, !!val(value));
+    }));
     return;
   }
   ds.push(effect(() => {

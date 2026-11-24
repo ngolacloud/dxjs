@@ -4,19 +4,36 @@
   "description": "dxjs node-graph canvas: reactive graph model, geometry, Canvas-2D renderer, and a pointer controller (drag/connect/pan/zoom) for data pipelines and architecture diagrams.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "//exports": "Dev points at TS source. Build switches default to ./dist/index.js.",
-  "files": ["dist", "src", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1"
   },
-  "keywords": ["dxjs", "canvas", "graph", "diagram", "pipeline", "nodes"],
+  "keywords": [
+    "dxjs",
+    "canvas",
+    "graph",
+    "diagram",
+    "pipeline",
+    "nodes"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

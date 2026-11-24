@@ -4,19 +4,36 @@
   "description": "dxjs transport: typed REST client, reactive resource (AbortController-tied), multiplexed SSE liveSignal, and a Connect (gRPC) unary client.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "//exports": "Dev points at TS source. F2 build switches default to ./dist/index.js.",
-  "files": ["dist", "src", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1"
   },
-  "keywords": ["dxjs", "transport", "rest", "sse", "grpc", "connect"],
+  "keywords": [
+    "dxjs",
+    "transport",
+    "rest",
+    "sse",
+    "grpc",
+    "connect"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

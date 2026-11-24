@@ -139,7 +139,9 @@ function updateIfNecessary(node: Node): void {
   if (node.state === CHECK && node.sources) {
     for (const s of node.sources) {
       if (s.fn && !s.effect) updateIfNecessary(s);
-      if (node.state === DIRTY) break; // a source's recompute marked us dirty
+      // `updateIfNecessary(s)` can escalate THIS node to DIRTY through an aliased
+      // write (see `update`), which TS's flow-narrowing can't see — widen to read.
+      if ((node.state as State) === DIRTY) break;
     }
   }
   if (node.state === DIRTY) update(node);
@@ -236,7 +238,7 @@ function flush(): void {
     let i = 0;
     for (; i < queue.length; i++) {
       if (i > LOOP_LIMIT) throw new Error("dxjs: potential infinite update loop");
-      const node = queue[i];
+      const node = queue[i]!; // loop-bounded by queue.length; entries are never undefined
       node.queued = false;
       if (!node.disposed) updateIfNecessary(node);
     }

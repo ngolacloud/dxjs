@@ -132,7 +132,7 @@ export function createQueryClient(): QueryClient {
     return p;
   };
 
-  const isStale = (e: Entry): boolean => e.updatedAt === 0 || now() - e.updatedAt >= e.staleTime;
+  const isStale = <T>(e: Entry<T>): boolean => e.updatedAt === 0 || now() - e.updatedAt >= e.staleTime;
 
   const client: QueryClient = {
     async invalidate(key) {

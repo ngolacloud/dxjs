@@ -21,8 +21,19 @@ export function attemptSignal(outer: AbortSignal | undefined, timeout: number): 
   return outer ?? timed;
 }
 
-/** Resolve after the backoff for `attempt` (1-based). Zero base → next tick. */
-export function backoffDelay(base: number, attempt: number): Promise<void> {
+/** Resolve after the backoff for `attempt` (1-based). Zero base → next tick.
+ *  Interruptible: if `signal` aborts mid-sleep, resolve at once instead of
+ *  waiting out the full delay (the caller then sees the abort on its next step). */
+export function backoffDelay(base: number, attempt: number, signal?: AbortSignal): Promise<void> {
   const ms = base > 0 ? base * 2 ** (attempt - 1) : 0;
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const done = (): void => {
+      clearTimeout(t);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const t = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
 }

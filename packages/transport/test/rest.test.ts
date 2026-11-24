@@ -100,6 +100,53 @@ test("does NOT retry a 4xx client error", async () => {
   assert.equal(n, 1, "a 404 is final — no retries");
 });
 
+test("does NOT retry a non-idempotent POST on a network error by default", async () => {
+  let n = 0;
+  const fn = (async () => {
+    n++;
+    throw new TypeError("network down");
+  }) as unknown as typeof fetch;
+  const api = createClient({ fetch: fn, retries: 3, backoff: 0 });
+  await assert.rejects(() => api.post("/orders", { item: 1 }), (e: Error) => e instanceof TypeError);
+  assert.equal(n, 1, "a POST that may have reached the server is NOT replayed");
+});
+
+test("retries a POST when the caller opts in via { idempotent: true }", async () => {
+  let n = 0;
+  const fn = (async () => {
+    n++;
+    if (n === 1) throw new TypeError("network down");
+    return jsonResponse(201, { id: 1 });
+  }) as unknown as typeof fetch;
+  const api = createClient({ fetch: fn, retries: 3, backoff: 0 });
+  const r = await api.post<{ id: number }>("/orders", { item: 1 }, { idempotent: true });
+  assert.deepEqual(r, { id: 1 });
+  assert.equal(n, 2, "opt-in allows the replay");
+});
+
+test("retries a POST carrying an Idempotency-Key header", async () => {
+  let n = 0;
+  const fn = (async () => {
+    n++;
+    return n < 2 ? jsonResponse(503, { title: "down" }) : jsonResponse(201, { id: 7 });
+  }) as unknown as typeof fetch;
+  const api = createClient({ fetch: fn, retries: 3, backoff: 0 });
+  const r = await api.post<{ id: number }>("/orders", { item: 1 }, { headers: { "Idempotency-Key": "abc-123" } });
+  assert.deepEqual(r, { id: 7 });
+  assert.equal(n, 2, "a server-dedupable key makes the POST safe to replay");
+});
+
+test("{ idempotent: false } forbids retrying an otherwise-safe GET", async () => {
+  let n = 0;
+  const fn = (async () => {
+    n++;
+    throw new TypeError("network down");
+  }) as unknown as typeof fetch;
+  const api = createClient({ fetch: fn, retries: 3, backoff: 0 });
+  await assert.rejects(() => api.get("/x", { idempotent: false }), (e: Error) => e instanceof TypeError);
+  assert.equal(n, 1, "the explicit opt-out wins over the method default");
+});
+
 test("a per-attempt timeout aborts the request", async () => {
   let aborted = false;
   // Never resolves on its own; rejects only when the (timeout) signal fires.

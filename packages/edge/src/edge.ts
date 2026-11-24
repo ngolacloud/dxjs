@@ -82,7 +82,9 @@ function toWebRequest(message: IncomingMessage, body: Uint8Array): Request {
   const method = message.method ?? "GET";
   const init: RequestInit = { method, headers };
   if (method !== "GET" && method !== "HEAD" && body.byteLength > 0) {
-    init.body = body;
+    // A Uint8Array is a valid fetch body at runtime; the cast only bridges the
+    // TS 5.7 Uint8Array<ArrayBufferLike> vs lib.dom BodyInit generic mismatch.
+    init.body = body as BodyInit;
   }
   return new Request(url, init);
 }

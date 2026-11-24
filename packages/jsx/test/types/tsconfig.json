@@ -1,0 +1,19 @@
+{
+  "//": "Type gate for @dxjs/jsx: compiles the ok/invalid .tsx fixtures with the JSX automatic runtime pointed at @dxjs/jsx. `paths` resolves @dxjs/* to their TS sources (no dist build needed, and never a stale dist/*.d.ts). noEmit — this only type-checks. The @ts-expect-error lines in invalid.tsx assert the typing rejects bad props.",
+  "extends": "../../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@dxjs/jsx",
+    "types": [],
+    "baseUrl": "../../../..",
+    "paths": {
+      "@dxjs/core": ["packages/core/src/index.ts"],
+      "@dxjs/dom": ["packages/dom/src/index.ts"],
+      "@dxjs/jsx": ["packages/jsx/src/index.ts"],
+      "@dxjs/jsx/jsx-runtime": ["packages/jsx/src/jsx-runtime.ts"],
+      "@dxjs/jsx/jsx-dev-runtime": ["packages/jsx/src/jsx-dev-runtime.ts"]
+    }
+  },
+  "include": ["ok.tsx", "invalid.tsx"]
+}

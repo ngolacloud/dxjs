@@ -13,22 +13,29 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test packages/*/test/*.test.ts examples/*/test/*.test.ts",
+    "dev": "node --conditions=development packages/dev/bin/dxdev.mjs examples/hmr-counter/src/counter.ts --css counter.css --title \"dxjs HMR counter\" --port 5173",
+    "test": "node --conditions=development --test packages/*/test/*.test.ts examples/*/test/*.test.ts",
+    "test:hmr": "node --conditions=development --test e2e/hmr/hmr.test.mjs",
+    "typecheck:consumer": "node scripts/build.mjs && tsc -p e2e/consumer/tsconfig.json",
     "test:csp": "node scripts/build.mjs && node --test e2e/csp/csp.test.mjs",
     "test:csp:chrome": "node scripts/build.mjs && DXJS_PW_CHANNEL=chrome node --test e2e/csp/csp.test.mjs",
     "gate:no-eval": "node scripts/no-eval-gate.mjs",
     "gate:size": "node scripts/size.mjs",
+    "gate:jsx-types": "tsc -p packages/jsx/test/types/tsconfig.json",
+    "test:jsx": "node --conditions=development --test packages/jsx/test/e2e/run.mjs",
     "docs:build": "node docs/build.mjs",
     "docs:test:chrome": "node docs/build.mjs && DXJS_PW_CHANNEL=chrome node --test docs/test/docs.test.mjs",
-    "check": "npm run gate:no-eval && npm test && npm run gate:size"
+    "check": "npm run gate:no-eval && npm run gate:jsx-types && npm test && npm run gate:size"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git"
   },
   "devDependencies": {
+    "@types/node": "^22.20.5",
     "esbuild": "^0.28.2",
     "happy-dom": "^15.11.7",
-    "playwright": "^1.65.0"
+    "playwright": "^1.65.0",
+    "typescript": "^5.9.3"
   }
 }

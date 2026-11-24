@@ -1,9 +1,6 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist",
-    "noEmit": false
-  },
-  "include": ["src"]
+  "extends": "../../tsconfig.build.json",
+  "//": "edge is the one node/edge-runtime package: it imports node:http2/node:http and uses Buffer, so it (and only it) pulls in @types/node.",
+  "compilerOptions": { "outDir": "./dist", "rootDir": "./src", "types": ["node"] },
+  "include": ["src/**/*.ts"]
 }

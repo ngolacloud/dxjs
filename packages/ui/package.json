@@ -4,22 +4,39 @@
   "description": "A styled, CSP-safe component kit for the NgolaCloud/Seiva console: app shell, stat cards, and a sortable/searchable/paginated data table.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./ui.css": "./ui.css"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
-  "//exports": "Dev points at TS source. The stylesheet ships as ./ui.css and is linked same-origin (style-src 'self').",
-  "files": ["dist", "src", "ui.css", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "ui.css",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1",
     "@dxjs/dom": "0.0.1",
     "@dxjs/component": "0.0.1"
   },
-  "keywords": ["dxjs", "ui", "components", "admin", "table", "csp"],
+  "keywords": [
+    "dxjs",
+    "ui",
+    "components",
+    "admin",
+    "table",
+    "csp"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

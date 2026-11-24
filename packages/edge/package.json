@@ -4,19 +4,35 @@
   "description": "dxjs edge: a runtime-agnostic Web-fetch HTTP handler (Cloudflare Workers/Deno/Node) with injectable SSR, plus a native HTTP/2 gRPC unary client that reads trailers.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "//exports": "Dev points at TS source. F2 build switches default to ./dist/index.js.",
-  "files": ["dist", "src", "README.md"],
+  "//exports": "node/edge runtimes only (imports node:*); no browser condition — a browser bundle MUST NOT include this package.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1"
   },
-  "keywords": ["dxjs", "edge", "fetch", "ssr", "grpc", "http2"],
+  "keywords": [
+    "dxjs",
+    "edge",
+    "fetch",
+    "ssr",
+    "grpc",
+    "http2"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

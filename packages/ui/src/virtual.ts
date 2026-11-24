@@ -73,7 +73,9 @@ export function virtualList<T>(o: VirtualListOptions<T>): TemplateResult {
     // Static-per-instance sizing via the CSSOM (CSP-safe; not an inline attribute).
     vp.style.height = `${o.height}px`;
     win.style.setProperty("--dxv-h", `${o.rowHeight}px`);
-    const onScroll = (): void => scrollTop.set(vp.scrollTop);
+    const onScroll = (): void => {
+      scrollTop.set(vp.scrollTop);
+    };
     vp.addEventListener("scroll", onScroll, { passive: true });
     // Keep the scroll range (sizer height) and window offset in sync reactively.
     const stop = effect(() => {

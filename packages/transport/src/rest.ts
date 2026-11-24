@@ -8,6 +8,13 @@
 // per-attempt timeout aborts a hung request, and transient failures (network
 // errors, 5xx, 429, 408) are retried with exponential backoff. A 4xx (other
 // than 429/408) is a client error and never retried.
+//
+// Retry is ALSO gated by idempotency. A failed attempt may have reached the
+// server and taken effect before the response was lost, so replaying a
+// non-idempotent method (POST, PATCH) risks a double write. Only idempotent
+// methods (GET, HEAD, PUT, DELETE, OPTIONS) retry by default; a POST/PATCH
+// retries only on explicit opt-in — `{ idempotent: true }` or an
+// `Idempotency-Key` header that lets the server dedupe the replay.
 
 import { type ResilienceOptions, attemptSignal, backoffDelay } from "./retry.ts";
 
@@ -31,6 +38,11 @@ export interface RequestOptions extends ResilienceOptions {
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
   fetch?: typeof fetch;
+  /** Force whether this request may be retried, overriding the method default.
+   *  Set `true` to let a POST/PATCH retry (it is safe to replay — e.g. it carries
+   *  an Idempotency-Key); set `false` to forbid retrying an otherwise-idempotent
+   *  method. Unset → decided by the HTTP method. */
+  idempotent?: boolean;
 }
 
 export interface Client {
@@ -70,6 +82,19 @@ function retriableStatus(status: number): boolean {
   return status >= 500 || status === 429 || status === 408;
 }
 
+/** HTTP methods safe to replay: a repeat has the same effect as one call. */
+function idempotentMethod(method: string): boolean {
+  const m = method.toUpperCase();
+  return m === "GET" || m === "HEAD" || m === "PUT" || m === "DELETE" || m === "OPTIONS";
+}
+
+/** Case-insensitive presence check over an already-merged header map. */
+function hasHeader(headers: Record<string, string>, name: string): boolean {
+  const lower = name.toLowerCase();
+  for (const k in headers) if (k.toLowerCase() === lower) return true;
+  return false;
+}
+
 function isHttpError(e: unknown): e is HttpError {
   return e instanceof Error && e.name === "HttpError";
 }
@@ -94,6 +119,11 @@ export function createClient(options: ClientOptions = {}): Client {
     if (body !== undefined) baseInit.body = JSON.stringify(body);
     const url = buildUrl(base, path, opts.query);
 
+    // Replaying a lost non-idempotent write risks a double effect: cap its retry
+    // budget at zero unless the caller opts in (explicit flag or Idempotency-Key).
+    const canRetry = opts.idempotent ?? (idempotentMethod(method) || hasHeader(headers, "idempotency-key"));
+    const maxRetries = canRetry ? retries : 0;
+
     for (let attempt = 0; ; attempt++) {
       // The caller's abort is final; a per-attempt timeout is retriable.
       const sig = attemptSignal(opts.signal, timeout);
@@ -110,8 +140,8 @@ export function createClient(options: ClientOptions = {}): Client {
           }
         }
         if (res.ok) return data as T;
-        if (attempt < retries && retriableStatus(res.status)) {
-          await backoffDelay(backoff, attempt + 1);
+        if (attempt < maxRetries && retriableStatus(res.status)) {
+          await backoffDelay(backoff, attempt + 1, opts.signal);
           continue;
         }
         throw httpError(res.status, data);
@@ -120,9 +150,10 @@ export function createClient(options: ClientOptions = {}): Client {
         if (isHttpError(e)) throw e;
         // The caller cancelled: never retry, never swallow.
         if (opts.signal?.aborted) throw e;
-        // Network error or per-attempt timeout: retry while budget remains.
-        if (attempt < retries) {
-          await backoffDelay(backoff, attempt + 1);
+        // Network error or per-attempt timeout: retry while budget remains
+        // (zero for a non-idempotent method without opt-in — see maxRetries).
+        if (attempt < maxRetries) {
+          await backoffDelay(backoff, attempt + 1, opts.signal);
           continue;
         }
         throw e;

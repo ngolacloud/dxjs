@@ -1,23 +1,62 @@
-// build — esbuild → minified ESM. Per-package dist (cross @dxjs deps external),
-// plus the single bundle the strict-CSP browser proof (e2e/csp) loads.
+// build — per-package publishable artifacts + the vanilla/CSP bundles.
+//
+// For every @dxjs/* package we emit TWO things into its dist/:
+//   • dist/index.js    — minified ESM runtime, via esbuild (its own code only;
+//                        @dxjs/*, node:* and declared peers stay external).
+//   • dist/index.d.ts  — type declarations, via `tsc --emitDeclarationOnly`.
+// so a consumer gets "Node + static typing" (exports.types → dist/index.d.ts,
+// default → dist/index.js) without ever shipping raw .ts. The intra-repo dev
+// path (tests, examples) still runs the TS source directly through the
+// `development` export condition (see each package.json) — no build needed.
+//
+// Packages are built in DEPENDENCY ORDER so that when tsc emits a package's
+// declarations, every @dxjs dependency already exposes its dist/index.d.ts.
 import { build } from "esbuild";
-import { mkdirSync, copyFileSync } from "node:fs";
+import { mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const common = { bundle: true, minify: true, format: "esm", platform: "browser", target: "es2021", legalComments: "none" };
 
-const PKGS = ["core", "dom", "component"];
-for (const p of PKGS) {
-  const out = join(ROOT, "packages", p, "dist");
-  mkdirSync(out, { recursive: true });
-  await build({
-    ...common,
-    entryPoints: [join(ROOT, "packages", p, "src/index.ts")],
-    outfile: join(out, "index.js"),
-    external: ["@dxjs/*"],
-  });
-  console.log(`built @dxjs/${p} → dist/index.js`);
+// Resolve a tsc: prefer the pinned workspace copy, fall back to one on PATH.
+const localTsc = join(ROOT, "node_modules/.bin/tsc");
+const TSC = existsSync(localTsc) ? localTsc : "tsc";
+
+// Dependency-ordered: a package's @dxjs deps (and so their emitted .d.ts) come first.
+const PKGS = [
+  { name: "core" },
+  { name: "dom" },
+  // jsx ships three entry points (barrel + the two JSX runtimes the transform imports).
+  { name: "jsx", entries: ["index", "jsx-runtime", "jsx-dev-runtime"] },
+  { name: "component" },
+  { name: "server" },
+  { name: "transport" },
+  { name: "edge", platform: "node" }, // node:http2 / node:http — server/edge runtimes only
+  { name: "query" },
+  { name: "forms" },
+  { name: "canvas" },
+  { name: "ui" },
+  { name: "charts", external: ["chart.js"] }, // chart.js is a runtime peer, not bundled into dist
+];
+
+for (const { name, platform, external = [], entries = ["index"] } of PKGS) {
+  const dir = join(ROOT, "packages", name);
+  mkdirSync(join(dir, "dist"), { recursive: true });
+  // 1) runtime JS — bundle this package's own code; keep deps/peers external.
+  //    A package may expose several entry points (e.g. jsx's two runtimes).
+  for (const e of entries) {
+    await build({
+      ...common,
+      ...(platform ? { platform } : {}),
+      entryPoints: [join(dir, `src/${e}.ts`)],
+      outfile: join(dir, `dist/${e}.js`),
+      external: ["@dxjs/*", "node:*", ...external],
+    });
+  }
+  // 2) type declarations — emitted here, in dependency order.
+  execFileSync(TSC, ["-p", join(dir, "tsconfig.json")], { cwd: ROOT, stdio: "inherit" });
+  console.log(`built @dxjs/${name} → ${entries.map((e) => `dist/${e}.js`).join(" + ")} + .d.ts`);
 }
 
 // CDN / vanilla bundles: single-file ESM for direct browser use WITHOUT a bundler

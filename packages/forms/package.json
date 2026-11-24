@@ -4,18 +4,35 @@
   "description": "Signal-reactive forms for dxjs: field values, touched/dirty/error state, submit, and a zod-compatible validation adapter (the dxjs answer to react-hook-form).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1"
   },
-  "keywords": ["dxjs", "forms", "validation", "zod", "react-hook-form"],
+  "keywords": [
+    "dxjs",
+    "forms",
+    "validation",
+    "zod",
+    "react-hook-form"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

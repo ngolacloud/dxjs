@@ -4,15 +4,25 @@
   "description": "CSP-safe chart components for dxjs: a thin, signal-reactive wrapper over Chart.js (bar / line / pie / doughnut) rendered to a <canvas>.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
-    },
-    "./charts.css": "./charts.css"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
   },
-  "//exports": "Dev points at TS source. The stylesheet ships as ./charts.css and is linked same-origin (style-src 'self'). Chart.js draws to <canvas> (no eval, no inline style), so the kit runs under a strict CSP.",
-  "files": ["dist", "src", "charts.css", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "charts.css",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
     "@dxjs/core": "0.0.1",
@@ -20,7 +30,14 @@
     "@dxjs/component": "0.0.1",
     "chart.js": "^4.6.1"
   },
-  "keywords": ["dxjs", "charts", "chart.js", "canvas", "csp", "dashboard"],
+  "keywords": [
+    "dxjs",
+    "charts",
+    "chart.js",
+    "canvas",
+    "csp",
+    "dashboard"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

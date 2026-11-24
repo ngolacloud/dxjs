@@ -17,3 +17,12 @@ cdn/dxjs-charts.js
 cdn/dxjs.css
 docs/dist/
 examples/delonix-dx-console/dist/
+
+# dxjs/jsx e2e build artifact
+packages/jsx/test/e2e/app.built.mjs
+
+# dxjs/dev HMR e2e scratch
+e2e/hmr/.work/
+
+# session contracts / local agent state
+.claude/
