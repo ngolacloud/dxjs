@@ -3,8 +3,10 @@
 Cloud Shell interaction primitives, all CSP-safe (classes + @event listeners,
 escaped text — no eval, no inline handlers).
 
-- **Command palette** — `createCommandPalette(commands)`: substring filter over
-  title+keywords, clamped keyboard navigation, run-the-active-command.
+- **Command palette** — `createCommandPalette(commands)`: fuzzy subsequence
+  matching with ranking over title+keywords (contiguous/word-boundary hits sort
+  first), clamped keyboard navigation, run-the-active-command. The matcher is
+  exported as `fuzzyScore(text, query)` for reuse.
 - **Idempotent toasts** — `createToaster()`: `notify({key,level,text})` updates in
   place when the key already exists (no duplicate), so a retrying operation is
   safe to call repeatedly.

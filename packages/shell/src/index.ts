@@ -34,15 +34,69 @@ export interface CommandPalette {
   view(): TemplateResult;
 }
 
+const BOUNDARY = new Set([" ", "-", "/", "_", ":", "."]);
+
+/** Fuzzy match `query` against `text`. Returns null when `query` is not a
+ *  (case-insensitive) subsequence of `text`, else a score where a higher value
+ *  means a better match. Contiguous runs and matches at a word boundary score
+ *  higher; a contiguous substring (especially at a boundary) gets a strong bonus.
+ *  An empty query scores 0 (matches everything). Exported so it is unit-testable
+ *  and reusable (e.g. other search surfaces). */
+export function fuzzyScore(text: string, query: string): number | null {
+  if (query === "") return 0;
+  const t = text.toLowerCase();
+  const q = query.toLowerCase();
+
+  // Greedy subsequence walk, accumulating a base score.
+  let score = 0;
+  let last = -1;
+  let ti = 0;
+  for (let qi = 0; qi < q.length; qi++) {
+    const c = q[qi] as string;
+    let found = -1;
+    for (let j = ti; j < t.length; j++) {
+      if (t[j] === c) {
+        found = j;
+        break;
+      }
+    }
+    if (found === -1) return null; // not a subsequence → no match
+    let s = 1;
+    if (found === last + 1) s += 3; // contiguous with the previous matched char
+    const prev = found > 0 ? (t[found - 1] as string) : " ";
+    if (BOUNDARY.has(prev)) s += 5; // match sits at a word boundary
+    if (last >= 0) s -= Math.min(3, (found - last - 1) * 0.5); // penalise the gap jumped
+    score += s;
+    last = found;
+    ti = found + 1;
+  }
+
+  // Strong bonus when the whole query appears contiguously — and more so at a
+  // word boundary. This is what makes "term" rank "Terminal" above a scattered hit.
+  const idx = t.indexOf(q);
+  if (idx >= 0) {
+    score += 10;
+    const prev = idx > 0 ? (t[idx - 1] as string) : " ";
+    if (BOUNDARY.has(prev)) score += 10;
+  }
+  return score;
+}
+
 export function createCommandPalette(commands: Command[]): CommandPalette {
   const openSig = signal(false);
   const querySig = signal("");
   const activeSig = signal(0);
 
   const results = (): Command[] => {
-    const q = querySig().trim().toLowerCase();
+    const q = querySig().trim();
     if (!q) return commands;
-    return commands.filter((c) => (c.title + " " + (c.keywords ?? "")).toLowerCase().includes(q));
+    // Fuzzy subsequence match over title + keywords, ranked best-first. Array
+    // sort is stable, so equal scores keep the commands' declaration order.
+    return commands
+      .map((c) => ({ c, score: fuzzyScore(`${c.title} ${c.keywords ?? ""}`, q) }))
+      .filter((x): x is { c: Command; score: number } => x.score !== null)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.c);
   };
 
   const setQuery = (q: string): void => {
