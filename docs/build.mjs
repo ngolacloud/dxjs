@@ -18,6 +18,10 @@ await build({
   platform: "browser",
   target: "es2021",
   legalComments: "none",
+  // Resolve @dxjs/* to their TS source (the `development` export condition)
+  // instead of ./dist/index.js — so the docs build is self-contained and works
+  // from a fresh checkout (e.g. GitHub Pages CI) without first building packages.
+  conditions: ["development"],
 });
 console.log("built docs/dist/docs.app.js");
 
