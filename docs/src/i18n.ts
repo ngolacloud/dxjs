@@ -26,10 +26,14 @@ const messages = {
       start: "Começar",
     },
     ex: {
-      browser: "Browser (sem build)",
-      node: "Node",
+      browser: "Browser · CDN (sem build)",
+      node: "Node (instalar)",
       result: "Resultado ao vivo",
       file: "ficheiro",
+      copy: "Copiar",
+      copied: "Copiado",
+      desktop: "Desktop",
+      mobile: "Telemóvel",
     },
     landing: {
       kicker: "NgolaCloud · consola",
@@ -96,10 +100,14 @@ const messages = {
       start: "Getting started",
     },
     ex: {
-      browser: "Browser (no build)",
-      node: "Node",
+      browser: "Browser · CDN (no build)",
+      node: "Node (install)",
       result: "Live result",
       file: "file",
+      copy: "Copy",
+      copied: "Copied",
+      desktop: "Desktop",
+      mobile: "Mobile",
     },
     landing: {
       kicker: "NgolaCloud · console",

@@ -107,3 +107,79 @@
 /* gallery: carousel slide + wide tiles for calendar/map/search/table demos */
 .gl-slide { display: grid; place-items: center; min-height: 90px; font-weight: 600; color: var(--dx-mut); }
 .gl-grid > .dx-cal, .gl-grid > .dx-map, .gl-grid > .dx-sf, .gl-grid > .dx-card, .gl-grid > .dx-metrics { grid-column: 1 / -1; }
+
+/* ======================================================================= */
+/* react.dev-style redesign: code chrome · highlighting · device preview ·  */
+/* callouts · typography. Later rules intentionally override earlier ones.  */
+/* ======================================================================= */
+
+/* --- Content column + typography --------------------------------------- */
+#doc-content { max-width: 940px; }
+.doc-h1 { font-size: var(--dx-text-3xl); font-weight: 800; letter-spacing: -.025em; margin: 0 0 6px; }
+.doc-lead { font-size: var(--dx-text-lg); color: var(--dx-mut); max-width: 72ch; line-height: 1.6; margin: 0 0 26px; }
+.doc-h2 { font-size: var(--dx-text-xl); font-weight: 700; letter-spacing: -.01em; margin: 34px 0 12px; padding-bottom: 7px; border-bottom: 1px solid var(--dx-line2); }
+.doc-p { font-size: 14.5px; line-height: 1.75; color: var(--dx-ink-2); max-width: 72ch; margin: 0 0 14px; }
+.doc-p code, .doc-lead code { font-family: var(--dx-mono); font-size: .88em; background: var(--dx-accent-weak); color: var(--dx-accent); padding: 1px 6px; border-radius: 6px; }
+.doc-ul { max-width: 72ch; color: var(--dx-ink-2); line-height: 1.75; font-size: 14.5px; padding-left: 20px; }
+.doc-ul li { margin-bottom: 5px; }
+
+/* --- Code block chrome (filename + copy + highlighted body) ------------ */
+.cb { border-radius: var(--dx-radius-lg); overflow: hidden; border: 1px solid #1e2b45; background: #0b1220; }
+.cb-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px 7px 13px; background: #0f1a2e; border-bottom: 1px solid #1e2b45; }
+.cb-name { font-family: var(--dx-mono); font-size: 12px; color: #7dd3fc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cb-copy { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #27364f; background: transparent; color: #94a3b8; font: inherit; font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; cursor: pointer; flex: none; }
+.cb-copy:hover { background: #17233b; color: #e2e8f0; }
+.cb-copy-ico { font-size: 12px; }
+.cb-pre { margin: 0; padding: 14px 16px; overflow-x: auto; font-family: var(--dx-mono); font-size: 12.5px; line-height: 1.65; color: #c9d1d9; white-space: pre; }
+.cb-pre code { font: inherit; color: inherit; }
+
+/* syntax tokens (github-dark palette; code blocks are dark in both themes) */
+.tok-com { color: #8b949e; font-style: italic; }
+.tok-str { color: #a5d6ff; }
+.tok-kw { color: #ff7b72; }
+.tok-num { color: #79c0ff; }
+.tok-fn { color: #d2a8ff; }
+.tok-type { color: #ffa657; }
+.tok-attr { color: #79c0ff; }
+.tok-tag { color: #7ee787; }
+.tok-deco { color: #d2a8ff; }
+.tok-punct { color: #c9d1d9; }
+
+/* --- Example layout (code | live preview) ------------------------------ */
+.ex { grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.ex-solo { grid-template-columns: 1fr; }
+@media (max-width: 920px) { .ex { grid-template-columns: 1fr; } }
+.ex-view { padding: 0; border-left: 0; display: block; }
+
+/* --- Runnable tabs (Browser · Node) above the code card ---------------- */
+.run-codes { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.run-tabs { display: inline-flex; gap: 5px; padding: 0; background: transparent; }
+.run-tab { border: 1px solid var(--dx-line); background: var(--dx-panel-2); color: var(--dx-mut); font: inherit; font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: var(--dx-radius); cursor: pointer; }
+.run-tab:hover { color: var(--dx-ink); }
+.run-tab.is-active { background: var(--dx-accent); border-color: var(--dx-accent); color: #fff; }
+.run-pane[hidden] { display: none; }
+
+/* --- Device preview toggle (Desktop | Mobile) -------------------------- */
+.pv { display: flex; flex-direction: column; gap: 8px; }
+.pv-bar { display: flex; align-items: center; gap: 8px; }
+.pv-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--dx-mut); font-weight: 600; }
+.pv-toggle { display: inline-flex; background: var(--dx-panel-2); border: 1px solid var(--dx-line); border-radius: var(--dx-radius); padding: 2px; gap: 2px; }
+.pv-seg { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 3px 9px; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 500; color: var(--dx-mut); cursor: pointer; }
+.pv-seg.is-active { background: var(--dx-panel); color: var(--dx-ink); box-shadow: var(--dx-shadow-sm); font-weight: 600; }
+.pv-stage { border: 1px dashed var(--dx-line); border-radius: var(--dx-radius-lg); padding: 18px; display: flex; justify-content: center; background: var(--dx-panel-2); transition: background .2s; }
+.pv-stage.is-desktop .pv-frame { width: 100%; }
+.pv-stage.is-mobile { background: var(--dx-gray-200); padding: 18px 12px; }
+.pv-stage.is-mobile .pv-frame { width: 320px; max-width: 100%; background: var(--dx-panel); border: 1px solid var(--dx-line); border-radius: 20px; padding: 16px 13px; box-shadow: var(--dx-shadow-md); }
+.pv-frame { min-width: 0; }
+
+/* --- Callouts (react.dev Note / Pitfall / Deep Dive) ------------------- */
+.doc-callout { border-radius: var(--dx-radius-lg); padding: 12px 16px; margin: 18px 0; border: 1px solid; border-left-width: 4px; max-width: 72ch; }
+.doc-callout-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; margin-bottom: 3px; }
+.doc-callout-ico { font-size: 15px; }
+.doc-callout-body { margin: 0; font-size: 14px; color: var(--dx-ink-2); line-height: 1.6; }
+.doc-callout.is-note { background: var(--dx-info-weak); border-color: color-mix(in srgb, var(--dx-info) 35%, transparent); }
+.doc-callout.is-note .doc-callout-head { color: var(--dx-info); }
+.doc-callout.is-pitfall { background: var(--dx-warn-weak); border-color: color-mix(in srgb, var(--dx-warn) 35%, transparent); }
+.doc-callout.is-pitfall .doc-callout-head { color: var(--dx-warn); }
+.doc-callout.is-deep { background: var(--dx-accent-weak); border-color: color-mix(in srgb, var(--dx-accent) 35%, transparent); }
+.doc-callout.is-deep .doc-callout-head { color: var(--dx-accent); }

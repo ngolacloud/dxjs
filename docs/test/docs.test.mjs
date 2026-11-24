@@ -94,17 +94,30 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     await page.keyboard.press("Control+K");
     assert.ok(await page.evaluate(() => document.activeElement?.classList.contains("dx-sf-input")), "Ctrl+K focused the search input");
 
-    // Getting started: dual Browser|Node runnable example with full file paths.
+    // Getting started: dual Browser(CDN)|Node runnable example with full file names,
+    // syntax highlighting, copy buttons and a Desktop/Mobile preview toggle.
     await page.click(".dx-nav-item >> text=Getting started");
     await page.waitForSelector(".run-tabs", { timeout: 5000 });
-    assert.ok((await page.textContent(".run-path")).includes("index.html"), "shows the browser file path");
+    assert.ok((await page.textContent(".cb-name")).includes("index.html"), "code block shows the browser filename");
+    assert.ok(await page.$(".cb-pre .tok-kw"), "syntax highlighting emitted token spans");
+    assert.ok((await page.$$(".cb-copy")).length > 0, "copy buttons rendered on code blocks");
+    // the CDN variant loads dxjs from esm.sh (shown as code text)
+    assert.ok((await page.textContent(".run-pane:not([hidden]) .cb-pre")).includes("esm.sh"), "browser tab shows CDN import");
     await page.locator(".run-tab", { hasText: "Node" }).first().click();
     await page.waitForTimeout(40);
-    assert.ok(await page.$(".run-pane:not([hidden]) .run-path"), "the Node tab reveals its file");
+    assert.ok((await page.textContent(".run-pane:not([hidden]) .cb-pre")).includes("npm install"), "Node tab shows install step");
+
+    // Responsive: the appShell exposes a hamburger (shown via CSS on small screens).
+    assert.ok(await page.$(".dx-burger"), "responsive hamburger present in the shell");
 
     // Navigate to @dxjs/core and drive the live counter example.
     await page.click(".dx-nav-item >> text=@dxjs/core");
     await page.waitForSelector(".demo-btn");
+    // Live examples carry a Desktop/Mobile preview toggle; switching to Mobile
+    // constrains the preview frame.
+    assert.ok(await page.$(".pv-seg"), "device Desktop/Mobile toggle on the live example");
+    await page.click(".pv-toggle .pv-seg >> text=Mobile");
+    assert.ok(await page.$(".pv-stage.is-mobile"), "preview switched to the mobile frame");
     const before = (await page.textContent(".demo-out")).trim();
     await page.click(".demo-btn");
     const after = (await page.textContent(".demo-out")).trim();

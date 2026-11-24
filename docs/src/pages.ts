@@ -8,7 +8,7 @@ import { chart } from "@dxjs/charts";
 import { createQueryClient, query } from "@dxjs/query";
 import { createForm } from "@dxjs/forms";
 import { renderToString } from "@dxjs/server";
-import { example, runnable, p, h2 } from "./example.ts";
+import { example, runnable, p, h2, callout } from "./example.ts";
 import { learnPages } from "./learn.ts";
 import { LandingPage } from "./landing.ts";
 import { GalleryPage } from "./gallery.ts";
@@ -27,25 +27,24 @@ const head = (title: string, lead: string): TemplateResult =>
 
 // --- Getting started -------------------------------------------------------
 const GettingStarted = component(() => html`
-  ${head("Getting started", "dxjs runs vanilla in the browser (no build) AND in Node (native TypeScript). Every example below is a COMPLETE file with its full path — copy the Browser tab or the Node tab and run it as-is.")}
+  ${head("Getting started", "dxjs runs with NO build in the browser (loaded from a CDN) and in Node (installed from npm, native TypeScript). Each example is a COMPLETE file with its full path — switch the Browser (CDN) or Node (install) tab and copy it as-is.")}
 
   ${h2("Hello, reactive — the same counter, two ways")}
   ${runnable({
     title: "A reactive counter",
     browser: {
-      path: "my-app/index.html",
+      path: "index.html",
       code: `<!doctype html>
-<!-- Open this file directly in a browser. No bundler, no build step. -->
+<!-- Open this file directly — no bundler, no build. dxjs loads from a CDN. -->
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>dxjs counter</title>
-</head>
+<head><meta charset="utf-8" /><title>dxjs counter</title></head>
 <body>
   <div id="app"></div>
   <script type="module">
-    // cdn/dxjs.js = core+dom+component+ui, ~4.5 KB gzip, same-origin.
-    import { signal, html, component, mount } from "./dxjs.js";
+    // Load dxjs straight from esm.sh — no npm, no build step.
+    import { signal } from "https://esm.sh/@dxjs/core";
+    import { html } from "https://esm.sh/@dxjs/dom";
+    import { component, mount } from "https://esm.sh/@dxjs/component";
 
     const Counter = component(() => {
       const n = signal(0);
@@ -60,89 +59,41 @@ const GettingStarted = component(() => html`
 </html>`,
     },
     node: {
-      path: "my-app/counter.ts",
-      code: `// Run with: node counter.ts   (Node >= 22, native TypeScript — no transpile)
-// dxjs renders to a DOM; on the server we render to a STRING instead.
+      path: "counter.ts",
+      code: `// 1. Install:  npm install @dxjs/core @dxjs/dom @dxjs/server
+// 2. Run:      node counter.ts        (Node >= 22 runs TypeScript natively)
 import { signal } from "@dxjs/core";
 import { html } from "@dxjs/dom";
 import { renderToString } from "@dxjs/server";
 
-// Build the same view and snapshot it to HTML (DOM-free SSR).
+// Same signals, same html\`\` — on the server we render to a STRING (DOM-free SSR).
 const n = signal(41);
 const view = html\`<button>n = \${() => n()}</button>\`;
 
-console.log(renderToString(view));
-// → <button>n = 41</button>
-n.set(42); // signals drive updates; in the browser this patches the DOM in place`,
+console.log(renderToString(view)); // → <button>n = 41</button>
+n.set(42); // in the browser, this would patch the DOM in place`,
     },
-    note: "The browser gets the single-file bundle (cdn/dxjs.js); Node runs the TypeScript source directly. Same signals, same html`` — one renders to the DOM, the other to a string.",
+    note: "No-build browser → one <script type=module> importing from esm.sh. Node → npm install, then run the .ts directly. Same source, two runtimes.",
   })}
 
-  ${h2("Keep @dxjs/* specifiers in the browser via an import map")}
-  ${runnable({
-    title: "Import map (browser) vs workspace install (Node)",
-    browser: {
-      path: "my-app/index.html",
-      code: `<!doctype html>
-<div id="app"></div>
-<!-- Map the bare @dxjs/* specifiers to the single-file bundle. -->
-<script type="importmap">
-{ "imports": {
-  "@dxjs/core": "./dxjs.js",
-  "@dxjs/dom": "./dxjs.js",
-  "@dxjs/component": "./dxjs.js",
-  "@dxjs/ui": "./dxjs.js"
-} }
-</script>
-<script type="module">
-  import { signal } from "@dxjs/core";      // resolves to ./dxjs.js
-  import { html }   from "@dxjs/dom";
-  import { component, mount } from "@dxjs/component";
-
-  const App = component(() => {
-    const name = signal("Angola");
-    return html\`<input @input=\${e => name.set(e.target.value)} />
-      <p>Olá, \${() => name()}!</p>\`;
-  });
-  mount(App, document.getElementById("app"), {});
-</script>`,
-    },
-    node: {
-      path: "my-app/package.json",
-      code: `{
-  "name": "my-app",
-  "type": "module",
-  "dependencies": {
-    "@dxjs/core": "^1.0.0",
-    "@dxjs/dom": "^1.0.0",
-    "@dxjs/component": "^1.0.0",
-    "@dxjs/ui": "^1.0.0"
-  },
-  "scripts": {
-    "start": "node --conditions=development src/main.ts"
-  }
-}
-// $ npm install        # links @dxjs/* into node_modules
-// $ npm start          # Node runs the .ts directly — no build`,
-    },
-    note: "In the browser an import map keeps the nice @dxjs/* names while loading one file. In Node the same names resolve through node_modules — no bundler either way.",
-  })}
+  ${callout("note", "Self-hosted instead of a CDN?", "Prefer no third-party CDN? dxjs also emits a single-file bundle (cdn/dxjs.js, ~4.5 KB gzip) you can serve same-origin: import { signal } from \"./dxjs.js\". It satisfies a strict script-src 'self' with no external origin at all.")}
 
   ${h2("Add the component kit (@dxjs/ui)")}
   ${runnable({
     title: "A dashboard shell + stat grid",
     browser: {
-      path: "my-app/dashboard.html",
+      path: "dashboard.html",
       code: `<!doctype html>
 <head>
-  <!-- the kit's look is served same-origin (style-src 'self') -->
-  <link rel="stylesheet" href="./ui.css" />
+  <!-- the kit's stylesheet, from the CDN -->
+  <link rel="stylesheet" href="https://esm.sh/@dxjs/ui/ui.css" />
 </head>
 <body>
   <div id="app"></div>
   <script type="module">
-    import { html, component, mount } from "./dxjs.js";
-    import { statGrid, card } from "./dxjs.js";   // @dxjs/ui is in the bundle
+    import { html } from "https://esm.sh/@dxjs/dom";
+    import { component, mount } from "https://esm.sh/@dxjs/component";
+    import { statGrid, card } from "https://esm.sh/@dxjs/ui";
 
     const Dash = component(() => html\`
       \${statGrid([
@@ -156,23 +107,20 @@ n.set(42); // signals drive updates; in the browser this patches the DOM in plac
 </body>`,
     },
     node: {
-      path: "my-app/src/main.ts",
-      code: `// Node / bundler entry — identical imports, identical components.
-import { html, component, mount } from "@dxjs/component";
-import { statGrid, card } from "@dxjs/ui";
-
-export const Dash = component(() => html\`
-  \${statGrid([
-    { label: "MRR", value: "$62,350", delta: "+12.4%", tone: "pos" },
-    { label: "Churn", value: "2.1%", delta: "-0.3%", tone: "pos" },
-  ])}
-  \${card({ title: "Welcome", body: html\`<p>Build the console.</p>\` })}
-\`);
-
-// In a browser build:  mount(Dash, document.getElementById("app"), {});
-// On the server:       renderToString(Dash({}))  // DOM-free SSR`,
+      path: "package.json",
+      code: `{
+  "name": "my-app",
+  "type": "module",
+  "dependencies": {
+    "@dxjs/core": "^1.0.0",
+    "@dxjs/dom": "^1.0.0",
+    "@dxjs/component": "^1.0.0",
+    "@dxjs/ui": "^1.0.0"
+  },
+  "scripts": { "start": "node src/main.ts" }
+}`,
     },
-    note: "Link ui.css once (same-origin, CSP-safe). The components only toggle classes — the look lives in the stylesheet, so there are no inline styles to violate style-src.",
+    note: "Browser: load ui.css + the kit from the CDN. Node: npm install the same packages. Components only toggle classes, so the look lives in ui.css — no inline styles to violate style-src.",
   })}
 
   ${h2("Security — the premise")}
