@@ -187,3 +187,9 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dx-vlist-sizer { width: 1px; }
 .dx-vlist-win { position: absolute; top: 0; left: 0; right: 0; }
 .dx-vlist-row { height: var(--dxv-h); box-sizing: border-box; overflow: hidden; display: flex; align-items: center; padding: 0 16px; border-top: 1px solid var(--dx-line2); font-size: 14px; }
+
+/* --- Terminal (@dxjs/terminal) ------------------------------------------ */
+.dx-term { display: flex; flex-direction: column; height: 100%; background: var(--dx-side); border-radius: var(--dx-radius); overflow: hidden; }
+.dx-term-out { flex: 1; margin: 0; padding: var(--dx-space-3); overflow: auto; color: var(--dx-side-ink); font: var(--dx-text-sm)/var(--dx-leading-normal) var(--dx-mono); white-space: pre-wrap; word-break: break-word; }
+.dx-term-in { border: 0; border-top: 1px solid var(--dx-side-active); padding: var(--dx-space-3); background: #060a14; color: #e5e7eb; font: var(--dx-text-sm) var(--dx-mono); }
+.dx-term-in:focus-visible { outline: 2px solid var(--dx-accent); outline-offset: -2px; }
