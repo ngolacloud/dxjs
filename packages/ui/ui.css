@@ -204,3 +204,21 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dx-log-row.is-error .dx-log-txt { color: var(--dx-neg); }
 .dx-log-row.is-info .dx-log-lvl { color: var(--dx-accent); }
 .dx-log-row.is-debug .dx-log-lvl { color: var(--dx-mut); }
+
+/* --- Command palette + toasts (@dxjs/shell) ----------------------------- */
+.dx-cmdk { position: fixed; top: 12vh; left: 50%; transform: translateX(-50%); width: min(560px, 92vw); background: var(--dx-panel); border: 1px solid var(--dx-line); border-radius: var(--dx-radius); box-shadow: 0 12px 40px rgba(0,0,0,.25); overflow: hidden; z-index: 50; }
+.dx-cmdk[hidden] { display: none; }
+.dx-cmdk-input { width: 100%; border: 0; border-bottom: 1px solid var(--dx-line2); padding: var(--dx-space-4); font: var(--dx-text-lg) var(--dx-font); background: transparent; color: var(--dx-ink); }
+.dx-cmdk-input:focus-visible { outline: none; }
+.dx-cmdk-list { list-style: none; margin: 0; padding: var(--dx-space-2); max-height: 50vh; overflow: auto; }
+.dx-cmdk-item { padding: var(--dx-space-3) var(--dx-space-4); border-radius: 8px; cursor: pointer; font-size: var(--dx-text-md); }
+.dx-cmdk-item.is-active, .dx-cmdk-item:hover { background: var(--dx-accent-weak); }
+
+.dx-toasts { position: fixed; right: var(--dx-space-5); bottom: var(--dx-space-5); display: flex; flex-direction: column; gap: var(--dx-space-2); z-index: 60; }
+.dx-toast { display: flex; align-items: center; gap: var(--dx-space-3); padding: var(--dx-space-3) var(--dx-space-4); border-radius: 10px; background: var(--dx-panel); border: 1px solid var(--dx-line); box-shadow: var(--dx-shadow); min-width: 240px; }
+.dx-toast.is-success { border-left: 3px solid var(--dx-pos); }
+.dx-toast.is-warn { border-left: 3px solid var(--dx-warn); }
+.dx-toast.is-error { border-left: 3px solid var(--dx-neg); }
+.dx-toast.is-info { border-left: 3px solid var(--dx-accent); }
+.dx-toast-text { flex: 1; font-size: var(--dx-text-sm); }
+.dx-toast-x { border: 0; background: transparent; cursor: pointer; font-size: 18px; color: var(--dx-mut); line-height: 1; }
