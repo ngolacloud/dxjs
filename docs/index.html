@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Strict CSP as a meta tag: GitHub Pages serves static files and cannot set
+       HTTP headers, so the hosted site carries the SAME policy the test server
+       sends — no eval, no inline, same-origin only. -->
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'" />
   <title>dxjs — documentation</title>
   <!-- same-origin stylesheets only (style-src 'self'): the kit, the charts, the docs -->
   <link rel="stylesheet" href="./ui.css" />

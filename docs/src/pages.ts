@@ -9,6 +9,7 @@ import { createQueryClient, query } from "@dxjs/query";
 import { createForm } from "@dxjs/forms";
 import { renderToString } from "@dxjs/server";
 import { example, p, h2 } from "./example.ts";
+import { learnPages } from "./learn.ts";
 
 export interface Page {
   id: string;
@@ -574,6 +575,7 @@ import.meta.hot?.accept();`,
 `);
 
 export const pages: Page[] = [
+  ...learnPages,
   { id: "start", label: "Getting started", group: "Guide", view: GettingStarted },
   { id: "core", label: "@dxjs/core", group: "Packages", view: CorePage },
   { id: "dom", label: "@dxjs/dom", group: "Packages", view: DomPage },
