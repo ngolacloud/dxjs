@@ -161,7 +161,9 @@ export function createToaster(): Toaster {
     }
   };
 
-  const dismiss = (key: string): void => toastsSig.set(toastsSig().filter((t) => t.key !== key));
+  const dismiss = (key: string): void => {
+    toastsSig.set(toastsSig().filter((t) => t.key !== key));
+  };
 
   const view = (): TemplateResult => html`<div class="dx-toasts" role="region" aria-label="Notifications">
     ${list(

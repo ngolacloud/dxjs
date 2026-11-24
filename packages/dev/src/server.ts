@@ -18,7 +18,7 @@
 
 import { createServer, type Server } from "node:http";
 import { readFile, realpath } from "node:fs/promises";
-import { watch } from "node:fs";
+import { watch, existsSync } from "node:fs";
 import { resolve, dirname, extname, relative, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as esbuild from "esbuild";
@@ -60,6 +60,13 @@ export interface DevServer {
 }
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+// The HMR client is TypeScript source we transpile on demand. When running from
+// source HERE is packages/dev/src; when running from a published dist/, HERE is
+// packages/dev/dist and the source lives one level up in src/ (shipped via
+// package.json "files"). Resolve whichever exists.
+const CLIENT_SRC = existsSync(resolve(HERE, "client.ts"))
+  ? resolve(HERE, "client.ts")
+  : resolve(HERE, "..", "src", "client.ts");
 // The monorepo root (…/packages/dev/src → …/). Modules may live under packages/*,
 // so the `/@fs` guard allows anything inside the repo root (dev only).
 const REPO_ROOT = resolve(HERE, "..", "..", "..");
@@ -250,7 +257,7 @@ export function createDevServer(options: DevServerOptions): DevServer {
     "/index.html": async () => htmlResponse(indexHtml(), { csp: DEV_CSP }),
     "/@dx/client.js": async () => {
       const result = await esbuild.build({
-        entryPoints: [resolve(HERE, "client.ts")],
+        entryPoints: [CLIENT_SRC],
         bundle: false,
         write: false,
         format: "esm",
@@ -319,7 +326,7 @@ export function createDevServer(options: DevServerOptions): DevServer {
       const entryReal = await realpath(entryAbs).catch(() => entryAbs);
       served.add(entryReal);
       watcher = watch(root, { recursive: true }, (_event, filename) =>
-        onFsEvent(typeof filename === "string" ? filename : filename ? filename.toString() : null),
+        onFsEvent(filename ? String(filename) : null),
       );
       server = createServer(nodeListener(handler));
       await new Promise<void>((res, rej) => {

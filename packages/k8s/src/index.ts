@@ -54,7 +54,9 @@ export function createResourceStore(): ResourceStore {
   const version = signal<string[]>([]); // a token bumped on change to drive `list`
   const rv = signal<string | undefined>(undefined);
   let tick = 0;
-  const bump = (): void => version.set([String(tick++)]);
+  const bump = (): void => {
+    version.set([String(tick++)]);
+  };
 
   const list = computed<K8sObject[]>(() => {
     version(); // dependency

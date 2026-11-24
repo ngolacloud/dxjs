@@ -40,7 +40,9 @@ export function createDevtools(): Devtools {
   // self-observation / feedback loop).
   const map = new Map<number, DevtoolsNode>();
   const snap = signal<DevtoolsNode[]>([]);
-  const publish = (): void => snap.set([...map.values()]);
+  const publish = (): void => {
+    snap.set([...map.values()]);
+  };
 
   setInspector({
     onCreate(n: InspectNode): void {

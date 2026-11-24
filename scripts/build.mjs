@@ -26,17 +26,24 @@ const TSC = existsSync(localTsc) ? localTsc : "tsc";
 // Dependency-ordered: a package's @dxjs deps (and so their emitted .d.ts) come first.
 const PKGS = [
   { name: "core" },
+  { name: "devtools" }, // deps: core
+  { name: "i18n" }, // deps: core
   { name: "dom" },
   // jsx ships three entry points (barrel + the two JSX runtimes the transform imports).
   { name: "jsx", entries: ["index", "jsx-runtime", "jsx-dev-runtime"] },
   { name: "component" },
+  { name: "terminal" }, // deps: core, dom
   { name: "server" },
   { name: "transport" },
   { name: "edge", platform: "node" }, // node:http2 / node:http — server/edge runtimes only
+  { name: "dev", platform: "node", external: ["esbuild"] }, // node tool: node:* + esbuild peer
   { name: "query" },
   { name: "forms" },
   { name: "canvas" },
+  { name: "shell" }, // deps: core, dom, canvas
   { name: "ui" },
+  { name: "logs" }, // deps: core, dom, ui
+  { name: "k8s" }, // deps: core, dom, ui
   { name: "charts", external: ["chart.js"] }, // chart.js is a runtime peer, not bundled into dist
 ];
 
