@@ -1,14 +1,19 @@
 // The dxjs documentation site — itself a dxjs app (dogfooding). The shell is
-// @dxjs/ui's appShell; the sidebar lists the pages; the active page is MOUNTED
-// into the content host (and disposed on switch), so each page gets real component
-// context — that's how the charts page's onMount fires once its canvas is visible.
-import { signal, effect } from "@dxjs/core";
+// @dxjs/ui's appShell; the sidebar lists the pages; the active page is MOUNTED into
+// the content host (and disposed on switch), so each page gets real component
+// context. The top bar carries a bilingual language switch (pt-AO ↔ en) and a
+// light/dark theme toggle.
+import { effect } from "@dxjs/core";
 import { html } from "@dxjs/dom";
 import { component, mount, onMount } from "@dxjs/component";
-import { appShell } from "@dxjs/ui";
+import { appShell, createThemeController } from "@dxjs/ui";
 import { pages } from "./pages.ts";
+import { active, go } from "./store.ts";
+import { langToggle, t } from "./i18n.ts";
 
-const active = signal(pages[0]!.id);
+const theme = createThemeController("system");
+
+const navLabel = (pg: (typeof pages)[number]): string => (pg.labelKey ? t(pg.labelKey) : pg.label);
 
 const Docs = component(() => {
   // Re-mount the active page into #doc-content whenever the selection changes,
@@ -28,15 +33,27 @@ const Docs = component(() => {
     };
   });
 
+  const topbar = html`<div class="dx-topbar-tools">
+    <span class="dx-topbar-tag">${() => t("shell.tagline")}</span>
+    <span class="dx-spacer"></span>
+    ${langToggle()}
+    <button
+      class="dx-btn is-icon"
+      type="button"
+      aria-label="Toggle theme"
+      @click=${() => theme.toggle()}
+    >${() => (theme.theme() === "dark" ? "☀" : "☾")}</button>
+  </div>`;
+
   return appShell({
     brand: "dxjs",
     nav: () =>
       pages.map((pg) => ({
-        label: pg.label,
+        label: navLabel(pg),
         active: active() === pg.id,
-        onSelect: () => active.set(pg.id),
+        onSelect: () => go(pg.id),
       })),
-    user: { name: "docs", initials: "dx" },
+    topbar,
     content: html`<div id="doc-content"></div>`,
   });
 });

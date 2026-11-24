@@ -59,8 +59,48 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     // The shell (dogfooded @dxjs/ui) rendered with the nav.
     assert.equal(await page.textContent(".dx-brand"), "dxjs");
     assert.ok((await page.$$(".dx-nav-item")).length >= 8, "a nav entry per page");
-    // The default page shows a code pane (code + result layout).
-    assert.ok(await page.$(".ex-code"), "an example's code pane rendered");
+
+    // Default page = the bilingual landing hero.
+    assert.ok(await page.$(".lp-title"), "landing hero rendered");
+    const ptTitle = (await page.textContent(".lp-title")).trim();
+    // The live landing counter reacts (dogfooded signals).
+    const lbBefore = (await page.textContent(".lp-demo-live .dx-btn")).trim();
+    await page.click(".lp-demo-live .dx-btn");
+    const lbAfter = (await page.textContent(".lp-demo-live .dx-btn")).trim();
+    assert.notEqual(lbAfter, lbBefore, `landing counter reacted (${lbBefore} → ${lbAfter})`);
+    // The language switch flips the copy live (pt-AO → en), no reload.
+    await page.click(".dx-topbar-tools .dx-seg-item >> text=EN");
+    const enTitle = (await page.textContent(".lp-title")).trim();
+    assert.notEqual(enTitle, ptTitle, `language toggled live (${ptTitle} → ${enTitle})`);
+
+    // Component gallery: the v2 kit renders live (e.g. a switch + a date picker).
+    await page.click(".dx-nav-item >> text=Components");
+    await page.waitForSelector(".dx-switch", { timeout: 5000 });
+    assert.ok(await page.$(".dx-dp-face"), "the date picker rendered in the gallery");
+    assert.ok(await page.$(".dx-s2-face"), "the searchable select rendered in the gallery");
+
+    // Advanced suite is live: calendar (with a holiday mark), gantt, map.
+    assert.ok(await page.$(".dx-cal-cell.is-holiday"), "calendar marks an Angolan holiday");
+    assert.ok(await page.$(".dx-gantt-bar"), "gantt rendered bars");
+    assert.ok((await page.$$(".dx-map-pin")).length >= 3, "world map plotted markers");
+    assert.ok(await page.$(".dx-metric-value"), "metric tiles rendered");
+
+    // Table export menu opens with 3 formats (CSV/XLS/XLSX).
+    await page.click(".dx-export-btn");
+    await page.waitForSelector(".dx-export-menu:not([hidden])", { timeout: 2000 });
+    assert.equal((await page.$$(".dx-export-item")).length, 3, "CSV + XLS + XLSX");
+
+    // Ctrl+K focuses the Odoo-style search/filter input (the headline hotkey).
+    await page.keyboard.press("Control+K");
+    assert.ok(await page.evaluate(() => document.activeElement?.classList.contains("dx-sf-input")), "Ctrl+K focused the search input");
+
+    // Getting started: dual Browser|Node runnable example with full file paths.
+    await page.click(".dx-nav-item >> text=Getting started");
+    await page.waitForSelector(".run-tabs", { timeout: 5000 });
+    assert.ok((await page.textContent(".run-path")).includes("index.html"), "shows the browser file path");
+    await page.locator(".run-tab", { hasText: "Node" }).first().click();
+    await page.waitForTimeout(40);
+    assert.ok(await page.$(".run-pane:not([hidden]) .run-path"), "the Node tab reveals its file");
 
     // Navigate to @dxjs/core and drive the live counter example.
     await page.click(".dx-nav-item >> text=@dxjs/core");
