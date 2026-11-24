@@ -13,9 +13,10 @@ export {
   onCleanup,
   onError,
   createRoot,
+  setInspector,
 } from "./graph.ts";
 
-export type { Signal, Accessor, EqualsFn, SignalOptions } from "./graph.ts";
+export type { Signal, Accessor, EqualsFn, SignalOptions, InspectNode, DxInspector } from "./graph.ts";
 
 export { createContext, provide, inject } from "./context.ts";
 export type { Context } from "./context.ts";

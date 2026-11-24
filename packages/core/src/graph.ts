@@ -28,6 +28,8 @@ export type EqualsFn<T> = (a: T, b: T) => boolean;
 export interface SignalOptions<T> {
   /** Custom equality; `false` disables memoisation (every write notifies). */
   equals?: EqualsFn<T> | false;
+  /** A label for DevTools (only used when an inspector is installed). */
+  name?: string;
 }
 
 const CLEAN = 0;
@@ -53,6 +55,36 @@ interface Node extends Scope {
   init: boolean; // a computed has produced at least one value
   disposed: boolean;
   queued: boolean;
+  inspect: InspectNode | null; // dev inspector handle; null unless instrumented
+}
+
+// --- dev instrumentation (zero-cost when no inspector is installed) ---------
+/** A stable handle a DevTools inspector sees for one reactive node. */
+export interface InspectNode {
+  readonly id: number;
+  readonly kind: "signal" | "computed" | "effect";
+  readonly name?: string;
+}
+/** Observe the reactive graph. Install via `setInspector` (dev-only). Nodes
+ *  created while an inspector is set get a stable `InspectNode`; production code
+ *  (no inspector) never allocates one, so the hot path is a single null check. */
+export interface DxInspector {
+  onCreate?(node: InspectNode): void;
+  onUpdate?(node: InspectNode, value: unknown): void;
+  onRun?(node: InspectNode): void;
+  onDispose?(node: InspectNode): void;
+}
+let inspector: DxInspector | null = null;
+let nextNodeId = 0;
+/** Install (or clear with `null`) the reactive-graph inspector. */
+export function setInspector(next: DxInspector | null): void {
+  inspector = next;
+}
+function instrument(node: Node, kind: InspectNode["kind"], name?: string): void {
+  if (!inspector) return;
+  const handle: InspectNode = { id: ++nextNodeId, kind, name };
+  node.inspect = handle;
+  inspector.onCreate?.(handle);
 }
 
 // --- reactive context (module-scoped; never on window) --------------------
@@ -89,6 +121,7 @@ function makeNode<T>(
     cleanups: null,
     parent: CurrentScope as Node | null, // the enclosing owner at creation time
     errorHandlers: null,
+    inspect: null,
   };
 }
 
@@ -109,6 +142,7 @@ function readNode(node: Node): unknown {
 function writeNode(node: Node, next: unknown): unknown {
   if (node.equals(node.value, next)) return node.value;
   node.value = next;
+  if (node.inspect) inspector?.onUpdate?.(node.inspect, next);
   if (node.observers) for (const o of node.observers) markStale(o, DIRTY);
   if (!batchDepth) flush();
   return node.value;
@@ -172,12 +206,14 @@ function update(node: Node): void {
     if (!runErrorHandlers(node, error)) throw error;
     return;
   }
+  if (node.inspect) inspector?.onRun?.(node.inspect);
   if (node.effect) {
     // An effect may return a cleanup function (run before the next pass/dispose).
     if (typeof result === "function") (node.cleanups ||= []).push(result as () => void);
   } else if (!node.init || !node.equals(node.value, result)) {
     node.value = result;
     node.init = true;
+    if (node.inspect) inspector?.onUpdate?.(node.inspect, result);
     // The value changed: escalate observers straight to DIRTY (they are already
     // CHECK from the push phase, so no re-propagation/scheduling is needed here).
     if (node.observers) for (const o of node.observers) if (o.state < DIRTY) o.state = DIRTY;
@@ -226,7 +262,10 @@ function cleanupNode(node: Node, dispose: boolean): void {
 }
 
 function disposeNode(node: Node): void {
-  if (!node.disposed) cleanupNode(node, true);
+  if (!node.disposed) {
+    if (node.inspect) inspector?.onDispose?.(node.inspect);
+    cleanupNode(node, true);
+  }
 }
 
 // --- scheduler ------------------------------------------------------------
@@ -252,6 +291,7 @@ function flush(): void {
 /** Create a writable reactive value. */
 export function signal<T>(value: T, options?: SignalOptions<T>): Signal<T> {
   const node = makeNode(value, null, false, options);
+  if (inspector) instrument(node, "signal", options?.name);
   const s = ((...args: [] | [T | ((prev: T) => T)]): T => {
     if (args.length === 0) return readNode(node) as T;
     const a = args[0];
@@ -269,6 +309,7 @@ export function computed<T>(fn: () => T, options?: SignalOptions<T>): Accessor<T
   const node = makeNode<T>(undefined, fn as () => unknown, false, options);
   node.state = DIRTY;
   own(node);
+  if (inspector) instrument(node, "computed", options?.name);
   return (): T => readNode(node) as T;
 }
 
@@ -276,10 +317,11 @@ export function computed<T>(fn: () => T, options?: SignalOptions<T>): Accessor<T
  * Run a side effect now and again whenever a tracked dependency's value
  * changes. Returns a disposer. The effect may return a cleanup function.
  */
-export function effect(fn: () => void | (() => void)): () => void {
+export function effect(fn: () => void | (() => void), name?: string): () => void {
   const node = makeNode(undefined, fn as () => unknown, true);
   node.state = DIRTY;
   own(node);
+  if (inspector) instrument(node, "effect", name);
   if (batchDepth) enqueue(node);
   else updateIfNecessary(node); // run synchronously to collect deps
   return (): void => disposeNode(node);
