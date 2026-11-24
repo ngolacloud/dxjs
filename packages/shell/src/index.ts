@@ -36,21 +36,28 @@ export interface CommandPalette {
 
 const BOUNDARY = new Set([" ", "-", "/", "_", ":", "."]);
 
+/** The result of a fuzzy match: a rank `score` and the matched character
+ *  `positions` in `text` (ascending), for highlighting. */
+export interface FuzzyMatch {
+  score: number;
+  positions: number[];
+}
+
 /** Fuzzy match `query` against `text`. Returns null when `query` is not a
- *  (case-insensitive) subsequence of `text`, else a score where a higher value
- *  means a better match. Contiguous runs and matches at a word boundary score
+ *  (case-insensitive) subsequence of `text`, else its score and the matched
+ *  character positions. Contiguous runs and matches at a word boundary score
  *  higher; a contiguous substring (especially at a boundary) gets a strong bonus.
- *  An empty query scores 0 (matches everything). Exported so it is unit-testable
- *  and reusable (e.g. other search surfaces). */
-export function fuzzyScore(text: string, query: string): number | null {
-  if (query === "") return 0;
+ *  An empty query matches with score 0 and no positions. */
+export function fuzzyMatch(text: string, query: string): FuzzyMatch | null {
+  if (query === "") return { score: 0, positions: [] };
   const t = text.toLowerCase();
   const q = query.toLowerCase();
 
-  // Greedy subsequence walk, accumulating a base score.
+  // Greedy subsequence walk, accumulating a base score and the matched indices.
   let score = 0;
   let last = -1;
   let ti = 0;
+  const positions: number[] = [];
   for (let qi = 0; qi < q.length; qi++) {
     const c = q[qi] as string;
     let found = -1;
@@ -67,6 +74,7 @@ export function fuzzyScore(text: string, query: string): number | null {
     if (BOUNDARY.has(prev)) s += 5; // match sits at a word boundary
     if (last >= 0) s -= Math.min(3, (found - last - 1) * 0.5); // penalise the gap jumped
     score += s;
+    positions.push(found);
     last = found;
     ti = found + 1;
   }
@@ -79,7 +87,43 @@ export function fuzzyScore(text: string, query: string): number | null {
     const prev = idx > 0 ? (t[idx - 1] as string) : " ";
     if (BOUNDARY.has(prev)) score += 10;
   }
-  return score;
+  return { score, positions };
+}
+
+/** Rank-only fuzzy match: the score, or null when `query` is not a subsequence
+ *  of `text`. An empty query scores 0 (matches everything). */
+export function fuzzyScore(text: string, query: string): number | null {
+  return fuzzyMatch(text, query)?.score ?? null;
+}
+
+/** Split `title` into plain text and highlighted (`<mark>`) runs for the chars
+ *  `query` matched. Returns `[title]` when the query is empty or does not match
+ *  the title (e.g. it only matched on keywords). CSP-safe: text through the
+ *  escaped textContent sink, a class on <mark> — no inline style. */
+function highlightSegments(title: string, query: string): Array<string | TemplateResult> {
+  const q = query.trim();
+  if (!q) return [title];
+  const m = fuzzyMatch(title, q);
+  if (!m || m.positions.length === 0) return [title];
+  const hit = new Set(m.positions);
+  const out: Array<string | TemplateResult> = [];
+  let run = "";
+  let marking = false;
+  const flush = (): void => {
+    if (!run) return;
+    out.push(marking ? html`<mark class="dx-cmdk-hl">${run}</mark>` : run);
+    run = "";
+  };
+  for (let i = 0; i < title.length; i++) {
+    const on = hit.has(i);
+    if (on !== marking) {
+      flush();
+      marking = on;
+    }
+    run += title[i];
+  }
+  flush();
+  return out;
 }
 
 export function createCommandPalette(commands: Command[]): CommandPalette {
@@ -144,17 +188,16 @@ export function createCommandPalette(commands: Command[]): CommandPalette {
       @keydown=${onKey}
     />
     <ul class="dx-cmdk-list" role="listbox">
-      ${list(
-        () => results(),
-        (c) => c.id,
-        (c, i) =>
-          html`<li
-            class=${() => "dx-cmdk-item" + (activeSig() === i ? " is-active" : "")}
-            role="option"
-            aria-selected=${() => (activeSig() === i ? "true" : "false")}
-            @click=${() => runCommand(c)}
-          >${c.title}</li>`,
-      )}
+      ${() =>
+        results().map(
+          (c, i) =>
+            html`<li
+              class=${activeSig() === i ? "dx-cmdk-item is-active" : "dx-cmdk-item"}
+              role="option"
+              aria-selected=${activeSig() === i ? "true" : "false"}
+              @click=${() => runCommand(c)}
+            >${highlightSegments(c.title, querySig())}</li>`,
+        )}
     </ul>
   </div>`;
 

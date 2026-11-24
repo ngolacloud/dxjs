@@ -222,3 +222,6 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dx-toast.is-info { border-left: 3px solid var(--dx-accent); }
 .dx-toast-text { flex: 1; font-size: var(--dx-text-sm); }
 .dx-toast-x { border: 0; background: transparent; cursor: pointer; font-size: 18px; color: var(--dx-mut); line-height: 1; }
+
+/* Command-palette match highlight (@dxjs/shell) */
+.dx-cmdk-hl { background: var(--dx-accent-weak); color: var(--dx-accent); border-radius: 3px; font-weight: var(--dx-weight-semibold); }
