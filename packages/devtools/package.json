@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/devtools",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "dxjs devtools: a signals inspector that snapshots the live reactive graph (signals/computeds/effects, values, recompute counts) via the @dxjs/core inspector hook. Dev-only; zero-cost when not installed.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -16,9 +16,25 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
-  "dependencies": { "@dxjs/core": "0.0.1" },
-  "keywords": ["dxjs", "devtools", "inspector", "signals", "reactivity"],
-  "repository": { "type": "git", "url": "https://github.com/ngolacloud/dxjs.git", "directory": "packages/devtools" }
+  "dependencies": {
+    "@dxjs/core": "1.0.0"
+  },
+  "keywords": [
+    "dxjs",
+    "devtools",
+    "inspector",
+    "signals",
+    "reactivity"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/devtools"
+  }
 }

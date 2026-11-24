@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/terminal",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "dxjs terminal: a resilient, CSP-safe line-oriented web terminal whose output rides a @dxjs/transport LiveSource (SSE reconnect/backoff/resume). Escaped output, no eval/inline.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -16,9 +16,27 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md"],
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
-  "dependencies": { "@dxjs/core": "0.0.1", "@dxjs/dom": "0.0.1" },
-  "keywords": ["dxjs", "terminal", "xterm", "sse", "resilient", "csp"],
-  "repository": { "type": "git", "url": "https://github.com/ngolacloud/dxjs.git", "directory": "packages/terminal" }
+  "dependencies": {
+    "@dxjs/core": "1.0.0",
+    "@dxjs/dom": "1.0.0"
+  },
+  "keywords": [
+    "dxjs",
+    "terminal",
+    "xterm",
+    "sse",
+    "resilient",
+    "csp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/terminal"
+  }
 }
