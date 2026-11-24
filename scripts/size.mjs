@@ -18,7 +18,10 @@ const BUDGETS = [
   { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 3072 },
   { name: "@dxjs/canvas", entry: "packages/canvas/src/index.ts", budget: 3072 },
   { name: "@dxjs/edge", entry: "packages/edge/src/index.ts", budget: 3072 },
-  { name: "@dxjs/ui", entry: "packages/ui/src/index.ts", budget: 5120 },
+  // v2 kit: full control/feedback/nav/picker + advanced suite (calendar/holidays,
+  // gantt, planner, map, metrics, media, rating, xlsx export, Ctrl+K search/filter).
+  // Tree-shakeable (sideEffects:false) — apps pull only what they import.
+  { name: "@dxjs/ui", entry: "packages/ui/src/index.ts", budget: 18432 },
   { name: "@dxjs/query", entry: "packages/query/src/index.ts", budget: 2048 },
   { name: "@dxjs/forms", entry: "packages/forms/src/index.ts", budget: 2048 },
 ];

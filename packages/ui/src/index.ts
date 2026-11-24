@@ -5,21 +5,38 @@
 // on @dxjs/dom's safe sinks and @dxjs/core signals — no eval, output escaped,
 // deterministic teardown.
 
-import { signal, computed, type Accessor } from "@dxjs/core";
+import { signal, computed } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
+import { read, nextId, type Maybe, type Tone } from "./base.ts";
+import { exportMenu } from "./tables.ts";
+import type { ExportColumn, ExportFormat } from "./export.ts";
+
+export type { Tone, Size, SizeTier, Maybe } from "./base.ts";
+export { resolveSize, sizeClass } from "./base.ts";
 
 export { virtualList, visibleRange } from "./virtual.ts";
 export type { VirtualListOptions, VisibleRange } from "./virtual.ts";
 export { createThemeController, type Theme, type ThemeController } from "./theme.ts";
 
-export type Tone = "pos" | "neg" | "warn" | "mut";
-type Maybe<T> = T | Accessor<T>;
-const read = <T,>(v: Maybe<T>): T => (typeof v === "function" ? (v as () => T)() : v);
-
-// Monotonic ids for ARIA wiring (aria-labelledby → heading id). Module-scoped,
-// never on window; client-only (SSR hydration ids are a later concern).
-let uid = 0;
-const nextId = (prefix: string): string => `${prefix}-${++uid}`;
+// New kit modules (base controls, feedback, navigation, rich pickers, sparkline).
+export * from "./controls.ts";
+export * from "./feedback.ts";
+export * from "./nav.ts";
+export * from "./pickers.ts";
+export * from "./sparkline.ts";
+// Advanced suite (export, tables, calendar/holidays, metrics, media, map, rating,
+// gantt, planner, Ctrl+K search/filter).
+export * from "./export.ts";
+export * from "./tables.ts";
+export * from "./holidays.ts";
+export * from "./calendar.ts";
+export * from "./metrics.ts";
+export * from "./media.ts";
+export * from "./map.ts";
+export * from "./rating.ts";
+export * from "./gantt.ts";
+export * from "./planner.ts";
+export * from "./searchfilter.ts";
 
 // --- App shell ------------------------------------------------------------
 export interface NavItem {
@@ -128,6 +145,8 @@ export interface DataTableOptions<T> {
   title?: string;
   search?: boolean;
   pageSize?: number;
+  /** Add a CSV/XLS/XLSX export menu that exports the current (filtered+sorted) view. */
+  exportable?: boolean | { filename?: string; formats?: ExportFormat[] };
   /** Extra toolbar content, e.g. an Export button. */
   toolbar?: TemplateResult;
 }
@@ -229,6 +248,14 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
           /></div>`}
       <div class="dx-spacer"></div>
       ${o.toolbar ?? ""}
+      ${o.exportable
+        ? exportMenu<T>({
+            rows: () => sorted(),
+            columns: o.columns.map((c) => ({ key: c.key, label: c.label, value: c.value }) as ExportColumn<T>),
+            filename: (o.exportable === true ? undefined : o.exportable.filename) ?? (o.title ? o.title.toLowerCase().replace(/\s+/g, "-") : "export"),
+            formats: o.exportable === true ? undefined : o.exportable.formats,
+          })
+        : ""}
     </div>
     <div class="dx-tbl-wrap">
       <table class="dx-tbl" aria-label=${o.title ?? "Data table"}>
