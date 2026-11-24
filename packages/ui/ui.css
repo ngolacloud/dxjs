@@ -771,3 +771,17 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 .dx-sf-sugg { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 7px 10px; border-radius: var(--dx-radius-sm); font: inherit; font-size: var(--dx-text-md); color: var(--dx-ink-2); cursor: pointer; }
 .dx-sf-sugg:hover { background: var(--dx-accent-weak); }
 .dx-sf-q { color: var(--dx-accent); font-weight: 600; }
+
+/* --- Responsive app shell (drawer under ~860px) ------------------------ */
+.dx-burger { display: none; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid var(--dx-line); border-radius: var(--dx-radius); background: var(--dx-panel); color: var(--dx-ink); font-size: 17px; line-height: 1; cursor: pointer; flex: none; }
+.dx-nav-backdrop { display: none; }
+@media (max-width: 860px) {
+  .dx-shell { grid-template-columns: 1fr; }
+  .dx-side { position: fixed; top: 0; left: 0; bottom: 0; width: 248px; z-index: 70; transform: translateX(-100%); transition: transform .2s ease; overflow-y: auto; }
+  .dx-shell.is-nav-open .dx-side { transform: translateX(0); box-shadow: var(--dx-shadow-lg); }
+  .dx-nav-backdrop { display: block; position: fixed; inset: 0; background: rgba(15, 23, 42, .45); z-index: 60; opacity: 0; pointer-events: none; transition: opacity .2s; }
+  .dx-shell.is-nav-open .dx-nav-backdrop { opacity: 1; pointer-events: auto; }
+  .dx-burger { display: inline-flex; }
+  .dx-content { padding: var(--dx-space-4); }
+  .dx-top { padding: 10px var(--dx-space-4); }
+}

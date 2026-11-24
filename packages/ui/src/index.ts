@@ -7,7 +7,7 @@
 
 import { signal, computed } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
-import { read, nextId, type Maybe, type Tone } from "./base.ts";
+import { read, nextId, cx, type Maybe, type Tone } from "./base.ts";
 import { exportMenu } from "./tables.ts";
 import type { ExportColumn, ExportFormat } from "./export.ts";
 
@@ -55,13 +55,20 @@ export interface AppShellOptions {
   content: Maybe<TemplateResult>;
 }
 
-/** A dashboard shell: dark sidebar nav + top bar (search/topbar + user) + content. */
+/** A dashboard shell: dark sidebar nav + top bar (search/topbar + user) + content.
+ *  Responsive: below ~860px the sidebar becomes a slide-in drawer toggled by a
+ *  hamburger; a backdrop and selecting an item both close it (CSP-safe — a signal
+ *  drives a class, no inline styles). */
 export function appShell(o: AppShellOptions): TemplateResult {
+  const navOpen = signal(false);
   const navItem = (item: NavItem): TemplateResult =>
     html`<button
       class=${item.active ? "dx-nav-item is-active" : "dx-nav-item"}
       aria-current=${item.active ? "page" : false}
-      @click=${() => item.onSelect?.()}
+      @click=${() => {
+        item.onSelect?.();
+        navOpen.set(false);
+      }}
     >
       <span class="dx-dot" aria-hidden="true"></span>${item.label}
     </button>`;
@@ -78,13 +85,23 @@ export function appShell(o: AppShellOptions): TemplateResult {
     : o.topbar
       ? html`${() => read(o.topbar!)}`
       : html`<div class="dx-search"></div>`;
-  return html`<div class="dx-shell">
+  return html`<div class=${() => cx("dx-shell", navOpen() && "is-nav-open")}>
+    <div class="dx-nav-backdrop" @click=${() => navOpen.set(false)}></div>
     <aside class="dx-side">
       <div class="dx-brand">${o.brand}</div>
       <nav class="dx-nav" aria-label="Primary">${() => read(o.nav).map(navItem)}</nav>
     </aside>
     <div class="dx-main">
-      <header class="dx-top">${left}${user}</header>
+      <header class="dx-top">
+        <button
+          class="dx-burger"
+          type="button"
+          aria-label="Toggle navigation"
+          aria-expanded=${() => (navOpen() ? "true" : "false")}
+          @click=${() => navOpen.set(!navOpen())}
+        >☰</button>
+        ${left}${user}
+      </header>
       <main class="dx-content">${() => read(o.content)}</main>
     </div>
   </div>`;
