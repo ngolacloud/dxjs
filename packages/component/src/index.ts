@@ -60,10 +60,12 @@ export type { Context } from "@dxjs/core";
 
 export {
   createRouter,
+  Outlet,
   type Router,
   type Route,
   type RouteContext,
   type RouterOptions,
   type Guard,
   type Match,
+  type MatchLevel,
 } from "./router.ts";

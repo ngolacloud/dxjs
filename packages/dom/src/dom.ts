@@ -119,6 +119,13 @@ function val(v: unknown): unknown {
 
 // --- binding --------------------------------------------------------------
 function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): void {
+  if (name === "ref") {
+    // `<el ref=${(el) => …}>` — hand the real node to a callback (same contract
+    // as the JSX path's `ref`). Not reactive; fires once at bind time.
+    el.removeAttribute(name);
+    if (typeof value === "function") (value as (e: Element) => void)(el);
+    return;
+  }
   const prefix = name[0];
   if (prefix === "@") {
     const type = name.slice(1);
