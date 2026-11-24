@@ -10,19 +10,21 @@ export type Locale = "pt-AO" | "en";
 const messages = {
   "pt-AO": {
     shell: {
-      tagline: "Motor de UI reactivo · seguro por omissão",
+      tagline: "docs",
       language: "Idioma",
       theme: "Tema",
       light: "Claro",
       dark: "Escuro",
+      onThisPage: "Nesta página",
     },
     nav: {
       groupStart: "Início",
       groupGuide: "Guia",
+      groupComponents: "Componentes",
       groupPackages: "Pacotes",
       groupLearn: "Aprender",
       overview: "Visão geral",
-      gallery: "Componentes",
+      gallery: "Galeria",
       start: "Começar",
     },
     ex: {
@@ -35,6 +37,7 @@ const messages = {
       desktop: "Desktop",
       mobile: "Telemóvel",
     },
+    cd: { use: "Usar", populate: "Popular", props: "Propriedades" },
     landing: {
       kicker: "NgolaCloud · consola",
       title: "UI reactiva, minúscula e à prova de CSP.",
@@ -84,19 +87,21 @@ const messages = {
   },
   en: {
     shell: {
-      tagline: "Fine-grained reactive UI · secure by default",
+      tagline: "docs",
       language: "Language",
       theme: "Theme",
       light: "Light",
       dark: "Dark",
+      onThisPage: "On this page",
     },
     nav: {
       groupStart: "Start",
       groupGuide: "Guide",
+      groupComponents: "Components",
       groupPackages: "Packages",
       groupLearn: "Learn",
       overview: "Overview",
-      gallery: "Components",
+      gallery: "Gallery",
       start: "Getting started",
     },
     ex: {
@@ -109,6 +114,7 @@ const messages = {
       desktop: "Desktop",
       mobile: "Mobile",
     },
+    cd: { use: "Use", populate: "Populate", props: "Props" },
     landing: {
       kicker: "NgolaCloud · console",
       title: "Reactive UI, tiny and CSP-proof.",

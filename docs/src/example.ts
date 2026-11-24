@@ -61,7 +61,13 @@ export function preview(view: TemplateResult): TemplateResult {
       </div>
     </div>
     <div class=${() => "pv-stage is-" + mode()}>
-      <div class="pv-frame">${view}</div>
+      <div class="pv-device">
+        <div class="pv-chrome" aria-hidden="true">
+          <span class="pv-dot"></span><span class="pv-dot"></span><span class="pv-dot"></span>
+          <span class="pv-url">localhost · dxjs</span>
+        </div>
+        <div class="pv-frame">${view}</div>
+      </div>
     </div>
   </div>`;
 }

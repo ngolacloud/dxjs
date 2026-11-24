@@ -12,6 +12,7 @@ import { example, runnable, p, h2, callout } from "./example.ts";
 import { learnPages } from "./learn.ts";
 import { LandingPage } from "./landing.ts";
 import { GalleryPage } from "./gallery.ts";
+import { componentPages } from "./components.ts";
 
 export interface Page {
   id: string;
@@ -631,8 +632,9 @@ import.meta.hot?.accept();`,
 
 export const pages: Page[] = [
   { id: "overview", label: "Overview", labelKey: "nav.overview", group: "Start", view: LandingPage },
-  { id: "gallery", label: "Components", labelKey: "nav.gallery", group: "Start", view: GalleryPage },
+  { id: "gallery", label: "Gallery", labelKey: "nav.gallery", group: "Start", view: GalleryPage },
   { id: "start", label: "Getting started", labelKey: "nav.start", group: "Guide", view: GettingStarted },
+  ...componentPages,
   ...learnPages,
   { id: "core", label: "@dxjs/core", group: "Packages", view: CorePage },
   { id: "dom", label: "@dxjs/dom", group: "Packages", view: DomPage },

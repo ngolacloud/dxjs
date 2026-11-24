@@ -56,9 +56,10 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "networkidle" });
     await page.waitForFunction(() => window.__dxready === true, { timeout: 5000 });
 
-    // The shell (dogfooded @dxjs/ui) rendered with the nav.
-    assert.equal(await page.textContent(".dx-brand"), "dxjs");
-    assert.ok((await page.$$(".dx-nav-item")).length >= 8, "a nav entry per page");
+    // The delonix-style shell rendered with the grouped side nav.
+    assert.equal(await page.textContent(".dtop-name"), "dxjs");
+    assert.ok((await page.$$(".dnav-link")).length >= 8, "a nav entry per page");
+    assert.ok(await page.$(".dnav-grouplabel"), "grouped sidebar");
 
     // Default page = the bilingual landing hero.
     assert.ok(await page.$(".lp-title"), "landing hero rendered");
@@ -69,12 +70,12 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     const lbAfter = (await page.textContent(".lp-demo-live .dx-btn")).trim();
     assert.notEqual(lbAfter, lbBefore, `landing counter reacted (${lbBefore} → ${lbAfter})`);
     // The language switch flips the copy live (pt-AO → en), no reload.
-    await page.click(".dx-topbar-tools .dx-seg-item >> text=EN");
+    await page.click(".dtop .dx-seg-item >> text=EN");
     const enTitle = (await page.textContent(".lp-title")).trim();
     assert.notEqual(enTitle, ptTitle, `language toggled live (${ptTitle} → ${enTitle})`);
 
     // Component gallery: the v2 kit renders live (e.g. a switch + a date picker).
-    await page.click(".dx-nav-item >> text=Components");
+    await page.click(".dnav-link >> text=Gallery");
     await page.waitForSelector(".dx-switch", { timeout: 5000 });
     assert.ok(await page.$(".dx-dp-face"), "the date picker rendered in the gallery");
     assert.ok(await page.$(".dx-s2-face"), "the searchable select rendered in the gallery");
@@ -96,7 +97,7 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
 
     // Getting started: dual Browser(CDN)|Node runnable example with full file names,
     // syntax highlighting, copy buttons and a Desktop/Mobile preview toggle.
-    await page.click(".dx-nav-item >> text=Getting started");
+    await page.click(".dnav-link >> text=Getting started");
     await page.waitForSelector(".run-tabs", { timeout: 5000 });
     assert.ok((await page.textContent(".cb-name")).includes("index.html"), "code block shows the browser filename");
     assert.ok(await page.$(".cb-pre .tok-kw"), "syntax highlighting emitted token spans");
@@ -108,10 +109,10 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     assert.ok((await page.textContent(".run-pane:not([hidden]) .cb-pre")).includes("npm install"), "Node tab shows install step");
 
     // Responsive: the appShell exposes a hamburger (shown via CSS on small screens).
-    assert.ok(await page.$(".dx-burger"), "responsive hamburger present in the shell");
+    assert.ok(await page.$(".dtop-burger"), "responsive hamburger present in the shell");
 
     // Navigate to @dxjs/core and drive the live counter example.
-    await page.click(".dx-nav-item >> text=@dxjs/core");
+    await page.click(".dnav-link >> text=@dxjs/core");
     await page.waitForSelector(".demo-btn");
     // Live examples carry a Desktop/Mobile preview toggle; switching to Mobile
     // constrains the preview frame.
@@ -124,14 +125,14 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     assert.notEqual(after, before, `the live core example reacted (${before} → ${after})`);
 
     // Navigate to @dxjs/charts and assert Chart.js actually painted a canvas.
-    await page.click(".dx-nav-item >> text=@dxjs/charts");
+    await page.click(".dnav-link >> text=@dxjs/charts");
     await page.waitForSelector("canvas.dx-chart", { timeout: 5000 });
     await page.waitForTimeout(120);
     const px = await page.evaluate(painted);
     assert.ok(px.length >= 1 && px.every((n) => n > 500), `charts painted on the charts page (${px})`);
 
     // @dxjs/ui virtualList: 10,000 items but only a small window is in the DOM.
-    await page.click(".dx-nav-item >> text=@dxjs/ui");
+    await page.click(".dnav-link >> text=@dxjs/ui");
     await page.waitForSelector(".dx-vlist-row", { timeout: 5000 });
     const domRows = await page.$$eval(".dx-vlist-row", (els) => els.length);
     assert.ok(domRows > 0 && domRows < 60, `virtualized: few DOM rows for 10k items (got ${domRows})`);
