@@ -437,7 +437,140 @@ const ParityPage = component(() => html`
   ${p("signals ↔ useState/zustand · computed/effect ↔ useMemo/useEffect · html ↔ JSX · component/onMount ↔ hooks · createRouter ↔ react-router (basics) · renderToString/hydrate ↔ SSR · transport REST/SSE/gRPC · @dxjs/canvas ↔ @xyflow/react · @dxjs/ui · @dxjs/charts. And zod, i18next, xterm, dexie work as-is (framework-agnostic).")}
   ${h2("The gaps — now built ✓")}
   ${p("1. ✓ @dxjs/query (cache/dedupe/SWR/invalidate ↔ react-query) · 2. ✓ virtualList in @dxjs/ui (↔ react-virtual) · 3. ✓ @dxjs/forms (fields + zodValidate) · 4. ✓ onError error boundaries (@dxjs/core) · 5. ✓ createContext/provide/inject (@dxjs/core).")}
-  ${p("Still optional: nested routes/typed loaders, signals DevTools, defineElement — none blocks the migration. Full write-up: docs/parity/react-parity.md.")}
+  ${p("Now also built: nested routes with shared layouts + typed loaders (createRouter + Outlet). Still optional: signals DevTools, defineElement — none blocks the migration. Full write-up: docs/parity/react-parity.md.")}
+`);
+
+// --- Migration -------------------------------------------------------------
+const mapRow = (from: string, to: string, note: string): TemplateResult =>
+  html`<tr><td><code>${from}</code></td><td><code>${to}</code></td><td>${note}</td></tr>`;
+const mapTable = (caption: string, rows: TemplateResult[]): TemplateResult => html`
+  <table class="dx-tbl doc-map" aria-label=${caption}>
+    <thead><tr><th>From</th><th>dxjs</th><th>Notes</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+const MigrationPage = component(() => html`
+  ${head("Migration", "Coming from React or Angular? Here is the concept-for-concept map — and what changes in your head.")}
+  ${p("dxjs is fine-grained reactive: components run ONCE to build their view, and signals (not re-renders) drive updates. There is no VDOM, no dependency arrays, no change detection. That removes most of the footguns you carry from React/Angular.")}
+
+  ${h2("From React")}
+  ${mapTable("React to dxjs", [
+    mapRow("useState", "signal", "A getter/setter you call; reads inside a binding subscribe automatically."),
+    mapRow("useMemo", "computed", "Memoised derived value; no dependency array — tracked automatically."),
+    mapRow("useEffect", "effect", "Runs on tracked-dependency change; return a cleanup. No deps array."),
+    mapRow("JSX / createElement", "html`` or @dxjs/jsx", "Both compile to the SAME safe sinks; no eval, strict-CSP safe."),
+    mapRow("useContext", "inject(ctx)", "Read at construction; provide() wraps children synchronously."),
+    mapRow("ErrorBoundary", "onError / errorBoundary", "Client (onError) and SSR (errorBoundary) boundaries."),
+    mapRow("Suspense", "suspense()", "SSR streaming boundary (see Recipes)."),
+    mapRow("react-router", "createRouter + Outlet", "Nested routes, shared layouts, typed loaders."),
+    mapRow("react-query", "@dxjs/query", "Cache, dedupe, SWR, invalidate."),
+  ])}
+  ${p("The big mental shift: do NOT lift state to re-render. Put it in a signal; the one binding that reads it updates. A component body is a constructor, not a render function — it does not re-run.")}
+
+  ${h2("From Angular")}
+  ${mapTable("Angular to dxjs", [
+    mapRow("@Component template", "component(() => html``)", "A function returning a view; no decorators, no NgModules."),
+    mapRow("signal() / computed()", "signal() / computed()", "Same idea; no zone.js — updates are surgical, not change-detection sweeps."),
+    mapRow("@Input", "props argument", "Plain function parameter; pass accessors for reactive inputs."),
+    mapRow("@Output / EventEmitter", "callback props / @event", "Pass a function; bind with @event (addEventListener, never inline)."),
+    mapRow("*ngFor", "list(items, key, render)", "Keyed; stable nodes across reorder."),
+    mapRow("*ngIf", "() => cond ? a : b", "A reactive child accessor."),
+    mapRow("RouterOutlet", "Outlet()", "Nested layouts preserve state across child navigation."),
+    mapRow("DI providers", "createContext/provide/inject", "Construction-scoped DI, no hierarchical injector ceremony."),
+  ])}
+
+  ${h2("What you gain")}
+  ${p("~16× smaller bundles, a strict CSP with zero eval/inline (impossible for React without unsafe-eval), deterministic teardown, and SSR that streams. What you give up: a vast ecosystem of React-specific components — but framework-agnostic libraries (zod, xterm, dexie, chart.js) work as-is.")}
+`);
+
+// --- Recipes ---------------------------------------------------------------
+const RecipesPage = component(() => html`
+  ${head("Recipes", "Task-focused snippets for the things you will actually build.")}
+
+  ${h2("Nested routes with a shared layout + loader")}
+  ${example({
+    title: "A section layout that survives child navigation",
+    code: `import { createRouter, Outlet } from "@dxjs/component";
+
+const UsersLayout = component(() =>
+  html\`<div class="section">
+    <nav>…</nav>
+    \${Outlet()}            // the active child mounts here
+  </div>\`);
+
+const r = createRouter([
+  { path: "/users", component: UsersLayout, children: [
+    { path: "",    component: UsersIndex },
+    { path: ":id", component: UserDetail,
+      loader: (c) => fetch(\`/api/users/\${c.params.id}\`).then(r => r.json()) },
+  ]},
+]);
+r.outlet(document.getElementById("app"));
+
+// In UserDetail the loaded data is reactive:
+//   html\`<h1>\${() => c.data()?.name ?? "…"}</h1>\``,
+    note: "Navigating /users/1 → /users/2 re-mounts ONLY the child; UsersLayout (and its signals) is preserved.",
+  })}
+
+  ${h2("i18n — Angolan Portuguese by default")}
+  ${example({
+    title: "@dxjs/i18n: reactive locale, Kwanza, Intl",
+    code: `import { createI18n } from "@dxjs/i18n";
+
+const i18n = createI18n({
+  fallbackLocale: "pt-AO",
+  messages: {
+    "pt-AO": { greeting: "Olá, {name}!", nav: { users: "Utilizadores" } },
+    "en-US": { greeting: "Hello, {name}!" },
+  },
+});
+
+i18n.t("greeting", { name: "Ana" }); // "Olá, Ana!"
+i18n.currency(1234.5);               // "1 234,50 Kz"  (AOA default)
+i18n.n(1234567.89);                  // "1 234 567,89"
+
+// Reactive: a binding that read t/n re-derives on setLocale().`,
+    note: "Translation is dict lookup + {param} interpolation — no eval, strict-CSP safe.",
+  })}
+
+  ${h2("Streaming SSR with Suspense + error boundary")}
+  ${example({
+    title: "@dxjs/server: stream the shell, then async panels",
+    code: `import { renderToStream, suspense, errorBoundary } from "@dxjs/server";
+
+const page = html\`<main>
+  <h1>Dashboard</h1>
+  \${errorBoundary(
+    suspense("loading…", async () => {
+      const data = await getMetrics();   // slow
+      return html\`<section>\${data.total}</section>\`;
+    }),
+    (err) => html\`<div class="err">\${String(err)}</div>\`,
+  )}
+</main>\`;
+
+// A Web ReadableStream — edge-ready. The shell flushes first; the panel
+// streams in document order when its data resolves. No inline script → CSP-safe.
+return new Response(renderToStream(page), {
+  headers: { "content-type": "text/html; charset=utf-8" },
+});`,
+    note: "A failing or slow panel never blanks the page: the boundary streams a fallback, atomically.",
+  })}
+
+  ${h2("Dev server with HMR")}
+  ${example({
+    title: "@dxjs/dev: signal-preserving hot reload under strict CSP",
+    code: `# point the dev server at an entry module
+npx dxdev src/main.ts --css app.css --port 5173
+
+# edit a component's markup and save:
+#  • the view re-renders WITHOUT a full reload
+#  • a signal's value survives (store it in import.meta.hot.data)
+
+const count = (import.meta.hot?.data.count ??= signal(0));
+import.meta.hot?.accept();`,
+    note: "HMR rides a long-poll channel (plain fetch → connect-src 'self'); the swap is a dynamic import() of a same-origin module — no eval, no inline.",
+  })}
 `);
 
 export const pages: Page[] = [
@@ -453,4 +586,6 @@ export const pages: Page[] = [
   { id: "server", label: "@dxjs/server", group: "Packages", view: ServerPage },
   { id: "canvas", label: "@dxjs/canvas", group: "Packages", view: CanvasPage },
   { id: "parity", label: "dxjs vs React", group: "Guide", view: ParityPage },
+  { id: "migration", label: "Migration", group: "Guide", view: MigrationPage },
+  { id: "recipes", label: "Recipes", group: "Guide", view: RecipesPage },
 ];
