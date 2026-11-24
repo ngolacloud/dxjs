@@ -60,6 +60,43 @@ test("stale response cannot overwrite a newer one", async () => {
   });
 });
 
+test("retries a failing fetcher, then lands the value", async () => {
+  await createRoot(async (dispose) => {
+    let n = 0;
+    const r = resource(
+      async () => {
+        n++;
+        if (n < 3) throw new Error("boom");
+        return "ok";
+      },
+      { retries: 3, backoff: 0 },
+    );
+    assert.equal(r.loading(), true);
+    // Let the retries drain.
+    for (let i = 0; i < 6; i++) await tick();
+    assert.equal(r(), "ok");
+    assert.equal(r.error(), undefined);
+    assert.equal(n, 3, "failed twice, succeeded on the third attempt");
+    dispose();
+  });
+});
+
+test("a per-attempt timeout surfaces as the resource error", async () => {
+  await createRoot(async (dispose) => {
+    const r = resource(
+      (sig) =>
+        new Promise<string>((_res, reject) => {
+          sig.addEventListener("abort", () => reject(sig.reason ?? new Error("to")));
+        }),
+      { timeout: 20 },
+    );
+    await new Promise((res) => setTimeout(res, 60));
+    assert.notEqual(r.error(), undefined, "timeout turned into an error");
+    assert.equal(r.loading(), false);
+    dispose();
+  });
+});
+
 test("dispose aborts the in-flight request", async () => {
   let abortedSeen = false;
   await createRoot(async (dispose) => {

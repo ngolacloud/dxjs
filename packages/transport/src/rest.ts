@@ -3,13 +3,20 @@
 // Cancellation is first-class: pass a signal (resource() wires one to the
 // component owner so a request is aborted on unmount, and stale responses can
 // never overwrite newer state). Errors are typed and RFC-9457-aware.
+//
+// Resilience is opt-in via { timeout, retries, backoff } (see ./retry): a
+// per-attempt timeout aborts a hung request, and transient failures (network
+// errors, 5xx, 429, 408) are retried with exponential backoff. A 4xx (other
+// than 429/408) is a client error and never retried.
+
+import { type ResilienceOptions, attemptSignal, backoffDelay } from "./retry.ts";
 
 export interface HttpError extends Error {
   status: number;
   body: unknown;
 }
 
-export interface ClientOptions {
+export interface ClientOptions extends ResilienceOptions {
   baseUrl?: string;
   /** Bearer token provider; sent only in the Authorization header. */
   auth?: () => string | null | undefined;
@@ -19,7 +26,7 @@ export interface ClientOptions {
   fetch?: typeof fetch;
 }
 
-export interface RequestOptions {
+export interface RequestOptions extends ResilienceOptions {
   signal?: AbortSignal;
   query?: Record<string, string | number | boolean | undefined>;
   headers?: Record<string, string>;
@@ -58,34 +65,69 @@ function buildUrl(base: string, path: string, query?: RequestOptions["query"]): 
   return url;
 }
 
+/** A transient HTTP status worth retrying: server errors, rate-limit, timeout. */
+function retriableStatus(status: number): boolean {
+  return status >= 500 || status === 429 || status === 408;
+}
+
+function isHttpError(e: unknown): e is HttpError {
+  return e instanceof Error && e.name === "HttpError";
+}
+
 /** Create a REST client. */
 export function createClient(options: ClientOptions = {}): Client {
   const base = options.baseUrl ?? "";
 
   async function request<T>(method: string, path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
     const f = opts.fetch ?? options.fetch ?? fetch;
+    const timeout = opts.timeout ?? options.timeout ?? 0;
+    const retries = opts.retries ?? options.retries ?? 0;
+    const backoff = opts.backoff ?? options.backoff ?? 0;
+
     const headers: Record<string, string> = { "content-type": "application/json" };
     const token = options.auth?.();
     if (token) headers["authorization"] = "Bearer " + token;
     if (options.headers) Object.assign(headers, options.headers());
     if (opts.headers) Object.assign(headers, opts.headers);
 
-    const init: RequestInit = { method, headers };
-    if (body !== undefined) init.body = JSON.stringify(body);
-    if (opts.signal) init.signal = opts.signal;
+    const baseInit: RequestInit = { method, headers };
+    if (body !== undefined) baseInit.body = JSON.stringify(body);
+    const url = buildUrl(base, path, opts.query);
 
-    const res = await f(buildUrl(base, path, opts.query), init);
-    const text = await res.text();
-    let data: unknown = null;
-    if (text) {
+    for (let attempt = 0; ; attempt++) {
+      // The caller's abort is final; a per-attempt timeout is retriable.
+      const sig = attemptSignal(opts.signal, timeout);
+      const init = sig ? { ...baseInit, signal: sig } : baseInit;
       try {
-        data = JSON.parse(text);
-      } catch {
-        data = text;
+        const res = await f(url, init);
+        const text = await res.text();
+        let data: unknown = null;
+        if (text) {
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = text;
+          }
+        }
+        if (res.ok) return data as T;
+        if (attempt < retries && retriableStatus(res.status)) {
+          await backoffDelay(backoff, attempt + 1);
+          continue;
+        }
+        throw httpError(res.status, data);
+      } catch (e) {
+        // A non-retriable HTTP status was thrown above — surface it as-is.
+        if (isHttpError(e)) throw e;
+        // The caller cancelled: never retry, never swallow.
+        if (opts.signal?.aborted) throw e;
+        // Network error or per-attempt timeout: retry while budget remains.
+        if (attempt < retries) {
+          await backoffDelay(backoff, attempt + 1);
+          continue;
+        }
+        throw e;
       }
     }
-    if (!res.ok) throw httpError(res.status, data);
-    return data as T;
   }
 
   return {
