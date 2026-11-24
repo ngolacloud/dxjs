@@ -58,6 +58,8 @@ export function mount<P>(comp: Component<P>, host: Element, props: P): () => voi
 export { onCleanup, onError, createContext, provide, inject } from "@dxjs/core";
 export type { Context } from "@dxjs/core";
 
+export { defineElement, type DefineElementOptions, type ElementProps } from "./element.ts";
+
 export {
   createRouter,
   Outlet,

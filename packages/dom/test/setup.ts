@@ -11,6 +11,7 @@ g.document = win.document;
 g.Node = win.Node;
 g.Element = win.Element;
 g.HTMLElement = win.HTMLElement;
+g.customElements = win.customElements;
 g.Event = win.Event;
 g.CustomEvent = win.CustomEvent;
 g.KeyboardEvent = win.KeyboardEvent;
