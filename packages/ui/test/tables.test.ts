@@ -38,6 +38,64 @@ test("exportMenu can restrict formats", () => {
   assert.equal(host.querySelectorAll(".dx-export-item").length, 1);
 });
 
+test("tableList sortable column: click reorders rows + flips aria-sort", () => {
+  const host = body();
+  const unordered: Row[] = [
+    { id: "b", name: "Globex", mrr: 120 },
+    { id: "a", name: "Acme", mrr: 49 },
+  ];
+  render(
+    tableList<Row>({
+      columns: [{ key: "name", label: "Company", sortable: true }, { key: "mrr", label: "MRR", numeric: true, value: (r) => r.mrr }],
+      rows: unordered,
+      rowKey: (r) => r.id,
+    }),
+    host,
+  );
+  const firstName = (): string => host.querySelector("tbody tr td")!.textContent!.trim();
+  const nameTh = host.querySelector("thead th") as Element;
+  assert.equal(firstName(), "Globex", "unsorted keeps source order");
+  assert.equal(nameTh.getAttribute("aria-sort"), "none");
+
+  fire(nameTh, "click");
+  assert.equal(firstName(), "Acme", "ascending sort by name");
+  assert.equal(nameTh.getAttribute("aria-sort"), "ascending");
+
+  fire(nameTh, "click");
+  assert.equal(firstName(), "Globex", "descending sort by name");
+  assert.equal(nameTh.getAttribute("aria-sort"), "descending");
+});
+
+test("tableList selection: header toggles all + onSelectionChange + is-selected", () => {
+  const host = body();
+  let last: Array<string | number> = [];
+  render(
+    tableList<Row>({
+      columns: [{ key: "name", label: "Company" }],
+      rows,
+      rowKey: (r) => r.id,
+      selectable: true,
+      onSelectionChange: (keys) => { last = keys; },
+    }),
+    host,
+  );
+  const head = host.querySelector("thead .dx-tbl-sel input") as HTMLInputElement;
+  head.checked = true;
+  fire(head, "change");
+  assert.deepEqual([...last].sort(), ["a", "b"]);
+  assert.equal(host.querySelectorAll("tbody tr.is-selected").length, 2);
+});
+
+test("tableList loading renders skeleton rows", () => {
+  const host = body();
+  render(
+    tableList<Row>({ columns: [{ key: "name", label: "Company" }], rows, rowKey: (r) => r.id, loading: true }),
+    host,
+  );
+  assert.ok(host.querySelectorAll("tbody tr.dx-tbl-skel").length > 0);
+  assert.ok(host.querySelector(".dx-skel"));
+});
+
 test("dataTable gains an export menu when exportable", () => {
   const host = body();
   render(

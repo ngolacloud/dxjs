@@ -785,3 +785,21 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
   .dx-content { padding: var(--dx-space-4); }
   .dx-top { padding: 10px var(--dx-space-4); }
 }
+
+/* --- Rich table: alignment, density, stripes, selection, sticky, skeleton -- */
+.dx-tbl th.dx-ta-left, .dx-tbl td.dx-ta-left { text-align: left; }
+.dx-tbl th.dx-ta-center, .dx-tbl td.dx-ta-center { text-align: center; }
+.dx-tbl th.dx-ta-right, .dx-tbl td.dx-ta-right { text-align: right; }
+.dx-tbl.is-compact th, .dx-tbl.is-compact td { padding-top: 5px; padding-bottom: 5px; }
+.dx-tbl.is-striped tbody tr:nth-child(even) { background: var(--dx-panel-2); }
+.dx-tbl.is-striped tbody tr:hover { background: var(--dx-gray-50); }
+.dx-tbl tbody tr.is-click { cursor: pointer; }
+.dx-tbl tbody tr.is-click:focus-visible { outline: 2px solid var(--dx-ring); outline-offset: -2px; }
+.dx-tbl tbody tr.is-selected { background: var(--dx-accent-weak); }
+.dx-tbl tbody tr.is-selected:hover { background: var(--dx-accent-weak); }
+.dx-tbl th.dx-tbl-sel, .dx-tbl td.dx-tbl-sel { width: 1%; padding-right: 0; white-space: nowrap; }
+.dx-tbl .dx-tbl-sel .dx-check { gap: 0; }
+.dx-tbl.is-sticky thead th { position: sticky; top: 0; z-index: 2; }
+.dx-tbl tbody tr.dx-tbl-skel:hover { background: transparent; }
+.dx-tbl tbody tr.dx-tbl-skel td { padding-top: 11px; padding-bottom: 11px; }
+.dx-tbl .dx-tbl-skel .dx-skel-line { margin: 0; width: 100%; }

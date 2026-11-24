@@ -8,6 +8,7 @@
 import { signal, computed } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
 import { read, nextId, cx, type Maybe, type Tone } from "./base.ts";
+import { checkbox } from "./controls.ts";
 import { exportMenu } from "./tables.ts";
 import type { ExportColumn, ExportFormat } from "./export.ts";
 
@@ -150,6 +151,8 @@ export interface Column<T> {
   label: string;
   sortable?: boolean;
   numeric?: boolean;
+  /** Cell alignment. `numeric` implies "right" unless overridden here. */
+  align?: "left" | "center" | "right";
   /** Sort/filter/display value (defaults to `row[key]`). */
   value?: (row: T) => string | number;
   /** Custom cell content (defaults to the string value). */
@@ -166,18 +169,50 @@ export interface DataTableOptions<T> {
   exportable?: boolean | { filename?: string; formats?: ExportFormat[] };
   /** Extra toolbar content, e.g. an Export button. */
   toolbar?: TemplateResult;
+  /** Leading checkbox column; the header checkbox toggles the current page. */
+  selectable?: boolean;
+  /** Fires with the selected `rowKey`s whenever the selection changes. */
+  onSelectionChange?: (keys: Array<string | number>) => void;
+  /** Click (or Enter) on a row invokes this (rows become focusable + pointer). */
+  onRow?: (row: T) => void;
+  /** While true, render skeleton rows instead of the empty state (header stays). */
+  loading?: Maybe<boolean>;
+  /** Row padding: "comfortable" (default) or "compact". */
+  density?: "compact" | "comfortable";
+  /** Zebra-stripe body rows. */
+  striped?: boolean;
+  /** Keep the header visible while the body scrolls inside `.dx-tbl-wrap`. */
+  stickyHeader?: boolean;
 }
 
 const cellValue = <T,>(col: Column<T>, row: T): string | number =>
   col.value ? col.value(row) : ((row as Record<string, unknown>)[col.key] as string | number) ?? "";
 
-/** A sortable, searchable, paginated data table (keyed rows). */
+/** Resolve the alignment class for a column (numeric ⇒ right unless `align` set). */
+const alignClass = <T,>(col: { align?: "left" | "center" | "right"; numeric?: boolean }): string => {
+  const a = col.align ?? (col.numeric ? "right" : null);
+  return a ? `dx-ta-${a}` : "";
+};
+
+/** A sortable, searchable, paginated data table (keyed rows).
+ *
+ * Minimal call — just `columns`, `rows`, `rowKey`:
+ * ```ts
+ * dataTable({
+ *   columns: [{ key: "name", label: "Name" }, { key: "mrr", label: "MRR", numeric: true }],
+ *   rows: accounts,
+ *   rowKey: (r) => r.id,
+ * });
+ * ```
+ * Opt-in extras: `selectable`, `onRow`, `loading`, `striped`, `density`,
+ * `stickyHeader`, per-column `sortable`/`align`. */
 export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
   const query = signal("");
   const sortKey = signal<string | null>(null);
   const sortDesc = signal(false);
   const page = signal(0);
   const pageSize = o.pageSize ?? 10;
+  const sel = signal<Set<string | number>>(new Set());
 
   const filtered = computed(() => {
     const q = query().trim().toLowerCase();
@@ -217,7 +252,7 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
   };
 
   const header = (col: Column<T>): TemplateResult => {
-    const cls = col.sortable ? "is-sortable" : "";
+    const cls = cx(col.sortable && "is-sortable", alignClass(col));
     const arrow = (): string => (sortKey() === col.key ? (sortDesc() ? "▼" : "▲") : "");
     // aria-sort reflects the live sort state for THIS column (only on sortable
     // headers, per ARIA). Keyboard: a sortable header is focusable and Enter/Space
@@ -239,12 +274,66 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
     >${col.label}<span class="dx-arrow" aria-hidden="true">${arrow}</span></th>`;
   };
 
-  const row = (r: T): TemplateResult =>
-    html`<tr>${list(
-      o.columns,
-      (c) => c.key,
-      (c) => html`<td class=${c.numeric ? "dx-num" : ""}>${c.render ? c.render(r) : String(cellValue(c, r))}</td>`,
-    )}</tr>`;
+  // --- selection (keyed by rowKey; header toggles the current page) --------
+  const emit = (next: Set<string | number>): void => {
+    sel.set(next);
+    o.onSelectionChange?.([...next]);
+  };
+  const setSel = (key: string | number, on: boolean): void => {
+    const next = new Set(sel());
+    if (on) next.add(key);
+    else next.delete(key);
+    emit(next);
+  };
+  const pageKeys = (): Array<string | number> => paged().map((r) => o.rowKey(r));
+  const allOnPage = (): boolean => {
+    const ks = pageKeys();
+    return ks.length > 0 && ks.every((k) => sel().has(k));
+  };
+  const togglePage = (on: boolean): void => {
+    const next = new Set(sel());
+    for (const k of pageKeys()) if (on) next.add(k); else next.delete(k);
+    emit(next);
+  };
+
+  const cell = (c: Column<T>, r: T): TemplateResult =>
+    html`<td class=${cx(c.numeric && "dx-num", alignClass(c))}>${c.render ? c.render(r) : String(cellValue(c, r))}</td>`;
+
+  const row = (r: T): TemplateResult => {
+    const key = o.rowKey(r);
+    const onKey = o.onRow
+      ? (e: KeyboardEvent): void => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            o.onRow!(r);
+          }
+        }
+      : undefined;
+    return html`<tr
+      class=${() => cx(o.selectable && sel().has(key) && "is-selected", o.onRow && "is-click")}
+      tabindex=${o.onRow ? "0" : false}
+      @click=${o.onRow ? () => o.onRow!(r) : undefined}
+      @keydown=${onKey}
+    >${o.selectable
+        ? html`<td class="dx-tbl-sel" @click=${(e: Event) => e.stopPropagation()}>${checkbox({
+            checked: () => sel().has(key),
+            onChange: (on) => setSel(key, on),
+          })}</td>`
+        : ""}${list(o.columns, (c) => c.key, (c) => cell(c, r))}</tr>`;
+  };
+
+  // Skeleton body: N shimmer rows spanning every column while `loading`.
+  const colCount = (): number => o.columns.length + (o.selectable ? 1 : 0);
+  const skeletonBody = (): TemplateResult => {
+    const n = Math.min(pageSize, 5);
+    const skelRow = (): TemplateResult =>
+      html`<tr class="dx-tbl-skel" aria-hidden="true">${Array.from(
+        { length: colCount() },
+        () => html`<td><span class="dx-skel dx-skel-line"></span></td>`,
+      )}</tr>`;
+    return html`${Array.from({ length: n }, skelRow)}`;
+  };
+  const isLoading = (): boolean => read(o.loading ?? false);
 
   const from = (): number => (total() === 0 ? 0 : Math.min(page(), pageCount() - 1) * pageSize + 1);
   const to = (): number => Math.min(from() + pageSize - 1, total());
@@ -275,12 +364,14 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
         : ""}
     </div>
     <div class="dx-tbl-wrap">
-      <table class="dx-tbl" aria-label=${o.title ?? "Data table"}>
-        <thead><tr>${list(o.columns, (c) => c.key, header)}</tr></thead>
-        <tbody>${list(() => paged(), (r) => o.rowKey(r), row)}</tbody>
+      <table class=${cx("dx-tbl", o.density === "compact" && "is-compact", o.striped && "is-striped", o.stickyHeader && "is-sticky")} aria-label=${o.title ?? "Data table"}>
+        <thead><tr>${o.selectable
+          ? html`<th class="dx-tbl-sel">${checkbox({ checked: () => allOnPage(), onChange: (on) => togglePage(on) })}</th>`
+          : ""}${list(o.columns, (c) => c.key, header)}</tr></thead>
+        <tbody>${() => (isLoading() ? skeletonBody() : "")}${list(() => (isLoading() ? [] : paged()), (r) => o.rowKey(r), row)}</tbody>
       </table>
     </div>
-    ${() => (total() === 0 ? html`<div class="dx-tbl-empty" role="status">No records match your filter.</div>` : "")}
+    ${() => (!isLoading() && total() === 0 ? html`<div class="dx-tbl-empty" role="status">No records match your filter.</div>` : "")}
     <div class="dx-tbl-foot">
       <span aria-live="polite">Showing ${from} – ${to} of ${total}</span>
       <div class="dx-spacer"></div>
