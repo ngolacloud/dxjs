@@ -26,3 +26,6 @@ e2e/hmr/.work/
 
 # session contracts / local agent state
 .claude/
+
+# cloud-shell example build artifact
+examples/cloud-shell/dist/

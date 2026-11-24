@@ -1,0 +1,8 @@
+/* cloud-shell layout — same-origin (style-src 'self'), no inline styles. Builds on
+   the @dxjs/ui tokens; just sizes the routed page area and its panels. */
+.cs-page { height: calc(100vh - 160px); }
+.cs-panel { height: 100%; }
+.cs-theme { white-space: nowrap; }
+/* Give the terminal / log panels a real height inside the page. */
+.cs-panel .dx-term { height: 100%; }
+.cs-panel .dx-vlist { height: 100%; }

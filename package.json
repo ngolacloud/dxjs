@@ -25,7 +25,10 @@
     "test:jsx": "node --conditions=development --test packages/jsx/test/e2e/run.mjs",
     "docs:build": "node docs/build.mjs",
     "docs:test:chrome": "node docs/build.mjs && DXJS_PW_CHANNEL=chrome node --test docs/test/docs.test.mjs",
-    "check": "npm run gate:no-eval && npm run gate:jsx-types && npm test && npm run gate:size"
+    "check": "npm run gate:no-eval && npm run gate:jsx-types && npm test && npm run gate:size",
+    "shell:build": "node examples/cloud-shell/build.mjs",
+    "shell:serve": "node examples/cloud-shell/build.mjs && node examples/cloud-shell/serve.mjs",
+    "test:shell": "node examples/cloud-shell/build.mjs && node --test examples/cloud-shell/test/browser.test.mjs"
   },
   "repository": {
     "type": "git",
