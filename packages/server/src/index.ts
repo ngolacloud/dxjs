@@ -6,6 +6,8 @@ export {
   renderToStringAsync,
   renderToStream,
   renderToChunks,
+  renderToStreamOOO,
+  renderToChunksOOO,
   suspense,
   errorBoundary,
   planParts,
@@ -13,4 +15,5 @@ export {
   type SuspenseResult,
   type ErrorBoundaryResult,
 } from "./render.ts";
+export { installStreamClient, swapStreamSlots, swapStreamTemplate } from "./stream-client.ts";
 export { hydrate, hydrateReplace } from "./hydrate.ts";

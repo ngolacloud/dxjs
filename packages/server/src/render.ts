@@ -252,6 +252,126 @@ export function renderToStream(view: TemplateResult): ReadableStream<Uint8Array>
   });
 }
 
+// --- out-of-order streaming SSR -------------------------------------------
+// Unlike `renderToStream` (which awaits each Suspense in document order), this
+// flushes the whole shell FIRST with a `<dxs-slot data-dxs="N">fallback</dxs-slot>`
+// placeholder per boundary, then streams each boundary's real content AS IT
+// RESOLVES (any order) as `<template data-dxs-content="N">…</template>`. A tiny
+// same-origin client (`installStreamClient`, bundled by the consumer → script-src
+// 'self') swaps each template into its slot. No inline script, no eval → strict-CSP
+// safe even though content arrives out of document order.
+
+interface CollectState {
+  nextId: number;
+}
+interface PendingBoundary {
+  id: number;
+  boundary: SuspenseResult;
+}
+
+/** Render a renderable to HTML, turning each Suspense into a numbered placeholder
+ *  slot and pushing its boundary onto `queue` (to be resolved + streamed later). */
+function renderCollecting(value: unknown, state: CollectState, queue: PendingBoundary[]): string {
+  if (isList(value)) {
+    const arr =
+      typeof value.items === "function" ? untrack(() => (value.items as () => unknown[])()) : value.items;
+    return arr.map((item, i) => renderCollecting(value.render(item, i), state, queue)).join("");
+  }
+  if (isSuspense(value)) {
+    const id = ++state.nextId;
+    queue.push({ id, boundary: value });
+    return `<dxs-slot data-dxs="${id}">${renderCollecting(value.fallback, state, queue)}</dxs-slot>`;
+  }
+  if (isErrorBoundary(value)) {
+    try {
+      return renderCollecting(value.children, state, queue);
+    } catch (err) {
+      return renderCollecting(value.fallback(err), state, queue);
+    }
+  }
+  const v = unwrap(value);
+  if (v == null || v === false || v === true || v === "") return "";
+  if (isTemplate(v)) return renderTemplateCollecting(v, state, queue);
+  if (Array.isArray(v)) return v.map((x) => renderCollecting(x, state, queue)).join("");
+  return escape(String(v));
+}
+
+function renderTemplateCollecting(view: TemplateResult, state: CollectState, queue: PendingBoundary[]): string {
+  const { strings, values } = view;
+  const ctx = scanContexts(strings);
+  let out = "";
+  for (let i = 0; i < strings.length; i++) {
+    out += strings[i];
+    if (i < values.length) {
+      if (ctx[i] === "child") out += renderCollecting(values[i], state, queue);
+      else out = appendAttr(out, values[i]);
+    }
+  }
+  return out;
+}
+
+async function* oooChunks(view: TemplateResult): AsyncGenerator<string> {
+  const state: CollectState = { nextId: 0 };
+  const queue: PendingBoundary[] = [];
+  // 1) the shell, with a placeholder slot per boundary — flushed immediately.
+  yield renderTemplateCollecting(view, state, queue);
+
+  // 2) resolve boundaries AS COMPLETED (not in document order), streaming each.
+  type Settled = { id: number; result?: unknown; error?: unknown; ref: Promise<Settled> };
+  const pool = new Set<Promise<Settled>>();
+  const start = (b: PendingBoundary): void => {
+    // Assigned synchronously below, before the async body (which reads `ref`) runs;
+    // the `!` tells TS what its definite-assignment analysis can't see here.
+    let ref!: Promise<Settled>;
+    ref = (async (): Promise<Settled> => {
+      try {
+        return { id: b.id, result: await b.boundary.load(), ref };
+      } catch (err) {
+        return { id: b.id, error: err, ref };
+      }
+    })();
+    pool.add(ref);
+  };
+  for (const b of queue.splice(0)) start(b);
+
+  while (pool.size) {
+    const settled = await Promise.race(pool);
+    pool.delete(settled.ref);
+    if ("error" in settled) continue; // a rejected boundary keeps its fallback slot
+    // The resolved content may itself contain nested Suspense → more pendings.
+    const html = renderCollecting(settled.result, state, queue);
+    for (const b of queue.splice(0)) start(b);
+    yield `<template data-dxs-content="${settled.id}">${html}</template>`;
+  }
+}
+
+/** Render a view to an async string generator, streaming Suspense boundaries
+ *  out-of-order (shell first, then each boundary as it resolves). */
+export function renderToChunksOOO(view: TemplateResult): AsyncGenerator<string> {
+  return oooChunks(view);
+}
+
+/** Out-of-order streaming SSR to a Web `ReadableStream<Uint8Array>`. Pair with
+ *  `installStreamClient` on the browser (same-origin, script-src 'self'). */
+export function renderToStreamOOO(view: TemplateResult): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const gen = oooChunks(view);
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { value, done } = await gen.next();
+        if (done) controller.close();
+        else controller.enqueue(encoder.encode(value));
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+    cancel() {
+      void gen.return(undefined);
+    },
+  });
+}
+
 /** The per-value binding plan of a template, derived from its static strings. */
 export function planParts(
   strings: ReadonlyArray<string>,
