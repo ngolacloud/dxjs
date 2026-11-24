@@ -6,6 +6,7 @@
 // dispose (unmount) the in-flight request is aborted.
 
 import { signal, effect, onCleanup, untrack, type Accessor } from "@dxjs/core";
+import { type ResilienceOptions, attemptSignal, backoffDelay } from "./retry.ts";
 
 export interface Resource<T> extends Accessor<T | undefined> {
   loading: Accessor<boolean>;
@@ -13,7 +14,7 @@ export interface Resource<T> extends Accessor<T | undefined> {
   refetch(): void;
 }
 
-export interface ResourceOptions<T> {
+export interface ResourceOptions<T> extends ResilienceOptions {
   initial?: T;
 }
 
@@ -25,6 +26,9 @@ export function resource<T>(
   const data = signal<T | undefined>(options.initial);
   const loading = signal(false);
   const error = signal<unknown>(undefined);
+  const timeout = options.timeout ?? 0;
+  const retries = options.retries ?? 0;
+  const backoff = options.backoff ?? 0;
   let controller: AbortController | null = null;
   let gen = 0;
 
@@ -32,24 +36,35 @@ export function resource<T>(
     const my = ++gen;
     if (controller) controller.abort();
     controller = new AbortController();
-    const sig = controller.signal;
+    const outer = controller.signal;
     // Writes are untracked so they don't make the effect depend on its own state.
     untrack(() => {
       loading.set(true);
       error.set(undefined);
     });
-    fetcher(sig).then(
-      (v) => {
-        if (my !== gen || sig.aborted) return;
-        data.set(v);
-        loading.set(false);
-      },
-      (e) => {
-        if (my !== gen || sig.aborted) return;
-        error.set(e);
-        loading.set(false);
-      },
-    );
+    // `outer` cancels the whole resource (refetch/dispose); a per-attempt
+    // timeout only cancels one try and is retried while budget remains.
+    const attempt = (n: number): void => {
+      fetcher(attemptSignal(outer, timeout) ?? outer).then(
+        (v) => {
+          if (my !== gen || outer.aborted) return;
+          data.set(v);
+          loading.set(false);
+        },
+        (e) => {
+          if (my !== gen || outer.aborted) return;
+          if (n < retries) {
+            void backoffDelay(backoff, n + 1).then(() => {
+              if (my === gen && !outer.aborted) attempt(n + 1);
+            });
+            return;
+          }
+          error.set(e);
+          loading.set(false);
+        },
+      );
+    };
+    attempt(0);
   };
 
   // Re-run when a dependency read synchronously inside `fetcher` changes.

@@ -1,0 +1,41 @@
+{
+  "name": "@dxjs/query",
+  "version": "1.0.0",
+  "description": "Cached, deduped, stale-while-revalidate async queries for dxjs (the signal-reactive answer to react-query), with key-based invalidation.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "1.0.0"
+  },
+  "keywords": [
+    "dxjs",
+    "query",
+    "cache",
+    "fetch",
+    "stale-while-revalidate"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/query"
+  }
+}

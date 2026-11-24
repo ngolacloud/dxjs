@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": "Declaration-only build config. esbuild emits the runtime .js (see scripts/build.mjs); tsc emits ONLY the .d.ts here. Sources import siblings with explicit .ts extensions, so we keep allowImportingTsExtensions (from tsconfig.base.json) and rewrite .ts -> .js in the emitted declarations so they resolve to the sibling .d.ts.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "rewriteRelativeImportExtensions": true,
+    "sourceMap": false,
+    "composite": false,
+    "types": []
+  }
+}

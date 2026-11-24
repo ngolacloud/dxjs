@@ -34,6 +34,35 @@ function isTemplate(v: unknown): v is TemplateResult {
   return !!v && typeof v === "object" && (v as { _dx?: unknown })._dx === true;
 }
 
+// --- JSX bridge -----------------------------------------------------------
+// The optional `@dxjs/jsx` runtime compiles <tags>/components into these light
+// DESCRIPTORS (a recipe, not a VDOM — instantiated ONCE, then fine-grained
+// effects take over, exactly like `html`). This one renderer realizes them into
+// real DOM + reactive bindings through the SAME safe sinks, so JSX and html`…`
+// interleave freely and all DOM creation stays here (CSP-safe, no eval).
+
+/** Marker for a fragment "tag" (`<>…</>`): renders its children with no wrapper. */
+export const Fragment: unique symbol = Symbol.for("dxjs.Fragment");
+
+/** A realized JSX node description produced by `@dxjs/jsx`. */
+export interface ElementResult {
+  readonly _dxel: true;
+  readonly type: string | typeof Fragment | ((props: Record<string, unknown>) => unknown);
+  readonly props: Record<string, unknown>;
+}
+
+/** Build a JSX descriptor. The jsx-runtime's `jsx`/`jsxs` delegate here. */
+export function jsxElement(
+  type: ElementResult["type"],
+  props: Record<string, unknown> | null,
+): ElementResult {
+  return { _dxel: true, type, props: props ?? {} };
+}
+
+function isElement(v: unknown): v is ElementResult {
+  return !!v && typeof v === "object" && (v as { _dxel?: unknown })._dxel === true;
+}
+
 // --- compile (once per call-site) ----------------------------------------
 const cache = new WeakMap<TemplateStringsArray, HTMLTemplateElement>();
 
@@ -90,6 +119,13 @@ function val(v: unknown): unknown {
 
 // --- binding --------------------------------------------------------------
 function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): void {
+  if (name === "ref") {
+    // `<el ref=${(el) => …}>` — hand the real node to a callback (same contract
+    // as the JSX path's `ref`). Not reactive; fires once at bind time.
+    el.removeAttribute(name);
+    if (typeof value === "function") (value as (e: Element) => void)(el);
+    return;
+  }
   const prefix = name[0];
   if (prefix === "@") {
     const type = name.slice(1);
@@ -112,7 +148,9 @@ function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): vo
   if (prefix === "?") {
     const attr = name.slice(1);
     el.removeAttribute(name);
-    ds.push(effect(() => el.toggleAttribute(attr, !!val(value))));
+    ds.push(effect(() => {
+      el.toggleAttribute(attr, !!val(value));
+    }));
     return;
   }
   ds.push(effect(() => {
@@ -127,8 +165,109 @@ function renderOne(v: unknown): Instance {
     return { nodes: [], dispose: () => {} };
   }
   if (isTemplate(v)) return instantiate(v);
+  if (isElement(v)) return realize(v);
   const text = document.createTextNode(String(v)); // textContent sink: auto-escaped
   return { nodes: [text], dispose: () => {} };
+}
+
+// --- JSX realization (shares every sink/effect with the html path) ---------
+const EMPTY: Instance = { nodes: [], dispose: () => {} };
+
+/** camelCase → kebab-case, for style property names. */
+function dashCase(k: string): string {
+  return k.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
+}
+
+/** Form-control attributes that must bind as a live PROPERTY, not an attribute. */
+const AS_PROPERTY = new Set(["value", "checked", "selected", "indeterminate"]);
+
+/** Bind one JSX prop to a safe DOM sink. Events are addEventListener (never an
+ *  inline handler); reactive values (accessors) and static values both supported. */
+function bindProp(el: Element, name: string, value: unknown, ds: Disposer[]): void {
+  if (name === "key") return; // consumed by the list/runtime layer
+  if (name === "ref") {
+    if (typeof value === "function") (value as (e: Element) => void)(el);
+    return;
+  }
+  // Events: onClick / onInput / on:click → addEventListener("click", …).
+  if (name.length > 2 && name[0] === "o" && name[1] === "n") {
+    const third = name[2] as string;
+    const type = third === ":" ? name.slice(3) : third >= "A" && third <= "Z" ? name.slice(2).toLowerCase() : "";
+    if (type) {
+      if (typeof value === "function") {
+        const handler = value as EventListener;
+        el.addEventListener(type, handler);
+        ds.push(() => el.removeEventListener(type, handler));
+      }
+      return;
+    }
+  }
+  if (name === "className") name = "class";
+  if (name === "style" && value !== null && typeof value === "object" && typeof value !== "function") {
+    const style = (el as HTMLElement).style;
+    for (const k in value as Record<string, unknown>) {
+      style.setProperty(dashCase(k), String((value as Record<string, unknown>)[k]));
+    }
+    return;
+  }
+  if (AS_PROPERTY.has(name)) {
+    ds.push(effect(() => {
+      (el as unknown as Record<string, unknown>)[name] = val(value);
+    }));
+    return;
+  }
+  // Generic attribute, with the same boolean/null handling as the html path.
+  ds.push(effect(() => {
+    const v = val(value);
+    if (v == null || v === false) el.removeAttribute(name);
+    else el.setAttribute(name, v === true ? "" : String(v));
+  }));
+}
+
+/** Realize a child (or array/dynamic child) into a fragment and return it. A
+ *  dynamic child (accessor or keyed `list`) gets an anchor + the same reactive
+ *  child binding the html path uses, so updates stay surgical. */
+function realizeChildren(children: unknown): Instance {
+  const host = document.createDocumentFragment();
+  const ds: Disposer[] = [];
+  const add = (c: unknown): void => {
+    if (c == null || c === false || c === true || c === "") return;
+    if (Array.isArray(c)) {
+      for (const x of c) add(x);
+      return;
+    }
+    if (typeof c === "function" || isList(c)) {
+      const anchor = document.createComment(CHILD_MARKER);
+      host.appendChild(anchor);
+      bindChild(anchor, c, ds); // replaces the anchor, wires a reactive slot
+      return;
+    }
+    const inst = renderOne(c);
+    for (const n of inst.nodes) host.appendChild(n);
+    ds.push(inst.dispose);
+  };
+  add(children);
+  return { nodes: [...host.childNodes], dispose: () => ds.forEach((d) => d()) };
+}
+
+function realize(el: ElementResult): Instance {
+  const { type, props } = el;
+  if (type === Fragment) return realizeChildren(props.children);
+  // A component runs ONCE here (inside the active owner) — its output is realized.
+  if (typeof type === "function") return renderOne(type(props));
+  if (typeof type !== "string") return EMPTY;
+  const node = document.createElement(type);
+  const ds: Disposer[] = [];
+  for (const name in props) {
+    if (name === "children") continue;
+    bindProp(node, name, props[name], ds);
+  }
+  if ("children" in props) {
+    const kids = realizeChildren(props.children);
+    for (const n of kids.nodes) node.appendChild(n);
+    ds.push(kids.dispose);
+  }
+  return { nodes: [node], dispose: () => ds.forEach((d) => d()) };
 }
 
 /** A keyed list: reconciled by `key` so stable rows keep their DOM node identity
@@ -157,6 +296,12 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
   parent.insertBefore(anchor, comment);
   parent.removeChild(comment);
 
+  // The live parent AT INSERT TIME. A top-level child binding is first instantiated
+  // inside the template's DocumentFragment, then render()/mount() MOVES the nodes
+  // (anchor included) into the host — so the original `parent` becomes stale. The
+  // anchor always travels with its siblings, so its current parent is authoritative.
+  const into = (): ParentNode & Node => (anchor.parentNode as (ParentNode & Node) | null) ?? parent;
+
   let current: ChildNode[] = [];
   let currentDisposers: Disposer[] = [];
 
@@ -169,9 +314,10 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
 
   const place = (v: unknown): void => {
     const items = Array.isArray(v) ? v : [v];
+    const host = into();
     for (const item of items) {
       const inst = renderOne(item);
-      for (const n of inst.nodes) parent.insertBefore(n, anchor);
+      for (const n of inst.nodes) host.insertBefore(n, anchor);
       current.push(...inst.nodes);
       currentDisposers.push(inst.dispose);
     }
@@ -203,7 +349,8 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
           rows.delete(k);
         }
       }
-      for (const row of ordered) for (const n of row.nodes) parent.insertBefore(n, anchor);
+      const host = into();
+      for (const row of ordered) for (const n of row.nodes) host.insertBefore(n, anchor);
     }));
     ds.push(() => {
       for (const [, row] of rows) row.dispose();
@@ -256,11 +403,12 @@ function instantiate(view: TemplateResult): Instance {
 
 /**
  * Render a view into `host` and return a disposer that tears down every effect,
- * event listener and nested scope, and removes the rendered nodes.
+ * event listener and nested scope, and removes the rendered nodes. Accepts an
+ * html`…` template or a JSX descriptor (`@dxjs/jsx`) — the two interleave.
  */
-export function render(view: TemplateResult, host: Element): Disposer {
+export function render(view: TemplateResult | ElementResult, host: Element): Disposer {
   return createRoot((dispose) => {
-    const inst = instantiate(view);
+    const inst = renderOne(view);
     for (const n of inst.nodes) host.appendChild(n);
     onCleanup(() => {
       inst.dispose();

@@ -1,0 +1,28 @@
+/* dxjs docs — served same-origin (style-src 'self'). Builds on @dxjs/ui's design
+   tokens (ui.css is linked first). Only classes, no inline styles → strict CSP. */
+
+.doc-h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 4px; }
+.doc-lead { color: var(--dx-mut); margin: 0 0 24px; font-size: 16px; }
+.doc-h2 { font-size: 20px; font-weight: 700; letter-spacing: -.01em; margin: 28px 0 10px; }
+.doc-p { margin: 0 0 14px; max-width: 70ch; color: var(--dx-ink); }
+.doc-p code, .doc-lead code { font-family: var(--dx-mono); font-size: .9em; background: var(--dx-accent-weak); color: var(--dx-accent); padding: 1px 6px; border-radius: 6px; }
+
+/* The code | result split inside an example card. */
+.ex { display: grid; grid-template-columns: 1fr 1fr; gap: 0; align-items: stretch; }
+.ex-solo { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .ex { grid-template-columns: 1fr; } }
+.ex-code { margin: 0; padding: 18px 20px; background: #0b1220; color: #e2e8f0; font-family: var(--dx-mono); font-size: 13px; line-height: 1.55; overflow-x: auto; white-space: pre; }
+.ex-code code { font: inherit; color: inherit; }
+.ex-view { padding: 20px; border-left: 1px solid var(--dx-line2); display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+.ex-solo .ex-code { border-radius: 0; }
+.ex-note { margin: 10px 20px 16px; color: var(--dx-mut); font-size: 13.5px; }
+
+/* Small live-demo bits used across pages. */
+.demo-btn { padding: 8px 14px; border: 1px solid var(--dx-line); border-radius: 9px; background: var(--dx-accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+.demo-btn:hover { background: #1d4ed8; }
+.demo-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.demo-out { font-family: var(--dx-mono); font-size: 14px; }
+.demo-input { padding: 8px 12px; border: 1px solid var(--dx-line); border-radius: 9px; font: inherit; }
+.badge { display: inline-block; font-size: 12px; font-weight: 600; color: var(--dx-accent); background: var(--dx-accent-weak); padding: 2px 8px; border-radius: 999px; }
+.demo-form { display: flex; flex-direction: column; gap: 12px; }
+.ex-ssr { border-radius: 10px; }

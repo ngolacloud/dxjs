@@ -1,23 +1,37 @@
 {
   "name": "@dxjs/component",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "dxjs component + lifecycle layer: function components, mount, onMount. Over @dxjs/dom and @dxjs/core.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
-  "//exports": "Dev points at TS source. F2 adds a build and switches default to ./dist/index.js.",
-  "files": ["dist", "src", "README.md"],
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "0.0.1",
-    "@dxjs/dom": "0.0.1"
+    "@dxjs/core": "1.0.0",
+    "@dxjs/dom": "1.0.0"
   },
-  "keywords": ["dxjs", "component", "lifecycle"],
+  "keywords": [
+    "dxjs",
+    "component",
+    "lifecycle"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/ngolacloud/dxjs.git",

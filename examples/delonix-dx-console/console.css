@@ -1,0 +1,58 @@
+/* delonix-dx-console — page styles on top of @dxjs/ui tokens (ui.css linked first).
+   Classes only, no inline styles → strict CSP. */
+
+.loading { padding: 40px; text-align: center; color: var(--dx-mut); }
+.mono { font-family: var(--dx-mono); }
+.name { font-weight: 600; }
+
+/* Toolbar + segmented filter tabs */
+.toolbar { display: flex; align-items: center; gap: 12px; margin: 0 0 16px; flex-wrap: wrap; }
+.toolbar .spacer { flex: 1; }
+.toolbar .search { min-width: 220px; }
+.segmented { display: inline-flex; border: 1px solid var(--dx-line); border-radius: 10px; overflow: hidden; background: var(--dx-panel); }
+.seg { padding: 7px 13px; border: 0; background: transparent; font: inherit; font-weight: 600; font-size: 13.5px; cursor: pointer; color: var(--dx-mut); border-left: 1px solid var(--dx-line); }
+.seg:first-child { border-left: 0; }
+.seg.is-active { background: var(--dx-accent); color: #fff; }
+.seg-count { opacity: .7; font-weight: 500; }
+.seg.is-active .seg-count { opacity: .95; }
+
+/* Cells */
+.tag { font-family: var(--dx-mono); font-size: 12.5px; background: var(--dx-line2); border: 1px solid var(--dx-line); border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+.cell-name { display: inline-flex; align-items: center; gap: 8px; }
+.type-glyph { font-size: 15px; }
+.linkish { border: 0; background: transparent; font: inherit; font-weight: 600; color: var(--dx-accent); cursor: pointer; padding: 0; }
+.linkish:hover { text-decoration: underline; }
+
+/* Meter (SVG; fill width is a geometry attribute, not inline style) */
+.meter { display: inline-flex; align-items: center; gap: 8px; min-width: 120px; }
+.meter-svg { width: 72px; height: 8px; border-radius: 4px; overflow: hidden; }
+.meter-bg { fill: var(--dx-line); }
+.meter-fill.is-pos { fill: var(--dx-pos); }
+.meter-fill.is-warn { fill: var(--dx-warn); }
+.meter-fill.is-neg { fill: var(--dx-neg); }
+.meter-fill.is-mut { fill: var(--dx-mut); }
+.meter-label { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--dx-ink); }
+.meter-na { color: var(--dx-mut); }
+
+/* Row actions */
+.acts { display: inline-flex; gap: 5px; }
+.act { width: 28px; height: 28px; border: 1px solid var(--dx-line); border-radius: 7px; background: var(--dx-panel); cursor: pointer; font-size: 13px; line-height: 1; color: var(--dx-ink); }
+.act:hover { background: #f1f5f9; }
+.act:disabled { opacity: .5; cursor: default; }
+.act--danger { color: var(--dx-neg); border-color: #fecaca; }
+
+/* Deploy form */
+.deploy { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: start; }
+.deploy .demo-row { grid-column: 1 / -1; display: flex; gap: 10px; }
+.fld { display: flex; flex-direction: column; gap: 4px; }
+.fld-err { font-size: 12px; color: var(--dx-neg); min-height: 14px; }
+.dx-input { padding: 8px 12px; border: 1px solid var(--dx-line); border-radius: 9px; font: inherit; background: #fff; color: var(--dx-ink); }
+.dx-input:focus-visible { outline: 2px solid var(--dx-accent); outline-offset: 1px; border-color: var(--dx-accent); }
+
+/* Logs (virtualized) */
+.logs-head { margin: 0 0 10px; font-size: 13px; }
+.logline { font-family: var(--dx-mono); font-size: 12.5px; white-space: nowrap; color: var(--dx-ink); }
+.dx-vlist-row .logline { width: 100%; overflow: hidden; text-overflow: ellipsis; }
+
+/* Error boundary banner */
+.crash { background: #fef2f2; border: 1px solid #fecaca; color: var(--dx-neg); padding: 10px 16px; border-radius: 10px; margin-bottom: 16px; font-weight: 600; }

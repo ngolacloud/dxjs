@@ -6,14 +6,44 @@
 // `signal(topic)` returns a reactive value updated in place, so only the bound
 // DOM node re-renders. Unsubscribing on owner dispose closes the connection when
 // the last topic goes away.
+//
+// Resilience / resume: a native EventSource auto-reconnects on transient drops
+// and replays the Last-Event-ID header itself. But once it gives up (readyState
+// CLOSED) we must open a FRESH EventSource — and the browser forbids setting the
+// Last-Event-ID header by hand. So we track the stream cursor (the id of the last
+// applied event) and carry it in the reconnect URL (`?lastEventId=…`), letting a
+// resume-aware server replay exactly what we missed. Each topic also remembers
+// the id it last folded, so a server that redelivers the cursor event (inclusive
+// resume) cannot double-count it — the delta-fold survives a reconnection without
+// losing or duplicating an increment.
+//
+// Reconnect backoff: if a fresh connection also dies before it ever opens, we do
+// NOT reopen in a tight loop (that would hammer a server that is already down).
+// Each consecutive failed reconnect waits longer than the last (exponential, to a
+// cap) and we give up after a ceiling of attempts. A successful `open` resets the
+// counter, so a later blip starts the backoff afresh. The pending wait is
+// cancellable: closing the source (idle or explicit) kills it at once.
 
 import { signal, onCleanup, type Accessor } from "@dxjs/core";
 
 type ESCtor = new (url: string) => EventSource;
 
+const CLOSED = 2; // EventSource.CLOSED
+
 export interface LiveSourceConfig {
   /** Injectable EventSource (tests / non-browser). Defaults to global. */
   EventSource?: ESCtor;
+  /** Query param carrying the resume cursor on a fresh reconnect (we cannot set
+   *  the Last-Event-ID header by hand). Default "lastEventId". */
+  resumeParam?: string;
+  /** Base reconnect delay in ms; grows exponentially (base * 2^n). Default 1000. */
+  reconnectBackoff?: number;
+  /** Upper bound on any single reconnect delay, in ms. Default 30000. */
+  maxReconnectDelay?: number;
+  /** Give up after this many consecutive failed reconnects. Default 10. */
+  maxReconnectAttempts?: number;
+  /** Injectable scheduler (tests); returns a cancel fn. Default setTimeout. */
+  schedule?: (fn: () => void, ms: number) => () => void;
 }
 
 export interface TopicOptions<T> {
@@ -36,43 +66,121 @@ export interface LiveSource {
 export function createLiveSource(url: string, config: LiveSourceConfig = {}): LiveSource {
   const ES = config.EventSource ?? (globalThis as { EventSource?: ESCtor }).EventSource;
   if (!ES) throw new Error("dxjs: no EventSource available (pass config.EventSource)");
+  const resumeParam = config.resumeParam ?? "lastEventId";
+  const backoffBase = config.reconnectBackoff ?? 1000;
+  const backoffCap = config.maxReconnectDelay ?? 30000;
+  const maxAttempts = config.maxReconnectAttempts ?? 10;
+  const schedule =
+    config.schedule ??
+    ((fn: () => void, ms: number): (() => void) => {
+      const h = setTimeout(fn, ms);
+      return () => clearTimeout(h);
+    });
+
   let es: EventSource | null = null;
   let topicCount = 0;
+  // Stream cursor: the id of the most recent applied event, replayed on reconnect.
+  let lastEventId = "";
+  // Consecutive failed reconnects (reset on a successful open), and the cancel
+  // handle for a reconnect that is currently waiting out its backoff.
+  let reconnectAttempts = 0;
+  let cancelReconnect: (() => void) | null = null;
+  // Every live topic binding, so a fresh connection can re-attach them all.
+  const bindings: Array<{ topic: string; handler: (ev: Event) => void }> = [];
 
-  const ensure = (): EventSource => (es ||= new ES(url));
+  // Wait out an exponential backoff, then reopen — unless we have hit the ceiling
+  // (give up) or the last topic has gone away. Replaces the old tight-loop reopen.
+  const scheduleReconnect = (): void => {
+    if (topicCount <= 0 || reconnectAttempts >= maxAttempts) return;
+    const delay = Math.min(backoffBase * 2 ** reconnectAttempts, backoffCap);
+    reconnectAttempts++;
+    cancelReconnect = schedule(() => {
+      cancelReconnect = null;
+      if (topicCount > 0 && !es) es = connect();
+    }, delay);
+  };
+
+  const connect = (): EventSource => {
+    const sep = url.includes("?") ? "&" : "?";
+    const full = lastEventId ? `${url}${sep}${resumeParam}=${encodeURIComponent(lastEventId)}` : url;
+    const conn = new ES(full);
+    for (const b of bindings) conn.addEventListener(b.topic, b.handler);
+    // A clean open means the stream is healthy again: start any future backoff
+    // sequence from zero rather than carrying the just-recovered failures.
+    conn.onopen = (): void => {
+      reconnectAttempts = 0;
+    };
+    conn.onerror = (): void => {
+      // While CONNECTING the native EventSource is retrying on its own (and will
+      // send Last-Event-ID itself) — leave it be. Only when it has truly CLOSED
+      // do we reopen a fresh connection carrying the resume cursor — after a
+      // backoff, so a down server is not hammered.
+      if (conn.readyState === CLOSED && es === conn) {
+        conn.close();
+        es = null;
+        scheduleReconnect();
+      }
+    };
+    return conn;
+  };
+
+  const ensure = (): EventSource => (es ||= connect());
+
+  // Stop a pending reconnect and forget accumulated failures — used when the
+  // source goes idle or is closed, so a cancelled wait never fires late.
+  const stopReconnect = (): void => {
+    cancelReconnect?.();
+    cancelReconnect = null;
+    reconnectAttempts = 0;
+  };
 
   return {
     signal<T>(topic: string, options: TopicOptions<T>): Accessor<T> {
       const s = signal<T>(options.initial);
       const parse = options.parse ?? ((raw: string): unknown => JSON.parse(raw));
       const fold = options.fold;
-      const conn = ensure();
+      // The id this topic last folded — guards against inclusive-resume redelivery.
+      let topicLastId: string | undefined;
       const handler = (ev: Event): void => {
+        const me = ev as MessageEvent;
+        if (me.lastEventId && me.lastEventId === topicLastId) return; // already folded
         try {
-          const delta = parse((ev as MessageEvent).data);
+          const delta = parse(me.data);
           s.update((prev) => (fold ? fold(prev, delta) : (delta as T)));
+          if (me.lastEventId) {
+            topicLastId = me.lastEventId;
+            lastEventId = me.lastEventId;
+          }
         } catch {
           /* ignore malformed frames */
         }
       };
-      conn.addEventListener(topic, handler);
+      ensure().addEventListener(topic, handler);
+      bindings.push({ topic, handler });
       topicCount++;
       onCleanup(() => {
-        conn.removeEventListener(topic, handler);
+        if (es) es.removeEventListener(topic, handler);
+        const i = bindings.findIndex((b) => b.handler === handler);
+        if (i >= 0) bindings.splice(i, 1);
         topicCount--;
-        if (topicCount <= 0 && es) {
-          es.close();
-          es = null;
+        if (topicCount <= 0) {
+          stopReconnect();
+          if (es) {
+            es.close();
+            es = null;
+          }
         }
       });
       return () => s();
     },
     close(): void {
+      stopReconnect();
       if (es) {
         es.close();
         es = null;
       }
       topicCount = 0;
+      bindings.length = 0;
     },
   };
 }

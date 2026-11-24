@@ -37,7 +37,7 @@ function connectError(code: string, message: string): ConnectError {
 export function createConnectClient(options: ConnectOptions = {}): ConnectClient {
   const base = options.baseUrl ?? "";
   return {
-    async unary<Req, Res>(service, method, message, opts: ConnectCallOptions = {}): Promise<Res> {
+    async unary<Req, Res>(service: string, method: string, message: Req, opts: ConnectCallOptions = {}): Promise<Res> {
       const f = opts.fetch ?? options.fetch ?? fetch;
       const headers: Record<string, string> = {
         "content-type": "application/json",

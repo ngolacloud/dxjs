@@ -1,0 +1,55 @@
+{
+  "name": "@dxjs/jsx",
+  "version": "1.0.0",
+  "description": "dxjs optional type-safe JSX runtime: <tags/> compile to the reactive renderer — no VDOM, no eval, strict-CSP safe, interleaves with html``.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./dist/jsx-runtime.d.ts",
+      "development": "./src/jsx-runtime.ts",
+      "browser": "./dist/jsx-runtime.js",
+      "node": "./dist/jsx-runtime.js",
+      "default": "./dist/jsx-runtime.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./dist/jsx-dev-runtime.d.ts",
+      "development": "./src/jsx-dev-runtime.ts",
+      "browser": "./dist/jsx-dev-runtime.js",
+      "node": "./dist/jsx-dev-runtime.js",
+      "default": "./dist/jsx-dev-runtime.js"
+    }
+  },
+  "//exports": "types -> .d.ts, published default -> dist/*.js; the 'development' condition (node/esbuild --conditions=development) resolves to TS source for intra-repo dev/tests. The JSX transform imports the '@dxjs/jsx/jsx-runtime' subpath.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/dom": "1.0.0"
+  },
+  "keywords": [
+    "dxjs",
+    "jsx",
+    "jsx-runtime",
+    "reactive",
+    "csp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/jsx"
+  }
+}

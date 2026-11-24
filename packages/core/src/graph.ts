@@ -28,6 +28,8 @@ export type EqualsFn<T> = (a: T, b: T) => boolean;
 export interface SignalOptions<T> {
   /** Custom equality; `false` disables memoisation (every write notifies). */
   equals?: EqualsFn<T> | false;
+  /** A label for DevTools (only used when an inspector is installed). */
+  name?: string;
 }
 
 const CLEAN = 0;
@@ -38,6 +40,9 @@ type State = typeof CLEAN | typeof CHECK | typeof DIRTY;
 interface Scope {
   owned: Node[] | null;
   cleanups: Array<() => void> | null;
+  parent: Node | null; // enclosing owner at creation (for error-boundary walk)
+  errorHandlers: Array<(err: unknown) => void> | null;
+  ignored: boolean; // this node (and its descendants) are hidden from the inspector
 }
 
 interface Node extends Scope {
@@ -51,6 +56,49 @@ interface Node extends Scope {
   init: boolean; // a computed has produced at least one value
   disposed: boolean;
   queued: boolean;
+  inspect: InspectNode | null; // dev inspector handle; null unless instrumented
+}
+
+// --- dev instrumentation (zero-cost when no inspector is installed) ---------
+/** A stable handle a DevTools inspector sees for one reactive node. */
+export interface InspectNode {
+  readonly id: number;
+  readonly kind: "signal" | "computed" | "effect";
+  readonly name?: string;
+}
+/** Observe the reactive graph. Install via `setInspector` (dev-only). Nodes
+ *  created while an inspector is set get a stable `InspectNode`; production code
+ *  (no inspector) never allocates one, so the hot path is a single null check. */
+export interface DxInspector {
+  onCreate?(node: InspectNode): void;
+  onUpdate?(node: InspectNode, value: unknown): void;
+  onRun?(node: InspectNode): void;
+  onDispose?(node: InspectNode): void;
+}
+let inspector: DxInspector | null = null;
+let nextNodeId = 0;
+let instrumentPaused = false;
+/** Install (or clear with `null`) the reactive-graph inspector. */
+export function setInspector(next: DxInspector | null): void {
+  inspector = next;
+}
+/** Run `fn` with instrumentation suppressed: nodes created inside (and, via owner
+ *  inheritance, their descendants — even ones created later) are invisible to the
+ *  inspector. Use it to mount DevTools' own UI so it does not observe itself. */
+export function withoutInspector<T>(fn: () => T): T {
+  const prev = instrumentPaused;
+  instrumentPaused = true;
+  try {
+    return fn();
+  } finally {
+    instrumentPaused = prev;
+  }
+}
+function instrument(node: Node, kind: InspectNode["kind"], name?: string): void {
+  if (!inspector || node.ignored) return;
+  const handle: InspectNode = { id: ++nextNodeId, kind, name };
+  node.inspect = handle;
+  inspector.onCreate?.(handle);
 }
 
 // --- reactive context (module-scoped; never on window) --------------------
@@ -85,6 +133,12 @@ function makeNode<T>(
     queued: false,
     owned: null,
     cleanups: null,
+    parent: CurrentScope as Node | null, // the enclosing owner at creation time
+    errorHandlers: null,
+    inspect: null,
+    // Hidden from the inspector if created under withoutInspector, or if the
+    // enclosing owner is itself hidden (so a whole subtree stays invisible).
+    ignored: instrumentPaused || !!(CurrentScope && (CurrentScope as Node).ignored),
   };
 }
 
@@ -105,6 +159,7 @@ function readNode(node: Node): unknown {
 function writeNode(node: Node, next: unknown): unknown {
   if (node.equals(node.value, next)) return node.value;
   node.value = next;
+  if (node.inspect) inspector?.onUpdate?.(node.inspect, next);
   if (node.observers) for (const o of node.observers) markStale(o, DIRTY);
   if (!batchDepth) flush();
   return node.value;
@@ -135,7 +190,9 @@ function updateIfNecessary(node: Node): void {
   if (node.state === CHECK && node.sources) {
     for (const s of node.sources) {
       if (s.fn && !s.effect) updateIfNecessary(s);
-      if (node.state === DIRTY) break; // a source's recompute marked us dirty
+      // `updateIfNecessary(s)` can escalate THIS node to DIRTY through an aliased
+      // write (see `update`), which TS's flow-narrowing can't see — widen to read.
+      if ((node.state as State) === DIRTY) break;
     }
   }
   if (node.state === DIRTY) update(node);
@@ -149,22 +206,53 @@ function update(node: Node): void {
   Listener = node;
   CurrentScope = node;
   let result: unknown;
+  let threw = false;
+  let error: unknown;
   try {
     result = node.fn!();
+  } catch (e) {
+    threw = true;
+    error = e;
   } finally {
     Listener = prevListener;
     CurrentScope = prevScope;
   }
+  if (threw) {
+    // Route to the nearest error boundary (onError) up the owner tree; if none,
+    // rethrow so it surfaces to the caller (a write's flush or the initial run).
+    if (!runErrorHandlers(node, error)) throw error;
+    return;
+  }
+  if (node.inspect) inspector?.onRun?.(node.inspect);
   if (node.effect) {
     // An effect may return a cleanup function (run before the next pass/dispose).
     if (typeof result === "function") (node.cleanups ||= []).push(result as () => void);
   } else if (!node.init || !node.equals(node.value, result)) {
     node.value = result;
     node.init = true;
+    if (node.inspect) inspector?.onUpdate?.(node.inspect, result);
     // The value changed: escalate observers straight to DIRTY (they are already
     // CHECK from the push phase, so no re-propagation/scheduling is needed here).
     if (node.observers) for (const o of node.observers) if (o.state < DIRTY) o.state = DIRTY;
   }
+}
+
+// --- error boundaries -----------------------------------------------------
+/** Walk from `node` up the owner tree to the nearest scope with error handlers;
+ * run them (untracked) and report handled. Returns false if none exists. */
+function runErrorHandlers(node: Node, err: unknown): boolean {
+  let s: Node | null = node;
+  while (s) {
+    const hs = s.errorHandlers;
+    if (hs && hs.length) {
+      untrack(() => {
+        for (const h of hs) h(err);
+      });
+      return true;
+    }
+    s = s.parent;
+  }
+  return false;
 }
 
 // --- teardown -------------------------------------------------------------
@@ -191,7 +279,10 @@ function cleanupNode(node: Node, dispose: boolean): void {
 }
 
 function disposeNode(node: Node): void {
-  if (!node.disposed) cleanupNode(node, true);
+  if (!node.disposed) {
+    if (node.inspect) inspector?.onDispose?.(node.inspect);
+    cleanupNode(node, true);
+  }
 }
 
 // --- scheduler ------------------------------------------------------------
@@ -203,7 +294,7 @@ function flush(): void {
     let i = 0;
     for (; i < queue.length; i++) {
       if (i > LOOP_LIMIT) throw new Error("dxjs: potential infinite update loop");
-      const node = queue[i];
+      const node = queue[i]!; // loop-bounded by queue.length; entries are never undefined
       node.queued = false;
       if (!node.disposed) updateIfNecessary(node);
     }
@@ -217,6 +308,11 @@ function flush(): void {
 /** Create a writable reactive value. */
 export function signal<T>(value: T, options?: SignalOptions<T>): Signal<T> {
   const node = makeNode(value, null, false, options);
+  if (inspector) {
+    instrument(node, "signal", options?.name);
+    // Seed the initial value so DevTools shows it before the first write.
+    if (node.inspect) inspector.onUpdate?.(node.inspect, value);
+  }
   const s = ((...args: [] | [T | ((prev: T) => T)]): T => {
     if (args.length === 0) return readNode(node) as T;
     const a = args[0];
@@ -234,6 +330,7 @@ export function computed<T>(fn: () => T, options?: SignalOptions<T>): Accessor<T
   const node = makeNode<T>(undefined, fn as () => unknown, false, options);
   node.state = DIRTY;
   own(node);
+  if (inspector) instrument(node, "computed", options?.name);
   return (): T => readNode(node) as T;
 }
 
@@ -241,10 +338,11 @@ export function computed<T>(fn: () => T, options?: SignalOptions<T>): Accessor<T
  * Run a side effect now and again whenever a tracked dependency's value
  * changes. Returns a disposer. The effect may return a cleanup function.
  */
-export function effect(fn: () => void | (() => void)): () => void {
+export function effect(fn: () => void | (() => void), name?: string): () => void {
   const node = makeNode(undefined, fn as () => unknown, true);
   node.state = DIRTY;
   own(node);
+  if (inspector) instrument(node, "effect", name);
   if (batchDepth) enqueue(node);
   else updateIfNecessary(node); // run synchronously to collect deps
   return (): void => disposeNode(node);
@@ -276,6 +374,16 @@ export function untrack<T>(fn: () => T): T {
 /** Register a cleanup for the current owner (effect, computed, or root). */
 export function onCleanup(fn: () => void): void {
   if (CurrentScope) (CurrentScope.cleanups ||= []).push(fn);
+}
+
+/**
+ * Register an error handler on the current owner scope — an error boundary. An
+ * error thrown by a descendant effect/computed propagates up the owner tree to
+ * the nearest handler (which runs untracked). With no handler the error is
+ * rethrown to the caller. Register it BEFORE the work it should guard.
+ */
+export function onError(handler: (err: unknown) => void): void {
+  if (CurrentScope) ((CurrentScope as Node).errorHandlers ||= []).push(handler);
 }
 
 /**

@@ -1,0 +1,42 @@
+{
+  "name": "@dxjs/shell",
+  "version": "1.0.0",
+  "description": "dxjs shell: Cloud Shell interaction primitives — a command palette, idempotent (deduped-by-key) toasts, and a topology-graph builder over @dxjs/canvas. CSP-safe.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "1.0.0",
+    "@dxjs/dom": "1.0.0",
+    "@dxjs/canvas": "1.0.0"
+  },
+  "keywords": [
+    "dxjs",
+    "command-palette",
+    "toast",
+    "topology",
+    "shell"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/shell"
+  }
+}

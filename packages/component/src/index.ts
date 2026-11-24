@@ -7,9 +7,11 @@
 // (Router is the next increment.)
 
 import { createRoot, onCleanup } from "@dxjs/core";
-import { render, type TemplateResult } from "@dxjs/dom";
+import { render, type TemplateResult, type ElementResult } from "@dxjs/dom";
 
-export type Component<P = Record<string, never>> = (props: P) => TemplateResult;
+/** A component is a plain function returning a view — an html`…` template or a
+ *  JSX descriptor (`@dxjs/jsx`). Run ONCE; reactivity lives in signals. */
+export type Component<P = Record<string, never>> = (props: P) => TemplateResult | ElementResult;
 
 type MountCb = () => void | (() => void);
 let currentMounts: MountCb[] | null = null;
@@ -37,7 +39,7 @@ export function mount<P>(comp: Component<P>, host: Element, props: P): () => voi
     const collected: MountCb[] = [];
     const prev = currentMounts;
     currentMounts = collected;
-    let view: TemplateResult;
+    let view: TemplateResult | ElementResult;
     try {
       view = comp(props);
     } finally {
@@ -53,14 +55,19 @@ export function mount<P>(comp: Component<P>, host: Element, props: P): () => voi
   });
 }
 
-export { onCleanup } from "@dxjs/core";
+export { onCleanup, onError, createContext, provide, inject } from "@dxjs/core";
+export type { Context } from "@dxjs/core";
+
+export { defineElement, type DefineElementOptions, type ElementProps } from "./element.ts";
 
 export {
   createRouter,
+  Outlet,
   type Router,
   type Route,
   type RouteContext,
   type RouterOptions,
   type Guard,
   type Match,
+  type MatchLevel,
 } from "./router.ts";

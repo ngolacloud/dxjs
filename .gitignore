@@ -9,3 +9,23 @@ e2e/csp/live.app.js
 e2e/live-seiva/app.js
 e2e/csp/dash.app.js
 e2e/csp/dash.css
+e2e/csp/chart.app.js
+e2e/csp/chart.css
+e2e/csp/dxjs.js
+cdn/dxjs.js
+cdn/dxjs-charts.js
+cdn/dxjs.css
+docs/dist/
+examples/delonix-dx-console/dist/
+
+# dxjs/jsx e2e build artifact
+packages/jsx/test/e2e/app.built.mjs
+
+# dxjs/dev HMR e2e scratch
+e2e/hmr/.work/
+
+# session contracts / local agent state
+.claude/
+
+# cloud-shell example build artifact
+examples/cloud-shell/dist/

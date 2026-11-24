@@ -8,9 +8,18 @@
 import { signal, computed, type Accessor } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
 
+export { virtualList, visibleRange } from "./virtual.ts";
+export type { VirtualListOptions, VisibleRange } from "./virtual.ts";
+export { createThemeController, type Theme, type ThemeController } from "./theme.ts";
+
 export type Tone = "pos" | "neg" | "warn" | "mut";
 type Maybe<T> = T | Accessor<T>;
 const read = <T,>(v: Maybe<T>): T => (typeof v === "function" ? (v as () => T)() : v);
+
+// Monotonic ids for ARIA wiring (aria-labelledby → heading id). Module-scoped,
+// never on window; client-only (SSR hydration ids are a later concern).
+let uid = 0;
+const nextId = (prefix: string): string => `${prefix}-${++uid}`;
 
 // --- App shell ------------------------------------------------------------
 export interface NavItem {
@@ -23,29 +32,42 @@ export interface AppShellOptions {
   nav: Maybe<NavItem[]>;
   user?: { name: string; initials: string };
   search?: { placeholder?: string; onInput?: (value: string) => void };
+  /** Extra top-bar content on the left (e.g. a token field). Takes the place of
+   *  `search` when no `search` is given. */
+  topbar?: Maybe<TemplateResult>;
   content: Maybe<TemplateResult>;
 }
 
-/** A dashboard shell: dark sidebar nav + top bar (search + user) + content. */
+/** A dashboard shell: dark sidebar nav + top bar (search/topbar + user) + content. */
 export function appShell(o: AppShellOptions): TemplateResult {
   const navItem = (item: NavItem): TemplateResult =>
-    html`<button class=${item.active ? "dx-nav-item is-active" : "dx-nav-item"} @click=${() => item.onSelect?.()}>
-      <span class="dx-dot"></span>${item.label}
+    html`<button
+      class=${item.active ? "dx-nav-item is-active" : "dx-nav-item"}
+      aria-current=${item.active ? "page" : false}
+      @click=${() => item.onSelect?.()}
+    >
+      <span class="dx-dot" aria-hidden="true"></span>${item.label}
     </button>`;
   const user = o.user
     ? html`<div class="dx-user"><span class="dx-avatar">${o.user.initials}</span>${o.user.name}</div>`
     : "";
-  const search = o.search
-    ? html`<div class="dx-search"><input placeholder=${o.search.placeholder ?? "Search…"} @input=${(e: Event) =>
-        o.search!.onInput?.((e.target as HTMLInputElement).value)} /></div>`
-    : html`<div class="dx-search"></div>`;
+  const left = o.search
+    ? html`<div class="dx-search"><input
+        placeholder=${o.search.placeholder ?? "Search…"}
+        aria-label=${o.search.placeholder ?? "Search"}
+        type="search"
+        @input=${(e: Event) => o.search!.onInput?.((e.target as HTMLInputElement).value)}
+      /></div>`
+    : o.topbar
+      ? html`${() => read(o.topbar!)}`
+      : html`<div class="dx-search"></div>`;
   return html`<div class="dx-shell">
     <aside class="dx-side">
       <div class="dx-brand">${o.brand}</div>
-      <nav class="dx-nav">${list(() => read(o.nav), (i) => i.label, navItem)}</nav>
+      <nav class="dx-nav" aria-label="Primary">${() => read(o.nav).map(navItem)}</nav>
     </aside>
     <div class="dx-main">
-      <header class="dx-top">${search}${user}</header>
+      <header class="dx-top">${left}${user}</header>
       <main class="dx-content">${() => read(o.content)}</main>
     </div>
   </div>`;
@@ -76,8 +98,9 @@ export function statGrid(cards: StatCardOptions[]): TemplateResult {
 
 // --- Card -----------------------------------------------------------------
 export function card(o: { title?: string; body: Maybe<TemplateResult> }): TemplateResult {
-  return html`<section class="dx-card">
-    ${o.title ? html`<div class="dx-card-head"><h2 class="dx-card-title">${o.title}</h2></div>` : ""}
+  const titleId = o.title ? nextId("dx-card") : "";
+  return html`<section class="dx-card" aria-labelledby=${titleId || false}>
+    ${o.title ? html`<div class="dx-card-head"><h2 class="dx-card-title" id=${titleId}>${o.title}</h2></div>` : ""}
     <div class="dx-card-body">${() => read(o.body)}</div>
   </section>`;
 }
@@ -160,9 +183,24 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
   const header = (col: Column<T>): TemplateResult => {
     const cls = col.sortable ? "is-sortable" : "";
     const arrow = (): string => (sortKey() === col.key ? (sortDesc() ? "▼" : "▲") : "");
-    return html`<th class=${cls} @click=${() => toggleSort(col)}>
-      ${col.label}<span class="dx-arrow">${arrow}</span>
-    </th>`;
+    // aria-sort reflects the live sort state for THIS column (only on sortable
+    // headers, per ARIA). Keyboard: a sortable header is focusable and Enter/Space
+    // toggles the sort — not just a mouse `@click` on a non-focusable <th>.
+    const ariaSort = (): string | false =>
+      col.sortable ? (sortKey() === col.key ? (sortDesc() ? "descending" : "ascending") : "none") : false;
+    const onKey = (e: KeyboardEvent): void => {
+      if (col.sortable && (e.key === "Enter" || e.key === " ")) {
+        e.preventDefault();
+        toggleSort(col);
+      }
+    };
+    return html`<th
+      class=${cls}
+      aria-sort=${ariaSort}
+      tabindex=${col.sortable ? "0" : false}
+      @click=${() => toggleSort(col)}
+      @keydown=${onKey}
+    >${col.label}<span class="dx-arrow" aria-hidden="true">${arrow}</span></th>`;
   };
 
   const row = (r: T): TemplateResult =>
@@ -180,26 +218,31 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
     <div class="dx-tbl-toolbar">
       ${o.search === false
         ? ""
-        : html`<div class="dx-tbl-search"><input placeholder="Search…" @input=${(e: Event) => {
-            query.set((e.target as HTMLInputElement).value);
-            page.set(0);
-          }} /></div>`}
+        : html`<div class="dx-tbl-search"><input
+            placeholder="Search…"
+            aria-label=${o.title ? `Search ${o.title}` : "Search records"}
+            type="search"
+            @input=${(e: Event) => {
+              query.set((e.target as HTMLInputElement).value);
+              page.set(0);
+            }}
+          /></div>`}
       <div class="dx-spacer"></div>
       ${o.toolbar ?? ""}
     </div>
     <div class="dx-tbl-wrap">
-      <table class="dx-tbl">
+      <table class="dx-tbl" aria-label=${o.title ?? "Data table"}>
         <thead><tr>${list(o.columns, (c) => c.key, header)}</tr></thead>
         <tbody>${list(() => paged(), (r) => o.rowKey(r), row)}</tbody>
       </table>
     </div>
-    ${() => (total() === 0 ? html`<div class="dx-tbl-empty">No records match your filter.</div>` : "")}
+    ${() => (total() === 0 ? html`<div class="dx-tbl-empty" role="status">No records match your filter.</div>` : "")}
     <div class="dx-tbl-foot">
-      <span>Showing ${from} – ${to} of ${total}</span>
+      <span aria-live="polite">Showing ${from} – ${to} of ${total}</span>
       <div class="dx-spacer"></div>
-      <button class="dx-btn" ?disabled=${() => page() <= 0} @click=${() => page.set(Math.max(0, page() - 1))}>‹ Prev</button>
+      <button class="dx-btn" aria-label="Previous page" ?disabled=${() => page() <= 0} @click=${() => page.set(Math.max(0, page() - 1))}>‹ Prev</button>
       <span>Page ${() => Math.min(page(), pageCount() - 1) + 1} / ${pageCount}</span>
-      <button class="dx-btn" ?disabled=${() => page() >= pageCount() - 1} @click=${() => page.set(Math.min(pageCount() - 1, page() + 1))}>Next ›</button>
+      <button class="dx-btn" aria-label="Next page" ?disabled=${() => page() >= pageCount() - 1} @click=${() => page.set(Math.min(pageCount() - 1, page() + 1))}>Next ›</button>
     </div>
   </section>`;
 }

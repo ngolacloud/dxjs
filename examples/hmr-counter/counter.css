@@ -1,0 +1,11 @@
+/* Same-origin stylesheet (style-src 'self') — no inline styles anywhere. */
+:root { color-scheme: light dark; }
+body { margin: 0; font: 16px/1.5 system-ui, sans-serif; }
+.counter { max-width: 32rem; margin: 4rem auto; padding: 0 1rem; }
+.counter h1 { font-size: 1.6rem; margin: 0 0 .25rem; }
+.counter .hint { color: #6b7280; margin: 0 0 1.25rem; }
+.counter #inc {
+  font: inherit; padding: .6rem 1rem; border: 1px solid #2563eb;
+  border-radius: .5rem; background: #2563eb; color: #fff; cursor: pointer;
+}
+.counter #inc:hover { background: #1d4ed8; }

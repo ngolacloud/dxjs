@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.build.json",
+  "//": "dev is a node tool: it imports node:http/fs/path/url and esbuild.",
+  "compilerOptions": { "outDir": "./dist", "rootDir": "./src", "types": ["node"] },
+  "include": ["src/**/*.ts"]
+}

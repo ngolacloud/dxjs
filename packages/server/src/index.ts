@@ -1,4 +1,19 @@
-// @dxjs/server — SSR string rendering + fine-grained hydration. See DESIGN.md §8.
+// @dxjs/server — SSR string + streaming rendering, Suspense/error boundaries, and
+// fine-grained hydration. See DESIGN.md §8.
 
-export { renderToString, planParts, type RenderOptions } from "./render.ts";
+export {
+  renderToString,
+  renderToStringAsync,
+  renderToStream,
+  renderToChunks,
+  renderToStreamOOO,
+  renderToChunksOOO,
+  suspense,
+  errorBoundary,
+  planParts,
+  type RenderOptions,
+  type SuspenseResult,
+  type ErrorBoundaryResult,
+} from "./render.ts";
+export { installStreamClient, swapStreamSlots, swapStreamTemplate } from "./stream-client.ts";
 export { hydrate, hydrateReplace } from "./hydrate.ts";

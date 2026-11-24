@@ -1,0 +1,15 @@
+/* @dxjs/charts — served same-origin and linked as a stylesheet, so it satisfies a
+   strict CSP (style-src 'self'): only CLASSES, never inline <style>/style="".
+   Chart.js sizes the <canvas> itself via the CSSOM (programmatic element.style),
+   which CSP does NOT restrict — so the plot stays CSP-clean. */
+
+.dx-chart-wrap {
+  position: relative; /* Chart.js responsive sizing needs a positioned box */
+  width: 100%;
+  height: 280px;
+}
+.dx-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

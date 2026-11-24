@@ -1,10 +1,12 @@
 // A polished admin dashboard built from @dxjs/ui, served under the SAME strict
 // CSP as the other proofs (style-src 'self' via the linked dash.css — the kit
 // only toggles classes, no inline styles). Mirrors the TalentPros reference:
-// dark sidebar, a grid of KPI tiles, and a sortable/searchable/paginated table.
+// dark sidebar, KPI tiles, two Chart.js charts, and a sortable/paginated table.
 import { signal } from "@dxjs/core";
 import { html } from "@dxjs/dom";
-import { appShell, statGrid, dataTable, pill, type Tone } from "@dxjs/ui";
+import { component, mount } from "@dxjs/component";
+import { appShell, statGrid, dataTable, card, pill, type Tone } from "@dxjs/ui";
+import { chart } from "@dxjs/charts";
 
 interface Company {
   id: string;
@@ -28,45 +30,72 @@ const statusTone = (s: Company["status"]): Tone =>
 const active = signal("Overview");
 const navItem = (label: string) => ({ label, active: active() === label, onSelect: () => active.set(label) });
 
-const content = html`
-  <h1 class="dx-h1">Overview</h1>
-  <p class="dx-sub">Your command center — key metrics at a glance.</p>
-  ${statGrid([
-    { label: "Active Companies", value: "1,247", delta: "+12.4%", tone: "pos" },
-    { label: "Trial Companies", value: "89", delta: "12 this week", tone: "mut" },
-    { label: "MRR", value: "$62,350", delta: "+12.4% MoM", tone: "pos" },
-    { label: "ARPU", value: "49.96", delta: "-2.30% MoM", tone: "neg" },
-    { label: "Churn Rate", value: "2.1%", delta: "-0.3% MoM", tone: "pos" },
-    { label: "Failed Payments", value: "7", delta: "3 retrying", tone: "warn" },
-    { label: "Canceled", value: "34", delta: "This month", tone: "neg" },
-    { label: "YoY Growth", value: "68.2%", delta: "vs last year", tone: "mut" },
-  ])}
-  ${dataTable<Company>({
-    title: "Companies",
-    columns: [
-      { key: "name", label: "Company", sortable: true, render: (r) => html`<a class="dx-link" href="#">${r.name}</a>` },
-      { key: "plan", label: "Plan", sortable: true },
-      { key: "mrr", label: "MRR", numeric: true, sortable: true, value: (r) => r.mrr, render: (r) => `$${r.mrr}` },
-      { key: "status", label: "Status", sortable: true, value: (r) => r.status, render: (r) => pill(r.status, statusTone(r.status)) },
-    ],
-    rows: companies,
-    rowKey: (r) => r.id,
-    pageSize: 8,
-    toolbar: html`<button class="dx-btn">Customise</button><button class="dx-btn is-primary">Export CSV</button>`,
-  })}
-`;
+// Chart data derived from the same companies dataset the table shows.
+const statusCounts = STATUS.map((s) => companies.filter((c) => c.status === s).length);
+const mrrByPlan = PLANS.map((p) => companies.filter((c) => c.plan === p).reduce((sum, c) => sum + c.mrr, 0));
 
-const shell = appShell({
-  brand: "TalentPros",
-  nav: () =>
-    ["Overview", "Companies", "Analytics", "Coupons", "Broadcasts", "Activity Logs", "System Alerts", "Admin Management", "Settings"].map(
-      navItem,
-    ),
-  user: { name: "Super Admin", initials: "AU" },
-  search: { placeholder: "Search companies, invoices…" },
-  content,
+// The dashboard as a component so chart()'s onMount fires once the canvases are in
+// the DOM (charts are a component-context view; see @dxjs/charts).
+const Dashboard = component(() => {
+  const content = html`
+    <h1 class="dx-h1">Overview</h1>
+    <p class="dx-sub">Your command center — key metrics at a glance.</p>
+    ${statGrid([
+      { label: "Active Companies", value: "1,247", delta: "+12.4%", tone: "pos" },
+      { label: "Trial Companies", value: "89", delta: "12 this week", tone: "mut" },
+      { label: "MRR", value: "$62,350", delta: "+12.4% MoM", tone: "pos" },
+      { label: "ARPU", value: "49.96", delta: "-2.30% MoM", tone: "neg" },
+      { label: "Churn Rate", value: "2.1%", delta: "-0.3% MoM", tone: "pos" },
+      { label: "Failed Payments", value: "7", delta: "3 retrying", tone: "warn" },
+      { label: "Canceled", value: "34", delta: "This month", tone: "neg" },
+      { label: "YoY Growth", value: "68.2%", delta: "vs last year", tone: "mut" },
+    ])}
+    <div class="dx-row">
+      ${card({
+        title: "MRR by plan",
+        body: chart({
+          kind: "bar",
+          labels: [...PLANS],
+          series: [{ label: "MRR", data: mrrByPlan }],
+          options: { animate: false },
+        }),
+      })}
+      ${card({
+        title: "Status breakdown",
+        body: chart({
+          kind: "doughnut",
+          labels: [...STATUS],
+          series: [{ label: "Companies", data: statusCounts }],
+          options: { animate: false },
+        }),
+      })}
+    </div>
+    ${dataTable<Company>({
+      title: "Companies",
+      columns: [
+        { key: "name", label: "Company", sortable: true, render: (r) => html`<a class="dx-link" href="#">${r.name}</a>` },
+        { key: "plan", label: "Plan", sortable: true },
+        { key: "mrr", label: "MRR", numeric: true, sortable: true, value: (r) => r.mrr, render: (r) => `$${r.mrr}` },
+        { key: "status", label: "Status", sortable: true, value: (r) => r.status, render: (r) => pill(r.status, statusTone(r.status)) },
+      ],
+      rows: companies,
+      rowKey: (r) => r.id,
+      pageSize: 8,
+      toolbar: html`<button class="dx-btn">Customise</button><button class="dx-btn is-primary">Export CSV</button>`,
+    })}
+  `;
+
+  return appShell({
+    brand: "TalentPros",
+    nav: () =>
+      ["Overview", "Companies", "Analytics", "Coupons", "Broadcasts", "Activity Logs", "System Alerts", "Admin Management", "Settings"].map(
+        navItem,
+      ),
+    user: { name: "Super Admin", initials: "AU" },
+    search: { placeholder: "Search companies, invoices…" },
+    content,
+  });
 });
 
-import { render } from "@dxjs/dom";
-render(shell, document.getElementById("app")!);
+mount(Dashboard, document.getElementById("app")!, {});
 (window as unknown as { __dxready: boolean }).__dxready = true;

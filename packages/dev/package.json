@@ -1,0 +1,48 @@
+{
+  "name": "@dxjs/dev",
+  "version": "1.0.0",
+  "description": "dxjs dev server: CSP-safe HMR built on @dxjs/edge. Per-module esbuild transform + long-poll hot updates that preserve signal state across an edit. Development tool only — the product it serves ships no Node.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "dxdev": "./bin/dxdev.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "//exports": "node-only dev tool (imports node:*, esbuild); no browser condition — never bundle this into a browser app. The served HMR client (src/client.ts) is browser code, delivered transpiled at runtime, not via this entry.",
+  "files": [
+    "dist",
+    "src",
+    "bin",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/edge": "1.0.0"
+  },
+  "peerDependencies": {
+    "esbuild": "*"
+  },
+  "keywords": [
+    "dxjs",
+    "dev-server",
+    "hmr",
+    "hot-module-replacement",
+    "csp",
+    "esbuild"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/dev"
+  }
+}
