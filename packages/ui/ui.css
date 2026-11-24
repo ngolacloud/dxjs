@@ -193,3 +193,14 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .dx-term-out { flex: 1; margin: 0; padding: var(--dx-space-3); overflow: auto; color: var(--dx-side-ink); font: var(--dx-text-sm)/var(--dx-leading-normal) var(--dx-mono); white-space: pre-wrap; word-break: break-word; }
 .dx-term-in { border: 0; border-top: 1px solid var(--dx-side-active); padding: var(--dx-space-3); background: #060a14; color: #e5e7eb; font: var(--dx-text-sm) var(--dx-mono); }
 .dx-term-in:focus-visible { outline: 2px solid var(--dx-accent); outline-offset: -2px; }
+
+/* --- Log viewer (@dxjs/logs) -------------------------------------------- */
+.dx-log-row { display: flex; gap: var(--dx-space-3); align-items: baseline; padding: 0 var(--dx-space-3); font: var(--dx-text-sm)/1.7 var(--dx-mono); white-space: nowrap; }
+.dx-log-src { color: var(--dx-mut); flex: none; min-width: 7ch; }
+.dx-log-lvl { flex: none; min-width: 5ch; text-transform: uppercase; font-size: var(--dx-text-xs); font-weight: var(--dx-weight-semibold); }
+.dx-log-txt { color: var(--dx-ink); overflow: hidden; text-overflow: ellipsis; }
+.dx-log-row.is-warn .dx-log-lvl { color: var(--dx-warn); }
+.dx-log-row.is-error .dx-log-lvl { color: var(--dx-neg); }
+.dx-log-row.is-error .dx-log-txt { color: var(--dx-neg); }
+.dx-log-row.is-info .dx-log-lvl { color: var(--dx-accent); }
+.dx-log-row.is-debug .dx-log-lvl { color: var(--dx-mut); }
