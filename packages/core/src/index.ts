@@ -14,6 +14,7 @@ export {
   onError,
   createRoot,
   setInspector,
+  withoutInspector,
 } from "./graph.ts";
 
 export type { Signal, Accessor, EqualsFn, SignalOptions, InspectNode, DxInspector } from "./graph.ts";

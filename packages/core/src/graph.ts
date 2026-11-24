@@ -42,6 +42,7 @@ interface Scope {
   cleanups: Array<() => void> | null;
   parent: Node | null; // enclosing owner at creation (for error-boundary walk)
   errorHandlers: Array<(err: unknown) => void> | null;
+  ignored: boolean; // this node (and its descendants) are hidden from the inspector
 }
 
 interface Node extends Scope {
@@ -76,12 +77,25 @@ export interface DxInspector {
 }
 let inspector: DxInspector | null = null;
 let nextNodeId = 0;
+let instrumentPaused = false;
 /** Install (or clear with `null`) the reactive-graph inspector. */
 export function setInspector(next: DxInspector | null): void {
   inspector = next;
 }
+/** Run `fn` with instrumentation suppressed: nodes created inside (and, via owner
+ *  inheritance, their descendants — even ones created later) are invisible to the
+ *  inspector. Use it to mount DevTools' own UI so it does not observe itself. */
+export function withoutInspector<T>(fn: () => T): T {
+  const prev = instrumentPaused;
+  instrumentPaused = true;
+  try {
+    return fn();
+  } finally {
+    instrumentPaused = prev;
+  }
+}
 function instrument(node: Node, kind: InspectNode["kind"], name?: string): void {
-  if (!inspector) return;
+  if (!inspector || node.ignored) return;
   const handle: InspectNode = { id: ++nextNodeId, kind, name };
   node.inspect = handle;
   inspector.onCreate?.(handle);
@@ -122,6 +136,9 @@ function makeNode<T>(
     parent: CurrentScope as Node | null, // the enclosing owner at creation time
     errorHandlers: null,
     inspect: null,
+    // Hidden from the inspector if created under withoutInspector, or if the
+    // enclosing owner is itself hidden (so a whole subtree stays invisible).
+    ignored: instrumentPaused || !!(CurrentScope && (CurrentScope as Node).ignored),
   };
 }
 
@@ -291,7 +308,11 @@ function flush(): void {
 /** Create a writable reactive value. */
 export function signal<T>(value: T, options?: SignalOptions<T>): Signal<T> {
   const node = makeNode(value, null, false, options);
-  if (inspector) instrument(node, "signal", options?.name);
+  if (inspector) {
+    instrument(node, "signal", options?.name);
+    // Seed the initial value so DevTools shows it before the first write.
+    if (node.inspect) inspector.onUpdate?.(node.inspect, value);
+  }
   const s = ((...args: [] | [T | ((prev: T) => T)]): T => {
     if (args.length === 0) return readNode(node) as T;
     const a = args[0];

@@ -225,3 +225,20 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 /* Command-palette match highlight (@dxjs/shell) */
 .dx-cmdk-hl { background: var(--dx-accent-weak); color: var(--dx-accent); border-radius: 3px; font-weight: var(--dx-weight-semibold); }
+
+/* --- devtools panel (@dxjs/devtools) ------------------------------------ */
+.dx-devtools { border: 1px solid var(--dx-line); border-radius: var(--dx-radius); background: var(--dx-panel); overflow: hidden; font: var(--dx-text-sm) var(--dx-mono); }
+.dx-dt-bar { display: flex; align-items: center; gap: var(--dx-space-2); padding: var(--dx-space-2) var(--dx-space-3); border-bottom: 1px solid var(--dx-line2); flex-wrap: wrap; }
+.dx-dt-brand { font-family: var(--dx-font); }
+.dx-dt-count { color: var(--dx-mut); margin-right: auto; }
+.dx-dt-chip { border: 1px solid var(--dx-line); background: #fff; color: var(--dx-ink); border-radius: 7px; padding: 2px 9px; font: var(--dx-text-xs) var(--dx-font); cursor: pointer; }
+.dx-dt-chip.is-active { background: var(--dx-accent); border-color: var(--dx-accent); color: #fff; }
+.dx-dt-toggle { font: var(--dx-text-xs) var(--dx-font); color: var(--dx-mut); display: inline-flex; align-items: center; gap: 4px; }
+.dx-dt-tbl { width: 100%; border-collapse: collapse; }
+.dx-dt-tbl th, .dx-dt-tbl td { text-align: left; padding: 4px var(--dx-space-3); border-bottom: 1px solid var(--dx-line2); }
+.dx-dt-tbl th { font: var(--dx-text-xs) var(--dx-font); color: var(--dx-mut); text-transform: uppercase; letter-spacing: .05em; }
+.dx-dt-kind.is-signal { color: var(--dx-accent); }
+.dx-dt-kind.is-computed { color: var(--dx-pos); }
+.dx-dt-kind.is-effect { color: var(--dx-warn); }
+.dx-dt-val { max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dx-dt-row.is-disposed { opacity: .45; text-decoration: line-through; }
