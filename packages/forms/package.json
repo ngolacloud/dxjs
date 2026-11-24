@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/forms",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Signal-reactive forms for dxjs: field values, touched/dirty/error state, submit, and a zod-compatible validation adapter (the dxjs answer to react-hook-form).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.0.0"
+    "@dxjs/core": "1.1.0"
   },
   "keywords": [
     "dxjs",

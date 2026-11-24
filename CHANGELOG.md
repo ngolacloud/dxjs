@@ -4,6 +4,43 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
+## 1.1.0 — 2026-11-25
+
+Additive release — new exports and options only; every 1.0.0 program keeps
+compiling and behaving. The hard invariants (no eval / no inline handlers,
+strict-CSP safe, deterministic teardown, escaped data) are unchanged.
+
+### `@dxjs/ui`
+
+- **Component kit v2** — a Tailwind-grade refinement of the design tokens (a
+  compact type/space scale, graduated radii/shadows, a full neutral ramp, focus
+  rings) plus a **Bootstrap-style size scale** `xs·sm·md·lg·xl·xxl` (≡ `1–6`) on
+  the controls.
+- **New components**: `button` (variants + sizes + loading), `badge`, `input`,
+  `textarea`, `field`, `select`, `switchToggle`, `checkbox`, `radioGroup`,
+  `alert`, `modal`, `tooltip`, `skeleton`, `spinner`, `progress`, `meter`,
+  `emptyState`, `tabs`, `segmented`, `breadcrumb`, `navPanel`, `avatar`,
+  `divider`, `searchableSelect`, `datePicker`, `timer`, `sparkline`, `metric` /
+  `metricGrid`, `calendar` (UTC + Intl + holiday engine), `gantt`, `planner`,
+  `image`, `video`, `carousel`, `worldMap`, `starRating`, `tableList`,
+  `searchFilter` (Odoo-style, Ctrl/⌘+K).
+- **Table export** — `toCsv` / `toXls` / `toXlsx` (a real OOXML workbook written
+  with a self-contained zip + CRC-32) and an export menu wired into `dataTable`
+  and `tableList`.
+- **Holiday engine** (`holidays.ts`) — Easter computus + fixed/nth-weekday rules,
+  a built-in Angola (`pt-AO`) set, and a pluggable `registerHolidays`.
+- **Richer tables** — `dataTable`/`tableList` gain selection, row click, loading
+  skeletons, sticky header, column alignment, density and striping.
+- **Responsive `appShell`** — a hamburger + slide-in drawer below ~860px.
+
+### Docs
+
+- The documentation site is rebuilt in the delonix style (sticky topbar,
+  3-column layout, grouped side nav, right TOC), **bilingual pt-AO / EN** with a
+  live language switch, CSP-safe **syntax highlighting**, CDN (esm.sh) vs Node
+  (npm install) runnable examples, a **Desktop / Mobile preview** toggle, and a
+  page per component (Usage + how to Populate).
+
 ## 1.0.0 — 2026-11-24
 
 First stable release. The public API of each package is now under the semver

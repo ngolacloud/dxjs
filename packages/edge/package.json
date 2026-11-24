@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/edge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "dxjs edge: a runtime-agnostic Web-fetch HTTP handler (Cloudflare Workers/Deno/Node) with injectable SSR, plus a native HTTP/2 gRPC unary client that reads trailers.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -23,7 +23,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.0.0"
+    "@dxjs/core": "1.1.0"
   },
   "keywords": [
     "dxjs",

@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/transport",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "dxjs transport: typed REST client, reactive resource (AbortController-tied), multiplexed SSE liveSignal, and a Connect (gRPC) unary client.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.0.0"
+    "@dxjs/core": "1.1.0"
   },
   "keywords": [
     "dxjs",

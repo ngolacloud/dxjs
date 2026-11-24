@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/dev",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "dxjs dev server: CSP-safe HMR built on @dxjs/edge. Per-module esbuild transform + long-poll hot updates that preserve signal state across an edit. Development tool only — the product it serves ships no Node.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -27,7 +27,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/edge": "1.0.0"
+    "@dxjs/edge": "1.1.0"
   },
   "peerDependencies": {
     "esbuild": "*"
