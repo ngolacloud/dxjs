@@ -15,16 +15,15 @@ jobs:
           node-version: "22"
       - name: install (workspace links + happy-dom for DOM tests)
         run: npm install
-      - name: no-eval gate (CSP safety)
-        run: node scripts/no-eval-gate.mjs
-      - name: unit tests (node:test, native TS)
-        run: node --test packages/*/test/*.test.ts examples/*/test/*.test.ts
-      - name: size budget gate (real esbuild min+gzip)
-        run: node scripts/size.mjs
-      - name: build (esbuild → dist + demo bundle)
-        run: node scripts/build.mjs
+      # The one gate: no-eval + jsx-types + unit tests (native TS via the
+      # `development` export condition) + size budgets. Mirrors `npm run check`
+      # exactly so CI and local never drift.
+      - name: check (no-eval + jsx-types + 201 tests + size)
+        run: npm run check
+      - name: build (esbuild → dist + .d.ts for all packages + demo bundles)
+        run: npm run build
 
-  csp-browser:
+  browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,8 +33,12 @@ jobs:
       - run: npm install
       - name: install Chromium for Playwright
         run: npx playwright install --with-deps chromium
-      - name: strict-CSP browser proofs (render + canvas + charts + vanilla + live SSE)
+      - name: strict-CSP browser proofs (render + canvas + charts + vanilla + live SSE + dashboard)
         run: node scripts/build.mjs && node --test e2e/csp/csp.test.mjs e2e/csp/canvas.test.mjs e2e/csp/chart.test.mjs e2e/csp/vanilla.test.mjs e2e/csp/live.test.mjs e2e/csp/dash.test.mjs
+      - name: HMR dev-server proof (signal survives an edit under strict CSP)
+        run: npm run test:hmr
+      - name: cloud-shell proof (Track D stack composed, under strict CSP)
+        run: npm run test:shell
       - name: docs site proof (dogfooded dxjs app under strict CSP)
         run: node docs/build.mjs && node --test docs/test/docs.test.mjs
       - name: delonix-dx-console proof-of-concept (dashboard + containers under strict CSP)
