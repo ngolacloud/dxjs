@@ -78,12 +78,12 @@ que o framework não impõe nem verifica.
 |----|-----|--------|-------|
 | L1 | BAIXO | `<script>`/`<style>` não são contexto raw-text no scanner → CSS injection em `<style>${data}</style>` | `server/render.ts:21` |
 | L2 | BAIXO | Sem cabeçalhos de segurança nem `Content-Type`/charset por omissão (CSP/HSTS/nosniff) | `server/*`, `edge/edge.ts:34` |
-| L3 | BAIXO | `decodeURIComponent` sobre params de rota pode lançar `URIError` e derrubar o router | `component/router.ts:175` |
+| ~~L3~~ | BAIXO **✔ corrigido** | `decodeURIComponent` sobre params de rota pode lançar `URIError` e derrubar o router | `component/router.ts:175` |
 | L4 | BAIXO | `/@fs` não faz `realpath` → symlink no repo escapa à contenção; erro do esbuild ecoa conteúdo | `dev/server.ts:293` |
 | L5 | BAIXO | HMR long-poll sem limite de waiters/sockets; `since=Number()` aceita `NaN` | `dev/server.ts:270` |
-| L6 | BAIXO | `onError` tratado trunca as dependências lidas do efeito (pode não auto-recuperar) + filhos órfãos | `core/graph.ts:202` |
+| ~~L6~~ | BAIXO **✔ corrigido** | `onError` tratado trunca as dependências lidas do efeito (pode não auto-recuperar) + filhos órfãos | `core/graph.ts:202` |
 | L7 | BAIXO | `k8s.apply` confia na forma do evento; evento malformado aborta o lote inteiro | `k8s/index.ts:69` |
-| L8 | BAIXO | query `keyOf`: chave com `__proto__` colapsa no `JSON.stringify` → colisão de cache | `query/index.ts:69` |
+| ~~L8~~ | BAIXO **✔ corrigido** | query `keyOf`: chave com `__proto__` colapsa no `JSON.stringify` → colisão de cache | `query/index.ts:69` |
 | L9 | BAIXO | `media`/`avatar` `src`/`poster` sem validação de esquema (delega na CSP) | `ui/media.ts:45,78`; `ui/nav.ts:130` |
 | L10 | BAIXO | Confiança cega em `Host`/`X-Forwarded-Proto` ao construir o URL do Request | `edge/edge.ts:59` |
 | L11 | INFO | `createGrpcChannel` abre/fecha sessão HTTP/2 por chamada (sem pooling) | `edge/grpc.ts:92` |
@@ -347,6 +347,15 @@ verde (**370 testes**, 0 falhas; gates `no-eval`/`jsx-types`/`size` PASS —
 inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o lado
 **cliente** (transmissão da credencial); a validação no `edge` server é trabalho seu.
 
-**Backlog restante:** 13 BAIXO/INFO, e os sub-vectores **server-side** de M7
-(fila `wsAdapter`, corpo `nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5) e
-MÉDIO (M1–M11) estão fechados com PoC red→green.
+### Endurecimento BAIXO/INFO — Slice A (framework-core)
+
+| ID | Correcção | Ficheiros | PoC (regressão) |
+|----|-----------|-----------|-----------------|
+| L3 | `router` decodifica params via `safeDecode` (try/catch sobre `decodeURIComponent`); um `%`-escape malformado (`/%E0%A4`, `/%`) já não lança `URIError` — o segmento cai para o valor cru em vez de derrubar o router | `component/src/router.ts` (`safeDecode`) | `component/test/security-l3-router-decode.audit.test.ts` (2) |
+| L6 | `graph.update`: num throw **tratado**, os nós-filho criados antes do throw são **dispostos** (`disposeNode`) em vez de ficarem vivos/subscritos (órfãos) até um re-run que pode nunca vir. **Aceite + documentado:** a truncagem do conjunto de dependências lidas é inerente a uma leitura parcial — o efeito re-corre quando muda uma fonte que **chegou a ler**; recuperar de um erro que impediu a leitura de uma fonte exige que o erro limpe por um caminho já lido | `core/src/graph.ts:220` | `core/test/security-l6-orphan-children.audit.test.ts` (1) |
+| L8 | `query.keyOf` serializa objectos simples como array de pares `[chave, valor]` ordenados em vez de reconstruir o objecto; uma chave `__proto__` (própria) deixa de bater no setter do protótipo e desaparecer, logo chaves que só diferem em `__proto__` dão keys de cache distintas | `query/src/index.ts:69` | `query/test/security-l8-keyof-proto.audit.test.ts` (2) |
+
+**Backlog restante:** Slices B (SSR/edge L1/L2/L10), C (dev server L4/L5/L13), D
+(L7/L9/L11/L12), e os sub-vectores **server-side** de M7 (fila `wsAdapter`, corpo
+`nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5) e MÉDIO (M1–M11) e o Slice A
+dos BAIXO (L3/L6/L8) estão fechados com PoC red→green.

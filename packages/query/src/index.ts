@@ -65,14 +65,19 @@ export interface QueryClient {
   _query<T>(key: QueryKey, fetcher: () => Promise<T>, options?: QueryOptions<T>): Query<T>;
 }
 
-/** Deterministic string key (stable across property order for plain objects). */
+/** Deterministic string key (stable across property order for plain objects).
+ *  A plain object is serialised as an array of sorted `[key, value]` pairs rather
+ *  than a rebuilt object: rebuilding via `o[k] = …` lets a `__proto__`-named key
+ *  hit the prototype setter and vanish, so `{["__proto__"]:"a", x:1}` collapsed to
+ *  `{x:1}` and collided in the cache with a different key. Pairs keep every own key
+ *  (including `__proto__`) as plain data. (Audit L8) */
 export function keyOf(key: QueryKey): string {
   if (typeof key === "string") return key;
   return JSON.stringify(key, (_k, v) =>
     v && typeof v === "object" && !Array.isArray(v)
       ? Object.keys(v as Record<string, unknown>)
           .sort()
-          .reduce((o, k) => ((o[k] = (v as Record<string, unknown>)[k]), o), {} as Record<string, unknown>)
+          .map((k) => [k, (v as Record<string, unknown>)[k]])
       : v,
   );
 }

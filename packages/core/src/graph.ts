@@ -218,6 +218,14 @@ function update(node: Node): void {
     CurrentScope = prevScope;
   }
   if (threw) {
+    // A partial run may have created child nodes before throwing. Dispose them so
+    // a HANDLED error leaves no orphaned/leaked effects: otherwise they stay live
+    // until a re-run that may never come (the dep set is also truncated to what was
+    // read before the throw — an inherent limit of a partial read; see report L6).
+    if (node.owned) {
+      for (const child of node.owned) disposeNode(child);
+      node.owned = null;
+    }
     // Route to the nearest error boundary (onError) up the owner tree; if none,
     // rethrow so it surfaces to the caller (a write's flush or the initial run).
     if (!runErrorHandlers(node, error)) throw error;
