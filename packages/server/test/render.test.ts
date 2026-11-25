@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { signal } from "@dxjs/core";
 import { html } from "@dxjs/dom";
-import { renderToString } from "../src/index.ts";
+import { renderToString, renderToStringAsync } from "../src/index.ts";
 
 test("renders static markup", () => {
   assert.equal(renderToString(html`<p class="x">hi</p>`), '<p class="x">hi</p>');
@@ -34,6 +34,22 @@ test("boolean ?attr: true emits the attribute, false omits it", () => {
 
 test(".property renders as its attribute", () => {
   assert.equal(renderToString(html`<input .value=${"hi"}>`), '<input value="hi">');
+});
+
+test("@event handlers and refs are dropped WITHOUT being called", async () => {
+  let calls = 0;
+  const handler = (): void => {
+    calls++;
+  };
+  const out = renderToString(
+    html`<form @submit=${handler}><input ref=${handler} @input=${handler} /><button @click=${handler}>go</button></form>`,
+  );
+  assert.equal(out, "<form ><input   /><button >go</button></form>");
+  assert.equal(calls, 0, "no handler ran on the server");
+  // Same with hydration markers and in the streaming renderer.
+  assert.match(renderToString(html`<button @click=${handler}>x</button>`, { hydratable: true }), /data-dxh-0/);
+  assert.equal(await renderToStringAsync(html`<a ref=${handler} @click=${handler}>x</a>`), "<a  >x</a>");
+  assert.equal(calls, 0);
 });
 
 test("@event handlers are dropped (no server listeners)", () => {
