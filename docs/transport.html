@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dxjs — connect any backend</title>
+<style>
+/* ============================================================================
+   dxjs transport guide — self-contained light doc page.
+   NgolaCloud identity: accent blue #3d7be0, brand petal #e5484d, core gold #f2b03d.
+   Committed LIGHT theme (per brief). System type scale; no webfont CDN (CSP-safe).
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --ground: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --ink: #101726;
+  --ink-soft: #2b3545;
+  --muted: #5a6678;
+  --faint: #8a94a3;
+  --line: #e7eaf1;
+  --line-strong: #d7dce7;
+  --accent: #3d7be0;
+  --accent-hover: #2f6ad0;
+  --accent-weak: #eaf1fc;
+  --petal: #e5484d;
+  --petal-weak: #fdecec;
+  --gold: #f2b03d;
+  --gold-soft: #fff3da;
+  --ok: #1f9d6b;
+  --code-bg: #f6f8fc;
+  --code-ink: #243049;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16,23,38,.04), 0 8px 24px -12px rgba(16,23,38,.12);
+  --shadow-lift: 0 2px 4px rgba(16,23,38,.05), 0 16px 40px -16px rgba(61,123,224,.22);
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --measure: 70ch;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--ui);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; margin: 0; }
+code { font-family: var(--mono); font-size: .9em; }
+.eyebrow {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em;
+  color: var(--accent); margin: 0 0 10px;
+}
+
+/* --- top bar -------------------------------------------------------------- */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--ground) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.topbar-in {
+  max-width: 1240px; margin: 0 auto; padding: 12px 24px;
+  display: flex; align-items: center; gap: 20px;
+}
+.wordmark { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -.03em; color: var(--ink); }
+.mark {
+  width: 28px; height: 28px; border-radius: 9px; flex: none;
+  background: radial-gradient(circle at 50% 36%, var(--gold) 0 26%, var(--petal) 27% 100%);
+  box-shadow: inset 0 0 0 1px rgba(16,23,38,.06), 0 2px 6px -2px rgba(229,72,77,.5);
+}
+.wordmark small { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0; }
+.topnav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topnav a { padding: 7px 12px; border-radius: 8px; color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+.topnav a:hover { background: var(--surface-2); color: var(--ink); }
+.pill {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px;
+  background: var(--petal); color: #fff !important; font-weight: 600; font-size: 14px;
+  box-shadow: 0 2px 8px -2px rgba(229,72,77,.6);
+}
+.pill:hover { background: #d53b40; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+
+/* --- shell --------------------------------------------------------------- */
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 48px; }
+.sidebar { position: sticky; top: 61px; align-self: start; height: calc(100vh - 61px); overflow-y: auto; padding: 32px 0; }
+.side-group { margin-bottom: 22px; }
+.side-group h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); margin: 0 0 8px; font-weight: 700; }
+.side-group a { display: block; padding: 5px 12px; border-radius: 7px; color: var(--muted); font-size: 14px; border-left: 2px solid transparent; }
+.side-group a:hover { color: var(--ink); background: var(--surface-2); }
+.side-group a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-weak); font-weight: 600; }
+main { min-width: 0; padding: 0 0 96px; }
+
+/* --- hero ---------------------------------------------------------------- */
+.hero { padding: 72px 0 40px; }
+.hero h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
+.hero h1 .accent { color: var(--accent); }
+.hero .lead { font-size: 19px; color: var(--muted); max-width: 46ch; margin: 18px 0 28px; line-height: 1.6; }
+.cmd {
+  display: inline-flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-strong);
+  border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 14.5px; color: var(--ink-soft);
+  box-shadow: var(--shadow);
+}
+.cmd .prompt { color: var(--petal); font-weight: 700; }
+.cmd button { margin-left: 4px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid transparent; cursor: pointer; font-family: var(--ui); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 10px -3px rgba(61,123,224,.6); }
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-ghost { background: var(--surface); color: var(--ink-soft); border-color: var(--line-strong); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- value cards --------------------------------------------------------- */
+.values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 8px 0 24px; }
+.vcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+.vcard .vi { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 12px; background: var(--accent-weak); color: var(--accent); font-weight: 800; }
+.vcard h3 { font-size: 16px; margin-bottom: 6px; }
+.vcard p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+/* --- sections ------------------------------------------------------------ */
+section.doc { padding-top: 56px; scroll-margin-top: 76px; }
+section.doc > h2 { font-size: 28px; font-weight: 800; }
+section.doc > .sub { color: var(--muted); font-size: 17px; margin: 10px 0 0; max-width: var(--measure); }
+.prose { max-width: var(--measure); }
+.prose p { color: var(--ink-soft); margin: 18px 0; }
+.prose p code, li code { background: var(--accent-weak); color: var(--accent); padding: 1.5px 6px; border-radius: 6px; font-size: .88em; }
+.prose ul { color: var(--ink-soft); padding-left: 20px; }
+.prose li { margin: 6px 0; }
+
+/* --- code ---------------------------------------------------------------- */
+figure.code { margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+figure.code figcaption {
+  display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--surface-2);
+  border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; color: var(--muted);
+}
+figure.code figcaption .fname { color: var(--ink-soft); font-weight: 600; }
+figure.code figcaption .copy { margin-left: auto; }
+.copy {
+  font: inherit; font-size: 12px; font-family: var(--ui); font-weight: 600; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted);
+  border-radius: 7px; padding: 4px 10px;
+}
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy.done { color: var(--ok); border-color: var(--ok); }
+pre { margin: 0; padding: 16px 18px; overflow-x: auto; background: var(--code-bg); }
+pre code { font-size: 13.5px; line-height: 1.75; color: var(--code-ink); white-space: pre; }
+/* syntax tokens (light-tuned) */
+.k { color: #2f6ad0; font-weight: 600; }   /* keyword */
+.s { color: #1f8a5b; }                       /* string */
+.c { color: #99a1b0; font-style: italic; }   /* comment */
+.n { color: #b2541a; }                        /* number */
+.f { color: #8a3ffc; }                        /* function/type */
+
+/* --- adapter cards ------------------------------------------------------- */
+.adapter { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 8px; margin: 18px 0; box-shadow: var(--shadow); transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease; }
+.adapter:hover { box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
+@media (prefers-reduced-motion: no-preference) { .adapter:hover { transform: translateY(-2px); } }
+.adapter-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 14px; }
+.adapter-head h3 { font-family: var(--mono); font-size: 18px; letter-spacing: -.01em; color: var(--ink); }
+.adapter-head .what { color: var(--muted); font-size: 14.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 2px; }
+.chip { font-size: 11.5px; font-weight: 600; letter-spacing: .02em; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.chip.cap { background: var(--accent-weak); color: var(--accent); border-color: transparent; }
+.chip.live { background: var(--petal-weak); color: var(--petal); border-color: transparent; }
+.chip.proc { background: var(--gold-soft); color: #9a6a12; border-color: transparent; }
+.wire {
+  display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 16px; padding: 11px 14px;
+  background: var(--surface-2); border-radius: var(--radius-sm); font-size: 13.5px; color: var(--ink-soft); border: 1px dashed var(--line-strong);
+}
+.wire b { color: var(--ink); }
+.wire .arrow { color: var(--accent); font-weight: 800; flex: none; }
+.wire code { background: #fff; border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; color: var(--ink-soft); }
+
+/* --- table --------------------------------------------------------------- */
+.tablewrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { background: var(--surface-2); color: var(--ink); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; }
+tbody tr:last-child td { border-bottom: 0; }
+td code { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+td .cap-dot { font-variant-numeric: tabular-nums; }
+
+/* --- callout ------------------------------------------------------------- */
+.callout { display: flex; gap: 12px; padding: 16px 18px; border-radius: var(--radius); background: var(--accent-weak); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); margin: 22px 0; max-width: var(--measure); }
+.callout .ci { flex: none; font-weight: 800; color: var(--accent); }
+.callout p { margin: 0; color: var(--ink-soft); font-size: 14.5px; }
+.callout b { color: var(--ink); }
+
+/* --- footer -------------------------------------------------------------- */
+footer { border-top: 1px solid var(--line); margin-top: 40px; }
+.footer-in { max-width: 1240px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; color: var(--muted); font-size: 14px; }
+.footer-in .wordmark { font-size: 15px; }
+.footer-in nav { margin-left: auto; display: flex; gap: 18px; }
+
+/* --- responsive ---------------------------------------------------------- */
+@media (max-width: 920px) {
+  .shell { grid-template-columns: 1fr; gap: 0; }
+  .sidebar { display: none; }
+  .values { grid-template-columns: 1fr; }
+  .topnav a:not(.pill) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs <small>· transport</small></span>
+    <nav class="topnav">
+      <a href="#start">Start</a>
+      <a href="#reactivity">Reactivity</a>
+      <a href="#transport">Transport</a>
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <a class="pill" href="#transport"><span class="dot" aria-hidden="true"></span> Connect a backend</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" aria-label="Section navigation">
+    <div class="side-group">
+      <h4>Get started</h4>
+      <a href="#start">Overview &amp; install</a>
+      <a href="#reactivity">Reactivity in 20 lines</a>
+      <a href="#transport">The transport port</a>
+    </div>
+    <div class="side-group">
+      <h4>Adapters</h4>
+      <a href="#rest">restAdapter</a>
+      <a href="#connect">connectAdapter</a>
+      <a href="#sse">sseAdapter</a>
+      <a href="#ws">wsAdapter</a>
+      <a href="#inmemory">inMemoryAdapter</a>
+      <a href="#embedded">embeddedAdapter</a>
+    </div>
+    <div class="side-group">
+      <h4>Reactive data</h4>
+      <a href="#resource">resource()</a>
+      <a href="#livesignal">liveSignal</a>
+      <a href="#openapi">openapiClient</a>
+      <a href="#matrix">Which adapter?</a>
+    </div>
+  </aside>
+
+  <main>
+    <section class="hero" id="top">
+      <p class="eyebrow">NgolaCloud · open source · 0 runtime deps</p>
+      <h1>One app.<br /><span class="accent">Any backend.</span></h1>
+      <p class="lead">dxjs is a tiny reactive framework with a protocol-neutral transport port. Describe an
+        operation once; swap REST, gRPC, SSE, WebSocket or in-process by changing one line of bootstrap.</p>
+      <div class="cmd">
+        <span class="prompt">$</span><span>npm install @dxjs/core @dxjs/dom @dxjs/transport</span>
+        <button class="copy" data-copy="npm install @dxjs/core @dxjs/dom @dxjs/transport">Copy</button>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#transport">Connect a real backend →</a>
+        <a class="btn btn-ghost" href="#reactivity">See the reactivity core</a>
+      </div>
+    </section>
+
+    <section class="doc" id="start">
+      <p class="eyebrow">Overview</p>
+      <h2>Small, reactive, honest about the network</h2>
+      <p class="sub">A fine-grained signal graph renders the DOM, a string renderer does CSP-safe SSR,
+        and the transport layer keeps your data-fetching code identical no matter what speaks on the wire.</p>
+      <div class="values">
+        <div class="vcard"><div class="vi">σ</div><h3>Fine-grained reactive</h3><p>Signals, computeds and effects — no virtual DOM, no re-render pass. ~1.5&nbsp;KB gzipped core.</p></div>
+        <div class="vcard"><div class="vi">⇄</div><h3>Protocol-neutral</h3><p>One <code>method()</code> descriptor; adapters map it to REST, Connect, SSE, WebSocket or in-process.</p></div>
+        <div class="vcard"><div class="vi">⛨</div><h3>Strict-CSP SSR</h3><p>String + streaming renderers escape every sink; no <code>eval</code>, no inline handlers, edge-ready.</p></div>
+      </div>
+    </section>
+
+    <section class="doc" id="reactivity">
+      <p class="eyebrow">Reactivity</p>
+      <h2>The whole model, in twenty lines</h2>
+      <p class="sub">A <code>signal</code> holds state, a <code>computed</code> derives from it, an <code>effect</code>
+        runs when its reads change, and <code>html</code>&#8202;/&#8202;<code>render</code> bind the DOM to those reads — surgically.</p>
+      <figure class="code">
+        <figcaption><span class="fname">counter.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { signal, computed, effect } from "@dxjs/core";
+import { html, render } from "@dxjs/dom";
+
+const count = signal(0);
+const doubled = computed(() =&gt; count() * 2);
+
+effect(() =&gt; console.log("count is", count()));   // re-runs when count changes
+
+render(
+  html`&lt;button @click=${() =&gt; count.set(count() + 1)}&gt;
+    ${count} &times; 2 = ${doubled}
+  &lt;/button&gt;`,
+  document.body,
+);</code></pre>
+      </figure>
+    </section>
+
+    <section class="doc" id="transport">
+      <p class="eyebrow">Transport · ADR 0001</p>
+      <h2>Describe the operation once</h2>
+      <p class="sub">A <code>method()</code> is a protocol-neutral descriptor. A <em>Transport</em> adapter knows
+        how to put it on a wire. <code>createRpcClient</code> gives you a typed <code>call</code> (unary) and
+        <code>live</code> (server-stream) over whichever adapter you bootstrap with.</p>
+      <figure class="code">
+        <figcaption><span class="fname">api.ts — shared across every adapter</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { method } from "@dxjs/transport";
+
+// One description, reused everywhere. `wire.http` only matters to HTTP adapters.
+export const getUser = method&lt;{ id: string }, User&gt;({
+  id: "users.get",
+  wire: { http: { method: "GET", path: (r) =&gt; `/v1/users/${r.id}` } },
+  idempotent: true,
+});
+
+export const createUser = method&lt;NewUser, User&gt;({
+  id: "users.create",
+  wire: { http: { method: "POST", path: "/v1/users" } },
+});
+
+export const watchPrices = method&lt;{ symbol: string }, Tick&gt;({
+  id: "prices.watch",
+  kind: "serverStream",
+  wire: { http: { path: (r) =&gt; `/v1/prices/${r.symbol}/stream` } },
+});</code></pre>
+      </figure>
+      <div class="callout"><span class="ci">↳</span><p>Everything below reuses these exact descriptors. The only thing that changes between a REST
+        deployment, a gRPC one, or a test is <b>which adapter you pass to <code>createRpcClient</code></b>.</p></div>
+
+      <!-- restAdapter -->
+      <article class="adapter" id="rest">
+        <div class="adapter-head"><h3>restAdapter</h3><span class="what">Typed JSON over HTTP — the everyday default.</span></div>
+        <div class="chips"><span class="chip cap">unary</span><span class="chip">Bearer auth</span><span class="chip">per-request headers</span><span class="chip">retry · timeout</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">rest.ts</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { restAdapter, createRpcClient } from "@dxjs/transport";
+import { getUser, createUser } from "./api";
+
+const api = createRpcClient(
+  restAdapter({
+    baseUrl: "https://api.ngolacloud.ao",
+    auth: () =&gt; localStorage.getItem("token"),     // → Authorization: Bearer …
+    headers: () =&gt; ({ "x-tenant": currentTenant() }),
+  }),
+);
+
+const user = await api.call(getUser, { id: "42" });
+const created = await api.call(createUser, { name: "Ana", email: "ana@ex.ao" });</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span>Hits <b>GET</b> <code>https://api.ngolacloud.ao/v1/users/42</code> with the bearer header; <code>createUser</code> becomes a <b>POST</b> with the JSON body. GET/HEAD/DELETE never send a body — set <code>query: true</code> on the wire to serialise the request as a query string.</span></div>
+      </article>
+
+      <!-- connectAdapter -->
+      <article class="adapter" id="connect">
+        <div class="adapter-head"><h3>connectAdapter</h3><span class="what">Connect / gRPC-web unary (JSON) to a gRPC service.</span></div>
+        <div class="chips"><span class="chip cap">unary</span><span class="chip">Connect protocol</span><span class="chip">Bearer auth</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">connect.ts</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { connectAdapter, createRpcClient, method } from "@dxjs/transport";
+
+const api = createRpcClient(
+  connectAdapter({ baseUrl: "https://rpc.ngolacloud.ao", auth: () =&gt; token() }),
+);
+
+// The descriptor id carries the fully-qualified service + method.
+const getUser = method&lt;GetUserReq, User&gt;({ id: "user.v1.UserService.GetUser" });
+
+const user = await api.call(getUser, { id: "42" });</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span><b>POST</b> <code>/user.v1.UserService/GetUser</code> with a JSON body (Connect unary). The service and method are split from the descriptor <code>id</code> at the last dot.</span></div>
+      </article>
+
+      <!-- sseAdapter -->
+      <article class="adapter" id="sse">
+        <div class="adapter-head"><h3>sseAdapter</h3><span class="what">Server-Sent Events for live, server→client streams.</span></div>
+        <div class="chips"><span class="chip live">serverStream</span><span class="chip">auto-reconnect</span><span class="chip">Last-Event-ID resume</span><span class="chip">bounded buffer</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">sse.ts — compose unary + stream</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { restAdapter, sseAdapter, composeTransport, createRpcClient } from "@dxjs/transport";
+import { getUser, watchPrices } from "./api";
+
+// sseAdapter is stream-only → compose it with a unary transport.
+const api = createRpcClient(
+  composeTransport(
+    restAdapter({ baseUrl: "https://api.ngolacloud.ao" }),            // unary calls
+    sseAdapter({ baseUrl: "https://api.ngolacloud.ao", reconnect: true }), // live streams
+  ),
+);
+
+for await (const tick of api.live(watchPrices, { symbol: "KZ" })) {
+  updateChart(tick);   // one object per `data:` frame, resumes from the last id on drop
+}</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span>Opens <code>text/event-stream</code> at <code>/v1/prices/KZ/stream</code> via plain <code>fetch</code> (no <code>EventSource</code>, so custom headers &amp; auth work). <b>unary</b> calls still go through REST; only streams use SSE.</span></div>
+      </article>
+
+      <!-- wsAdapter -->
+      <article class="adapter" id="ws">
+        <div class="adapter-head"><h3>wsAdapter</h3><span class="what">WebSocket for bidirectional, low-latency streams.</span></div>
+        <div class="chips"><span class="chip live">serverStream</span><span class="chip live">bidi</span><span class="chip">auth frame first</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">ws.ts</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { wsAdapter, createRpcClient, method } from "@dxjs/transport";
+
+const api = createRpcClient(
+  wsAdapter({
+    url: "wss://live.ngolacloud.ao/ws",
+    auth: () =&gt; sessionToken(),   // sent as the FIRST frame, before the request
+  }),
+);
+
+const chat = method&lt;{ room: string }, Message&gt;({ id: "chat.subscribe", kind: "serverStream" });
+
+for await (const msg of api.live(chat, { room: "angola" })) {
+  appendMessage(msg);
+}</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span>Browsers can't set an <code>Authorization</code> header on the WS handshake, so the adapter sends <code>{ type: "authorization", authorization: "Bearer …" }</code> as the first message. <b>Your server must authenticate that frame and emit nothing until it validates it.</b></span></div>
+      </article>
+
+      <!-- inMemoryAdapter -->
+      <article class="adapter" id="inmemory">
+        <div class="adapter-head"><h3>inMemoryAdapter</h3><span class="what">In-process handlers — tests, demos, a monolith.</span></div>
+        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">no network</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">memory.ts</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { inMemoryAdapter, createRpcClient } from "@dxjs/transport";
+
+const api = createRpcClient(
+  inMemoryAdapter({
+    handlers: {
+      "users.get": async ({ id }) =&gt; db.users.find(id),            // unary handler
+      "prices.watch": async function* ({ symbol }) {               // streaming handler
+        for await (const t of ticker(symbol)) yield t;
+      },
+    },
+  }),
+);
+
+// Identical call sites — `api.call(getUser, …)` / `api.live(watchPrices, …)` — no HTTP.</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span>Dispatches by the descriptor <code>id</code> to a local handler. Start as a monolith, then split into services later by swapping the adapter — the UI code never changes.</span></div>
+      </article>
+
+      <!-- embeddedAdapter -->
+      <article class="adapter" id="embedded">
+        <div class="adapter-head"><h3>embeddedAdapter</h3><span class="what">dxjs running inside/next to the backend binary.</span></div>
+        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">host dispatcher</span></div>
+        <figure class="code">
+          <figcaption><span class="fname">embedded.ts</span><button class="copy">Copy</button></figcaption>
+          <pre><code>import { embeddedAdapter, createRpcClient } from "@dxjs/transport";
+
+// The host (e.g. a Rust/Seiva server rendering SSR) hands dxjs its dispatcher.
+const api = createRpcClient(
+  embeddedAdapter({
+    invoke: (m, req, ctx) =&gt; host.dispatch(m.id, req, ctx),   // no HTTP round-trip
+  }),
+);
+
+const user = await api.call(getUser, { id: "42" });</code></pre>
+        </figure>
+        <div class="wire"><span class="arrow">→</span><span>Every call goes straight to the host's <code>invoke</code> — fast (no network hop) and secure (no public surface). Ideal for co-located SSR; the same app also runs over <code>restAdapter</code> by swapping this one line.</span></div>
+      </article>
+    </section>
+
+    <section class="doc" id="resource">
+      <p class="eyebrow">Reactive data</p>
+      <h2>resource() — a fetch that reacts</h2>
+      <p class="sub">Wrap any transport call in a <code>resource</code> to get a reactive accessor with
+        <code>loading</code>/<code>error</code>, cancellation, and idempotency-gated retries.</p>
+      <figure class="code">
+        <figcaption><span class="fname">user-resource.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { resource, fromMethod, restAdapter } from "@dxjs/transport";
+import { getUser } from "./api";
+
+const transport = restAdapter({ baseUrl: "https://api.ngolacloud.ao" });
+
+// `fromMethod` turns (transport, method, request) into a resource fetcher.
+// Pass an accessor for the request → the resource re-fetches when `userId()` changes.
+const user = resource(fromMethod(transport, getUser, () =&gt; ({ id: userId() })), {
+  retries: 2, backoff: 200, timeout: 5000,
+});
+
+html`${() =&gt; user.loading() ? "Loading…" : user()?.name}`;</code></pre>
+      </figure>
+    </section>
+
+    <section class="doc" id="livesignal">
+      <p class="eyebrow">Reactive data</p>
+      <h2>liveSignal — a value that stays live</h2>
+      <p class="sub">A signal fed by the transport's native stream when it has one (SSE, WebSocket), and
+        falling back to polling when it doesn't — the call site is the same either way.</p>
+      <figure class="code">
+        <figcaption><span class="fname">live.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { liveSignal } from "@dxjs/transport";
+import { watchPrices } from "./api";
+
+// Streams over SSE/WS if the transport supports it; otherwise polls every `pollMs`.
+const price = liveSignal(transport, watchPrices, { symbol: "KZ" }, {
+  initial: null,
+  pollMs: 2000,
+});
+
+html`&lt;span&gt;${() =&gt; price()?.last ?? "—"} Kz&lt;/span&gt;`;</code></pre>
+      </figure>
+    </section>
+
+    <section class="doc" id="openapi">
+      <p class="eyebrow">Reactive data</p>
+      <h2>openapiClient — typed from your spec</h2>
+      <p class="sub">Point <code>@dxjs/openapi</code> at an <code>openapi.json</code> and get a client whose calls are
+        validated against the request schema — over any adapter.</p>
+      <figure class="code">
+        <figcaption><span class="fname">openapi.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { openapiClient } from "@dxjs/openapi";
+import { restAdapter } from "@dxjs/transport";
+
+const doc = await fetch("/openapi.json").then((r) =&gt; r.json());
+const api = openapiClient(doc, restAdapter({ baseUrl: "https://api.ngolacloud.ao" }));
+
+// Call by operationId; the request is validated before it leaves the browser.
+const users = await api.call("listUsers", { q: "ana" });</code></pre>
+      </figure>
+      <div class="callout"><span class="ci">◆</span><p>Siblings <b>@dxjs/soap</b> and <b>@dxjs/proto</b> add SOAP and protobuf descriptors over the
+        same port — the UI keeps calling <code>api.call(...)</code> regardless of what the server speaks.</p></div>
+    </section>
+
+    <section class="doc" id="matrix">
+      <p class="eyebrow">Reference</p>
+      <h2>Which adapter should I use?</h2>
+      <p class="sub">Capabilities are the adapter's real <code>caps</code> — what the port guarantees at runtime.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Adapter</th><th>Carries</th><th>Capabilities</th><th>Reach for it when…</th></tr></thead>
+          <tbody>
+            <tr><td><code>restAdapter</code></td><td>HTTP + JSON</td><td>unary</td><td>a plain REST/JSON API — the default.</td></tr>
+            <tr><td><code>connectAdapter</code></td><td>Connect / gRPC-web</td><td>unary</td><td>the backend is a gRPC service with Connect.</td></tr>
+            <tr><td><code>sseAdapter</code></td><td>text/event-stream</td><td>serverStream</td><td>server→client live updates over plain HTTP.</td></tr>
+            <tr><td><code>wsAdapter</code></td><td>WebSocket</td><td>serverStream · bidi</td><td>low-latency or two-way streams (chat, presence).</td></tr>
+            <tr><td><code>inMemoryAdapter</code></td><td>function call</td><td>serverStream · in-process</td><td>tests, demos, or a monolith before it splits.</td></tr>
+            <tr><td><code>embeddedAdapter</code></td><td>host dispatcher</td><td>serverStream · in-process</td><td>dxjs runs inside/next to the backend (SSR).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><span class="ci">⚑</span><p>Need unary over one transport and streams over another? <code>composeTransport(unary, stream)</code>
+        stitches them into a single client — exactly what the SSE example does with REST&nbsp;+&nbsp;SSE.</p></div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="footer-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs</span>
+    <span>A NgolaCloud open-source project.</span>
+    <nav>
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <a href="#transport">Transport</a>
+      <a href="#top">Top ↑</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+/* Progressive enhancement only — the page is fully readable without JS. */
+(function () {
+  "use strict";
+  var ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+  function esc(s) { return s.replace(/[&<>]/g, function (c) { return ESC[c]; }); }
+
+  // Lightweight syntax highlighter: tokenise raw textContent, classify, re-emit.
+  var RE = /(\/\/[^\n]*)|(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b(import|from|export|const|let|var|await|async|function|for|of|in|return|new|if|else|yield|type|interface|class|extends|null|undefined|true|false)\b/g;
+  function highlight(src) {
+    var out = "", last = 0, m;
+    while ((m = RE.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += '<span class="c">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="s">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="n">' + esc(m[3]) + "</span>";
+      else if (m[4]) out += '<span class="k">' + esc(m[4]) + "</span>";
+      last = RE.lastIndex;
+    }
+    out += esc(src.slice(last));
+    return out;
+  }
+  document.querySelectorAll("pre code").forEach(function (code) {
+    code.innerHTML = highlight(code.textContent);
+  });
+
+  // Copy buttons: data-copy attribute, or the nearest <figure>'s code text.
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      if (!text) {
+        var fig = btn.closest("figure");
+        var code = fig && fig.querySelector("code");
+        text = code ? code.textContent : "";
+      }
+      navigator.clipboard && navigator.clipboard.writeText(text).then(function () {
+        var label = btn.textContent;
+        btn.textContent = "Copied"; btn.classList.add("done");
+        setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 1400);
+      });
+    });
+  });
+
+  // Scrollspy: highlight the sidebar link for the section in view.
+  var links = {};
+  document.querySelectorAll(".side-group a[href^='#']").forEach(function (a) {
+    links[a.getAttribute("href").slice(1)] = a;
+  });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove("active"); });
+        a.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-20% 0px -70% 0px" });
+  document.querySelectorAll("section[id], article[id]").forEach(function (s) { obs.observe(s); });
+})();
+</script>
+</body>
+</html>
