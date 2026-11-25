@@ -40,6 +40,7 @@ const PKGS = [
   { name: "query" },
   { name: "forms" },
   { name: "openapi" }, // deps: transport — after transport (its .d.ts is needed)
+  { name: "seiva" }, // deps: core, transport, query — after all three
   { name: "canvas" },
   { name: "shell" }, // deps: core, dom, canvas
   { name: "ui" },
