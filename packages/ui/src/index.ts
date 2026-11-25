@@ -164,6 +164,10 @@ export interface DataTableOptions<T> {
   rowKey: (row: T) => string | number;
   title?: string;
   search?: boolean;
+  /** Debounce (ms) applied to the search box so typing does not re-run the
+   *  O(n·m) filter synchronously on every keystroke. Default 150; `0` disables it
+   *  (filter immediately). (Audit M10) */
+  debounce?: number;
   pageSize?: number;
   /** Add a CSV/XLS/XLSX export menu that exports the current (filtered+sorted) view. */
   exportable?: boolean | { filename?: string; formats?: ExportFormat[] };
@@ -213,6 +217,25 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
   const page = signal(0);
   const pageSize = o.pageSize ?? 10;
   const sel = signal<Set<string | number>>(new Set());
+
+  // Search is debounced so a burst of keystrokes coalesces into ONE filter pass
+  // instead of re-running the O(n·m) filter synchronously per key. The <input> is
+  // uncontrolled, so the typed text still shows immediately — only the expensive
+  // `query` signal (which drives filtered→sorted→paged) is deferred. (Audit M10)
+  const debounceMs = o.debounce ?? 150;
+  const applyQuery = (value: string): void => {
+    query.set(value);
+    page.set(0);
+  };
+  let searchTimer: ReturnType<typeof setTimeout> | undefined;
+  const onSearch = (value: string): void => {
+    if (debounceMs <= 0) {
+      applyQuery(value);
+      return;
+    }
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => applyQuery(value), debounceMs);
+  };
 
   const filtered = computed(() => {
     const q = query().trim().toLowerCase();
@@ -347,10 +370,7 @@ export function dataTable<T>(o: DataTableOptions<T>): TemplateResult {
             placeholder="Search…"
             aria-label=${o.title ? `Search ${o.title}` : "Search records"}
             type="search"
-            @input=${(e: Event) => {
-              query.set((e.target as HTMLInputElement).value);
-              page.set(0);
-            }}
+            @input=${(e: Event) => onSearch((e.target as HTMLInputElement).value)}
           /></div>`}
       <div class="dx-spacer"></div>
       ${o.toolbar ?? ""}

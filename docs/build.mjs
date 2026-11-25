@@ -27,6 +27,8 @@ console.log("built docs/dist/docs.app.js");
 
 for (const [src, name] of [
   ["docs/index.html", "index.html"],
+  // Self-contained light-theme transport guide (its own inline styles) → /transport.html.
+  ["docs/transport.html", "transport.html"],
   ["docs/docs.css", "docs.css"],
   ["packages/ui/ui.css", "ui.css"],
   ["packages/charts/charts.css", "charts.css"],

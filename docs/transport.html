@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dxjs — connect any backend</title>
+<style>
+/* ============================================================================
+   dxjs transport guide — self-contained light doc page.
+   NgolaCloud identity: accent blue #3d7be0, brand petal #e5484d, core gold #f2b03d.
+   Committed LIGHT theme (per brief). System type scale; no webfont CDN (CSP-safe).
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --ground: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --ink: #101726;
+  --ink-soft: #2b3545;
+  --muted: #5a6678;
+  --faint: #8a94a3;
+  --line: #e7eaf1;
+  --line-strong: #d7dce7;
+  --accent: #3d7be0;
+  --accent-hover: #2f6ad0;
+  --accent-weak: #eaf1fc;
+  --petal: #e5484d;
+  --petal-weak: #fdecec;
+  --gold: #f2b03d;
+  --gold-soft: #fff3da;
+  --ok: #1f9d6b;
+  --code-bg: #f6f8fc;
+  --code-ink: #243049;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16,23,38,.04), 0 8px 24px -12px rgba(16,23,38,.12);
+  --shadow-lift: 0 2px 4px rgba(16,23,38,.05), 0 16px 40px -16px rgba(61,123,224,.22);
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --measure: 70ch;
+  --lang-py: #3b7aad; --lang-go: #00add8; --lang-rs: #e43717; --lang-node: #3f9e3f;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--ground); color: var(--ink); font-family: var(--ui);
+  font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; margin: 0; }
+code { font-family: var(--mono); font-size: .9em; }
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--accent); margin: 0 0 10px; }
+
+/* --- top bar -------------------------------------------------------------- */
+.topbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--ground) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+.topbar-in { max-width: 1240px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 20px; }
+.wordmark { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -.03em; color: var(--ink); }
+.mark { width: 28px; height: 28px; border-radius: 9px; flex: none; background: radial-gradient(circle at 50% 36%, var(--gold) 0 26%, var(--petal) 27% 100%); box-shadow: inset 0 0 0 1px rgba(16,23,38,.06), 0 2px 6px -2px rgba(229,72,77,.5); }
+.wordmark small { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0; }
+.topnav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topnav a { padding: 7px 12px; border-radius: 8px; color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+.topnav a:hover { background: var(--surface-2); color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; background: var(--petal); color: #fff !important; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px -2px rgba(229,72,77,.6); }
+.pill:hover { background: #d53b40; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+
+/* --- shell --------------------------------------------------------------- */
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 48px; }
+.sidebar { position: sticky; top: 61px; align-self: start; height: calc(100vh - 61px); overflow-y: auto; padding: 32px 0; }
+.side-group { margin-bottom: 22px; }
+.side-group h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); margin: 0 0 8px; font-weight: 700; }
+.side-group a { display: block; padding: 5px 12px; border-radius: 7px; color: var(--muted); font-size: 14px; border-left: 2px solid transparent; }
+.side-group a:hover { color: var(--ink); background: var(--surface-2); }
+.side-group a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-weak); font-weight: 600; }
+main { min-width: 0; padding: 0 0 96px; }
+
+/* --- hero ---------------------------------------------------------------- */
+.hero { padding: 72px 0 40px; }
+.hero h1 { font-size: clamp(34px, 5vw, 56px); font-weight: 800; }
+.hero h1 .accent { color: var(--accent); }
+.hero .lead { font-size: 19px; color: var(--muted); max-width: 46ch; margin: 18px 0 28px; line-height: 1.6; }
+.cmd { display: inline-flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 14.5px; color: var(--ink-soft); box-shadow: var(--shadow); }
+.cmd .prompt { color: var(--petal); font-weight: 700; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 24px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15px; border: 1px solid transparent; cursor: pointer; font-family: var(--ui); }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 2px 10px -3px rgba(61,123,224,.6); }
+.btn-primary:hover { background: var(--accent-hover); color: #fff; }
+.btn-ghost { background: var(--surface); color: var(--ink-soft); border-color: var(--line-strong); }
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- value cards --------------------------------------------------------- */
+.values { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 8px 0 24px; }
+.vcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+.vcard .vi { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; margin-bottom: 12px; background: var(--accent-weak); color: var(--accent); font-weight: 800; }
+.vcard h3 { font-size: 16px; margin-bottom: 6px; }
+.vcard p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+/* --- sections ------------------------------------------------------------ */
+section.doc { padding-top: 56px; scroll-margin-top: 76px; }
+section.doc > h2 { font-size: 28px; font-weight: 800; }
+section.doc > .sub { color: var(--muted); font-size: 17px; margin: 10px 0 0; max-width: var(--measure); }
+.prose { max-width: var(--measure); }
+.prose p { color: var(--ink-soft); margin: 18px 0; }
+.prose p code, li code { background: var(--accent-weak); color: var(--accent); padding: 1.5px 6px; border-radius: 6px; font-size: .88em; }
+
+/* --- code ---------------------------------------------------------------- */
+figure.code { margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+figure.code figcaption { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+figure.code figcaption .fname { color: var(--ink-soft); font-weight: 600; }
+figure.code figcaption .run { color: var(--faint); }
+figure.code figcaption .copy { margin-left: auto; }
+.copy { font: inherit; font-size: 12px; font-family: var(--ui); font-weight: 600; cursor: pointer; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); border-radius: 7px; padding: 4px 10px; }
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy.done { color: var(--ok); border-color: var(--ok); }
+pre { margin: 0; padding: 16px 18px; overflow-x: auto; background: var(--code-bg); }
+pre code { font-size: 13.5px; line-height: 1.75; color: var(--code-ink); white-space: pre; }
+.k { color: #2f6ad0; font-weight: 600; } .s { color: #1f8a5b; } .c { color: #99a1b0; font-style: italic; } .n { color: #b2541a; } .f { color: #8a3ffc; }
+
+/* --- tabs ---------------------------------------------------------------- */
+.tabs { margin: 20px 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+.tablist { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 6px 0; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.tablist button { font: inherit; font-size: 14px; font-weight: 600; padding: 9px 15px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0; }
+.tablist button:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.tablist button[aria-selected="true"] { color: var(--ink); background: var(--surface); border-bottom-color: var(--accent); }
+.tablist .ld { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.lang-py { background: var(--lang-py); } .lang-go { background: var(--lang-go); } .lang-rs { background: var(--lang-rs); } .lang-node { background: var(--lang-node); }
+.tabs [role="tabpanel"] figure.code { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+.tabs [role="tabpanel"] figure.code figcaption { background: var(--surface); border-bottom: 1px solid var(--line); }
+.tabs [role="tabpanel"][hidden] { display: none; }
+
+/* --- backend↔frontend pairing -------------------------------------------- */
+.pairing { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.pair-label { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 24px 0 2px; }
+.pair-label .n { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 12px; color: #fff; background: var(--accent); font-variant-numeric: tabular-nums; }
+.pair-label.be .n { background: var(--petal); }
+.wire { display: flex; gap: 10px; align-items: flex-start; margin: 2px 0 10px; padding: 11px 14px; background: var(--surface-2); border-radius: var(--radius-sm); font-size: 13.5px; color: var(--ink-soft); border: 1px dashed var(--line-strong); }
+.wire b { color: var(--ink); } .wire .arrow { color: var(--accent); font-weight: 800; flex: none; } .wire code { background: #fff; border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; color: var(--ink-soft); }
+
+/* --- steps (CLI) --------------------------------------------------------- */
+.steps { display: grid; gap: 14px; margin: 22px 0; }
+.step { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+.step .sn { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: var(--accent-weak); color: var(--accent); font-variant-numeric: tabular-nums; }
+.step h3 { font-size: 16px; margin: 4px 0 2px; }
+.step p { margin: 0 0 8px; color: var(--muted); font-size: 14.5px; }
+.step figure.code { margin: 6px 0 0; }
+.term { background: #0f1726; color: #d7deea; border-radius: 10px; padding: 14px 16px; font-family: var(--mono); font-size: 13px; line-height: 1.7; overflow-x: auto; box-shadow: var(--shadow); }
+.term .pr { color: var(--gold); } .term .ok { color: #6ee7a8; } .term .url { color: #7db8ff; } .term .dim { color: #8a93a6; }
+
+/* --- adapter cards ------------------------------------------------------- */
+.adapter { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 8px; margin: 18px 0; box-shadow: var(--shadow); transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease; }
+.adapter:hover { box-shadow: var(--shadow-lift); border-color: var(--line-strong); }
+@media (prefers-reduced-motion: no-preference) { .adapter:hover { transform: translateY(-2px); } }
+.adapter-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 10px 14px; }
+.adapter-head h3 { font-family: var(--mono); font-size: 18px; letter-spacing: -.01em; color: var(--ink); }
+.adapter-head .what { color: var(--muted); font-size: 14.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 2px; }
+.chip { font-size: 11.5px; font-weight: 600; letter-spacing: .02em; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.chip.cap { background: var(--accent-weak); color: var(--accent); border-color: transparent; }
+.chip.live { background: var(--petal-weak); color: var(--petal); border-color: transparent; }
+.chip.proc { background: var(--gold-soft); color: #9a6a12; border-color: transparent; }
+
+/* --- table --------------------------------------------------------------- */
+.tablewrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { background: var(--surface-2); color: var(--ink); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; }
+tbody tr:last-child td { border-bottom: 0; }
+td code { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+
+/* --- callout ------------------------------------------------------------- */
+.callout { display: flex; gap: 12px; padding: 16px 18px; border-radius: var(--radius); background: var(--accent-weak); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); margin: 22px 0; max-width: var(--measure); }
+.callout .ci { flex: none; font-weight: 800; color: var(--accent); }
+.callout p { margin: 0; color: var(--ink-soft); font-size: 14.5px; } .callout b { color: var(--ink); }
+
+/* --- footer -------------------------------------------------------------- */
+footer { border-top: 1px solid var(--line); margin-top: 40px; }
+.footer-in { max-width: 1240px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; color: var(--muted); font-size: 14px; }
+.footer-in .wordmark { font-size: 15px; } .footer-in nav { margin-left: auto; display: flex; gap: 18px; }
+
+/* --- responsive ---------------------------------------------------------- */
+@media (max-width: 920px) {
+  .shell { grid-template-columns: 1fr; gap: 0; }
+  .sidebar { display: none; }
+  .values { grid-template-columns: 1fr; }
+  .topnav a:not(.pill) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs <small>· transport</small></span>
+    <nav class="topnav" aria-label="Primary">
+      <a href="#cli">Quickstart</a>
+      <a href="#backend">Backends</a>
+      <a href="#adapters">Adapters</a>
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <a class="pill" href="#backend"><span class="dot" aria-hidden="true"></span> Connect a backend</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" aria-label="Section navigation">
+    <div class="side-group">
+      <h4>Get started</h4>
+      <a href="#start">Overview</a>
+      <a href="#cli">Run it in the browser</a>
+      <a href="#reactivity">Reactivity</a>
+      <a href="#transport">The transport port</a>
+    </div>
+    <div class="side-group">
+      <h4>Backend → dxjs</h4>
+      <a href="#backend">REST · your language</a>
+      <a href="#backend-sse">Live (SSE) · your language</a>
+    </div>
+    <div class="side-group">
+      <h4>Adapters</h4>
+      <a href="#adapters">restAdapter</a>
+      <a href="#connect">connectAdapter</a>
+      <a href="#sse">sseAdapter</a>
+      <a href="#ws">wsAdapter</a>
+      <a href="#inmemory">inMemoryAdapter</a>
+      <a href="#embedded">embeddedAdapter</a>
+    </div>
+    <div class="side-group">
+      <h4>Reactive data</h4>
+      <a href="#resource">resource()</a>
+      <a href="#livesignal">liveSignal</a>
+      <a href="#openapi">openapiClient</a>
+      <a href="#matrix">Which adapter?</a>
+    </div>
+  </aside>
+
+  <main>
+    <section class="hero" id="top">
+      <p class="eyebrow">NgolaCloud · open source · 0 runtime deps</p>
+      <h1>One app.<br /><span class="accent">Any backend.</span></h1>
+      <p class="lead">dxjs is a tiny reactive framework with a protocol-neutral transport port. Bring a backend
+        in Python, Go, Rust or Node — describe the operation once and connect from the frontend in three lines.</p>
+      <div class="cmd">
+        <span class="prompt">$</span><span>npm install @dxjs/core @dxjs/dom @dxjs/transport</span>
+        <button class="copy" data-copy="npm install @dxjs/core @dxjs/dom @dxjs/transport">Copy</button>
+      </div>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#backend">Connect a real backend →</a>
+        <a class="btn btn-ghost" href="#cli">Run it in the browser</a>
+      </div>
+    </section>
+
+    <section class="doc" id="start">
+      <p class="eyebrow">Overview</p>
+      <h2>Small, reactive, honest about the network</h2>
+      <p class="sub">A fine-grained signal graph renders the DOM, a string renderer does CSP-safe SSR, and the
+        transport layer keeps your data-fetching code identical no matter what language the server is written in.</p>
+      <div class="values">
+        <div class="vcard"><div class="vi">σ</div><h3>Fine-grained reactive</h3><p>Signals, computeds and effects — no virtual DOM, no re-render pass. ~1.5&nbsp;KB gzipped core.</p></div>
+        <div class="vcard"><div class="vi">⇄</div><h3>Protocol-neutral</h3><p>One <code>method()</code> descriptor; adapters map it to REST, Connect, SSE, WebSocket or in-process.</p></div>
+        <div class="vcard"><div class="vi">⛨</div><h3>Strict-CSP SSR</h3><p>String + streaming renderers escape every sink; no <code>eval</code>, no inline handlers, edge-ready.</p></div>
+      </div>
+    </section>
+
+    <section class="doc" id="cli">
+      <p class="eyebrow">Quickstart · CLI</p>
+      <h2>Run it in the browser</h2>
+      <p class="sub">dxjs ships <code>dxdev</code> — a dev server with CSP-safe hot-module reload. Point it at an
+        entry module and open the printed URL.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="sn">1</div>
+          <div>
+            <h3>Write a tiny app</h3>
+            <p>An entry module that renders reactive markup.</p>
+            <figure class="code"><figcaption><span class="fname">src/app.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { signal } from "@dxjs/core";
+import { html, render } from "@dxjs/dom";
+
+const count = signal(0);
+render(
+  html`&lt;button @click=${() =&gt; count.set(count() + 1)}&gt;clicked ${count}&lt;/button&gt;`,
+  document.getElementById("app"),
+);</code></pre></figure>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">2</div>
+          <div>
+            <h3>Start the dev server</h3>
+            <p>Flags: <code>--port</code>, <code>--host</code>, <code>--root</code>, <code>--css a.css,b.css</code>, <code>--title</code>. In this repo, <code>npm&nbsp;run&nbsp;dev</code> is the shortcut.</p>
+            <figure class="code"><figcaption><span class="fname">terminal</span><button class="copy">Copy</button></figcaption>
+<pre><code>node --conditions=development packages/dev/bin/dxdev.mjs src/app.ts --port 5173</code></pre></figure>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">3</div>
+          <div>
+            <h3>Open the printed URL</h3>
+            <p>Edit <code>src/app.ts</code> and the browser hot-reloads — no full refresh, signals survive.</p>
+            <div class="term"><span class="pr">$</span> npm run dev
+<br /><span class="dim">dxjs dev server →</span> <span class="url">http://127.0.0.1:5173/</span>  <span class="dim">(strict CSP, HMR)</span>
+<br /><span class="ok">▸</span> open <span class="url">http://localhost:5173</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc" id="reactivity">
+      <p class="eyebrow">Reactivity</p>
+      <h2>The whole model, in twenty lines</h2>
+      <p class="sub">A <code>signal</code> holds state, a <code>computed</code> derives from it, an <code>effect</code>
+        runs when its reads change, and <code>html</code>&#8202;/&#8202;<code>render</code> bind the DOM to those reads — surgically.</p>
+      <figure class="code"><figcaption><span class="fname">counter.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { signal, computed, effect } from "@dxjs/core";
+import { html, render } from "@dxjs/dom";
+
+const count = signal(0);
+const doubled = computed(() =&gt; count() * 2);
+
+effect(() =&gt; console.log("count is", count()));   // re-runs when count changes
+
+render(
+  html`&lt;button @click=${() =&gt; count.set(count() + 1)}&gt;
+    ${count} &times; 2 = ${doubled}
+  &lt;/button&gt;`,
+  document.body,
+);</code></pre></figure>
+    </section>
+
+    <section class="doc" id="transport">
+      <p class="eyebrow">Transport · ADR 0001</p>
+      <h2>Describe the operation once</h2>
+      <p class="sub">A <code>method()</code> is a protocol-neutral descriptor. A <em>Transport</em> adapter knows how
+        to put it on a wire. <code>createRpcClient</code> gives you a typed <code>call</code> (unary) and
+        <code>live</code> (server-stream) over whichever adapter you bootstrap with.</p>
+      <figure class="code"><figcaption><span class="fname">api.ts — shared across every adapter &amp; backend</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { method } from "@dxjs/transport";
+
+export const getUser = method&lt;{ id: string }, User&gt;({
+  id: "users.get",
+  wire: { http: { method: "GET", path: (r) =&gt; `/v1/users/${r.id}` } },
+  idempotent: true,
+});
+export const createUser = method&lt;{ name: string }, User&gt;({
+  id: "users.create",
+  wire: { http: { method: "POST", path: "/v1/users" } },
+});
+export const watchPrices = method&lt;{ symbol: string }, Tick&gt;({
+  id: "prices.watch",
+  kind: "serverStream",
+  wire: { http: { path: (r) =&gt; `/v1/prices/${r.symbol}/stream` } },
+});</code></pre></figure>
+    </section>
+
+    <!-- ===================== BACKEND: REST, 4 languages ===================== -->
+    <section class="doc" id="backend">
+      <p class="eyebrow">Backend → dxjs</p>
+      <h2>Your backend, your language</h2>
+      <p class="sub">The same two endpoints — <code>GET /v1/users/:id</code> and <code>POST /v1/users</code> — in
+        Python, Go, Rust and Node.js, each with permissive CORS so the browser can reach it. Then connect from dxjs.</p>
+
+      <div class="pair-label be"><span class="n">BE</span> Backend · pick a language</div>
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="REST backend language">
+          <button role="tab" aria-selected="true" id="r-py" aria-controls="rp-py"><span class="ld lang-py"></span> Python</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-go" aria-controls="rp-go"><span class="ld lang-go"></span> Go</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-rs" aria-controls="rp-rs"><span class="ld lang-rs"></span> Rust</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-node" aria-controls="rp-node"><span class="ld lang-node"></span> Node.js</button>
+        </div>
+        <div role="tabpanel" id="rp-py" aria-labelledby="r-py">
+          <figure class="code"><figcaption><span class="fname">app.py</span><span class="run">pip install fastapi uvicorn · uvicorn app:api --port 8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+api = FastAPI()
+api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+USERS = {"42": {"id": "42", "name": "Ana"}}
+
+class NewUser(BaseModel):
+    name: str
+
+@api.get("/v1/users/{id}")
+def get_user(id: str):
+    return USERS.get(id, {"id": id, "name": "Unknown"})
+
+@api.post("/v1/users")
+def create_user(u: NewUser):
+    user = {"id": str(len(USERS) + 1), "name": u.name}
+    USERS[user["id"]] = user
+    return user</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="rp-go" aria-labelledby="r-go" hidden>
+          <figure class="code"><figcaption><span class="fname">main.go</span><span class="run">go run . · listens on :8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>package main
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+)
+
+func cors(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method == http.MethodOptions {
+			return
+		}
+		h(w, r)
+	}
+}
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/users/", cors(func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimPrefix(r.URL.Path, "/v1/users/")
+		json.NewEncoder(w).Encode(map[string]string{"id": id, "name": "Ana"})
+	}))
+	mux.HandleFunc("/v1/users", cors(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name string `json:"name"`
+		}
+		json.NewDecoder(r.Body).Decode(&amp;body)
+		json.NewEncoder(w).Encode(map[string]string{"id": "2", "name": body.Name})
+	}))
+	http.ListenAndServe(":8000", mux)
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="rp-rs" aria-labelledby="r-rs" hidden>
+          <figure class="code"><figcaption><span class="fname">main.rs</span><span class="run">cargo add axum tokio --features tokio/full · + tower-http/cors</span><button class="copy">Copy</button></figcaption>
+<pre><code>use axum::{extract::Path, routing::{get, post}, Json, Router};
+use serde_json::{json, Value};
+use tower_http::cors::CorsLayer;
+
+async fn get_user(Path(id): Path&lt;String&gt;) -&gt; Json&lt;Value&gt; {
+    Json(json!({ "id": id, "name": "Ana" }))
+}
+async fn create_user(Json(body): Json&lt;Value&gt;) -&gt; Json&lt;Value&gt; {
+    Json(json!({ "id": "2", "name": body["name"] }))
+}
+
+#[tokio::main]
+async fn main() {
+    let app = Router::new()
+        .route("/v1/users/:id", get(get_user))
+        .route("/v1/users", post(create_user))
+        .layer(CorsLayer::permissive());
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="rp-node" aria-labelledby="r-node" hidden>
+          <figure class="code"><figcaption><span class="fname">server.js</span><span class="run">node server.js · listens on :8000 · zero deps</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { createServer } from "node:http";
+
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, content-type",
+  "content-type": "application/json",
+};
+
+createServer((req, res) =&gt; {
+  if (req.method === "OPTIONS") return res.writeHead(204, CORS).end();
+  const m = req.url.match(/^\/v1\/users\/(.+)$/);
+  if (req.method === "GET" &amp;&amp; m) {
+    return res.writeHead(200, CORS).end(JSON.stringify({ id: m[1], name: "Ana" }));
+  }
+  if (req.method === "POST" &amp;&amp; req.url === "/v1/users") {
+    let body = "";
+    req.on("data", (c) =&gt; (body += c));
+    return req.on("end", () =&gt; {
+      const { name } = JSON.parse(body || "{}");
+      res.writeHead(200, CORS).end(JSON.stringify({ id: "2", name }));
+    });
+  }
+  res.writeHead(404, CORS).end("{}");
+}).listen(8000);</code></pre></figure>
+        </div>
+      </div>
+
+      <div class="pair-label"><span class="n">FE</span> Frontend · dxjs, identical for every backend above</div>
+      <figure class="code"><figcaption><span class="fname">users.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { restAdapter, createRpcClient } from "@dxjs/transport";
+import { getUser, createUser } from "./api";
+
+const api = createRpcClient(restAdapter({ baseUrl: "http://127.0.0.1:8000" }));
+
+const user = await api.call(getUser, { id: "42" });        // → { id: "42", name: "Ana" }
+const created = await api.call(createUser, { name: "Ngola" });</code></pre></figure>
+      <div class="wire"><span class="arrow">→</span><span>dxjs calls <b>GET</b> <code>http://127.0.0.1:8000/v1/users/42</code> and <b>POST</b> <code>/v1/users</code>. Swap the backend language and this frontend file never changes — only <code>baseUrl</code> matters.</span></div>
+    </section>
+
+    <!-- ===================== BACKEND: SSE, 4 languages ===================== -->
+    <section class="doc" id="backend-sse">
+      <p class="eyebrow">Backend → dxjs · streaming</p>
+      <h2>Live updates, your language</h2>
+      <p class="sub">A <code>text/event-stream</code> at <code>GET /v1/prices/:symbol/stream</code> pushing one JSON
+        frame per second — in all four languages — consumed by dxjs with auto-reconnect.</p>
+
+      <div class="pair-label be"><span class="n">BE</span> Streaming backend · pick a language</div>
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="SSE backend language">
+          <button role="tab" aria-selected="true" id="s-py" aria-controls="sp-py"><span class="ld lang-py"></span> Python</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-go" aria-controls="sp-go"><span class="ld lang-go"></span> Go</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-rs" aria-controls="sp-rs"><span class="ld lang-rs"></span> Rust</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-node" aria-controls="sp-node"><span class="ld lang-node"></span> Node.js</button>
+        </div>
+        <div role="tabpanel" id="sp-py" aria-labelledby="s-py">
+          <figure class="code"><figcaption><span class="fname">stream.py</span><span class="run">FastAPI StreamingResponse</span><button class="copy">Copy</button></figcaption>
+<pre><code>import asyncio, json
+from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
+
+api = FastAPI()
+
+@api.get("/v1/prices/{symbol}/stream")
+async def stream(symbol: str):
+    async def gen():
+        last = 100.0
+        while True:
+            last += 0.5
+            yield f"data: {json.dumps({'symbol': symbol, 'last': last})}\n\n"
+            await asyncio.sleep(1)
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"access-control-allow-origin": "*"},
+    )</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="sp-go" aria-labelledby="s-go" hidden>
+          <figure class="code"><figcaption><span class="fname">stream.go</span><span class="run">net/http + Flusher</span><button class="copy">Copy</button></figcaption>
+<pre><code>func stream(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	symbol := strings.TrimSuffix(strings.TrimPrefix(r.URL.Path, "/v1/prices/"), "/stream")
+	flusher := w.(http.Flusher)
+	last := 100.0
+	for {
+		last += 0.5
+		fmt.Fprintf(w, "data: {\"symbol\":%q,\"last\":%g}\n\n", symbol, last)
+		flusher.Flush()
+		time.Sleep(time.Second)
+	}
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="sp-rs" aria-labelledby="s-rs" hidden>
+          <figure class="code"><figcaption><span class="fname">stream.rs</span><span class="run">axum SSE + tokio interval</span><button class="copy">Copy</button></figcaption>
+<pre><code>use axum::{extract::Path, response::sse::{Event, KeepAlive, Sse}};
+use serde_json::json;
+use std::{convert::Infallible, time::Duration};
+use tokio_stream::{wrappers::IntervalStream, Stream, StreamExt};
+
+async fn prices(Path(symbol): Path&lt;String&gt;) -&gt; Sse&lt;impl Stream&lt;Item = Result&lt;Event, Infallible&gt;&gt;&gt; {
+    let mut last = 100.0_f64;
+    let stream = IntervalStream::new(tokio::time::interval(Duration::from_secs(1)))
+        .map(move |_| {
+            last += 0.5;
+            Ok(Event::default().data(json!({ "symbol": symbol, "last": last }).to_string()))
+        });
+    Sse::new(stream).keep_alive(KeepAlive::default())
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="sp-node" aria-labelledby="s-node" hidden>
+          <figure class="code"><figcaption><span class="fname">stream.js</span><span class="run">node:http · zero deps</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { createServer } from "node:http";
+
+createServer((req, res) =&gt; {
+  const m = req.url.match(/^\/v1\/prices\/(.+)\/stream$/);
+  if (!m) return res.writeHead(404).end();
+  res.writeHead(200, {
+    "content-type": "text/event-stream",
+    "access-control-allow-origin": "*",
+  });
+  const symbol = m[1];
+  let last = 100;
+  const timer = setInterval(() =&gt; {
+    last += 0.5;
+    res.write(`data: ${JSON.stringify({ symbol, last })}\n\n`);
+  }, 1000);
+  req.on("close", () =&gt; clearInterval(timer));
+}).listen(8000);</code></pre></figure>
+        </div>
+      </div>
+
+      <div class="pair-label"><span class="n">FE</span> Frontend · dxjs consumes the stream</div>
+      <figure class="code"><figcaption><span class="fname">prices.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { restAdapter, sseAdapter, composeTransport, createRpcClient } from "@dxjs/transport";
+import { watchPrices } from "./api";
+
+// Compose: unary over REST, streams over SSE — one client.
+const api = createRpcClient(composeTransport(
+  restAdapter({ baseUrl: "http://127.0.0.1:8000" }),
+  sseAdapter({ baseUrl: "http://127.0.0.1:8000", reconnect: true }),
+));
+
+for await (const tick of api.live(watchPrices, { symbol: "KZ" })) {
+  console.log(tick.last);   // one object per SSE frame; resumes from the last id on drop
+}</code></pre></figure>
+      <div class="wire"><span class="arrow">→</span><span>dxjs opens <code>text/event-stream</code> at <code>/v1/prices/KZ/stream</code> via plain <code>fetch</code> (so custom headers &amp; auth work — no <code>EventSource</code>). Each language above emits the same <code>data: {…}\n\n</code> frames.</span></div>
+    </section>
+
+    <!-- ===================== ADAPTER REFERENCE ===================== -->
+    <section class="doc" id="adapters">
+      <p class="eyebrow">Reference · adapters</p>
+      <h2>Every adapter, one client API</h2>
+      <p class="sub">All of these feed <code>createRpcClient</code>. Capability chips are the adapter's real
+        runtime <code>caps</code>.</p>
+
+      <article class="adapter">
+        <div class="adapter-head"><h3>restAdapter</h3><span class="what">Typed JSON over HTTP — the everyday default.</span></div>
+        <div class="chips"><span class="chip cap">unary</span><span class="chip">Bearer auth</span><span class="chip">per-request headers</span><span class="chip">retry · timeout</span></div>
+        <figure class="code"><figcaption><span class="fname">rest.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>const api = createRpcClient(restAdapter({
+  baseUrl: "https://api.ngolacloud.ao",
+  auth: () =&gt; localStorage.getItem("token"),   // → Authorization: Bearer …
+  headers: () =&gt; ({ "x-tenant": currentTenant() }),
+}));</code></pre></figure>
+      </article>
+
+      <article class="adapter" id="connect">
+        <div class="adapter-head"><h3>connectAdapter</h3><span class="what">Connect / gRPC-web unary (JSON).</span></div>
+        <div class="chips"><span class="chip cap">unary</span><span class="chip">Connect protocol</span><span class="chip">Bearer auth</span></div>
+        <figure class="code"><figcaption><span class="fname">connect.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>const api = createRpcClient(
+  connectAdapter({ baseUrl: "https://rpc.ngolacloud.ao", auth: () =&gt; token() }),
+);
+// id carries the fully-qualified service + method:
+const getUser = method&lt;Req, User&gt;({ id: "user.v1.UserService.GetUser" });
+// → POST /user.v1.UserService/GetUser  (Connect unary, JSON)</code></pre></figure>
+      </article>
+
+      <article class="adapter" id="sse">
+        <div class="adapter-head"><h3>sseAdapter</h3><span class="what">Server-Sent Events — live server→client streams.</span></div>
+        <div class="chips"><span class="chip live">serverStream</span><span class="chip">auto-reconnect</span><span class="chip">Last-Event-ID resume</span><span class="chip">bounded buffer</span></div>
+        <figure class="code"><figcaption><span class="fname">sse.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>// stream-only → compose with a unary transport (see "Live updates" above)
+const api = createRpcClient(composeTransport(
+  restAdapter({ baseUrl }),
+  sseAdapter({ baseUrl, reconnect: true }),
+));</code></pre></figure>
+      </article>
+
+      <article class="adapter" id="ws">
+        <div class="adapter-head"><h3>wsAdapter</h3><span class="what">WebSocket — bidirectional, low-latency streams.</span></div>
+        <div class="chips"><span class="chip live">serverStream</span><span class="chip live">bidi</span><span class="chip">auth frame first</span></div>
+        <figure class="code"><figcaption><span class="fname">ws.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>const api = createRpcClient(wsAdapter({
+  url: "wss://live.ngolacloud.ao/ws",
+  auth: () =&gt; sessionToken(),   // FIRST frame {type:"authorization",…}, before the request
+}));
+const chat = method&lt;{ room: string }, Message&gt;({ id: "chat.subscribe", kind: "serverStream" });
+for await (const msg of api.live(chat, { room: "angola" })) appendMessage(msg);</code></pre></figure>
+        <div class="wire"><span class="arrow">→</span><span>Browsers can't set an <code>Authorization</code> header on the WS handshake, so the credential is the first frame. <b>Your server must authenticate it and emit nothing until it validates.</b></span></div>
+      </article>
+
+      <article class="adapter" id="inmemory">
+        <div class="adapter-head"><h3>inMemoryAdapter</h3><span class="what">In-process handlers — tests, demos, a monolith.</span></div>
+        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">no network</span></div>
+        <figure class="code"><figcaption><span class="fname">memory.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>const api = createRpcClient(inMemoryAdapter({
+  handlers: {
+    "users.get": async ({ id }) =&gt; db.users.find(id),           // unary
+    "prices.watch": async function* ({ symbol }) {              // stream
+      for await (const t of ticker(symbol)) yield t;
+    },
+  },
+}));
+// Same api.call / api.live call sites — no HTTP. Split into services later by swapping the adapter.</code></pre></figure>
+      </article>
+
+      <article class="adapter" id="embedded">
+        <div class="adapter-head"><h3>embeddedAdapter</h3><span class="what">dxjs running inside/next to the backend binary.</span></div>
+        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">host dispatcher</span></div>
+        <figure class="code"><figcaption><span class="fname">embedded.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>// A Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip.
+const api = createRpcClient(embeddedAdapter({
+  invoke: (m, req, ctx) =&gt; host.dispatch(m.id, req, ctx),
+}));</code></pre></figure>
+      </article>
+    </section>
+
+    <section class="doc" id="resource">
+      <p class="eyebrow">Reactive data</p>
+      <h2>resource() — a fetch that reacts</h2>
+      <p class="sub">Wrap any transport call in a <code>resource</code> for a reactive accessor with
+        <code>loading</code>/<code>error</code>, cancellation and idempotency-gated retries.</p>
+      <figure class="code"><figcaption><span class="fname">user-resource.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { resource, fromMethod, restAdapter } from "@dxjs/transport";
+import { getUser } from "./api";
+
+const transport = restAdapter({ baseUrl: "http://127.0.0.1:8000" });
+
+// Pass an accessor for the request → re-fetches when userId() changes.
+const user = resource(fromMethod(transport, getUser, () =&gt; ({ id: userId() })), {
+  retries: 2, backoff: 200, timeout: 5000,
+});
+
+html`${() =&gt; user.loading() ? "Loading…" : user()?.name}`;</code></pre></figure>
+    </section>
+
+    <section class="doc" id="livesignal">
+      <p class="eyebrow">Reactive data</p>
+      <h2>liveSignal — a value that stays live</h2>
+      <p class="sub">Fed by the transport's native stream when it has one (SSE, WebSocket), and polling when it
+        doesn't — the call site is the same either way.</p>
+      <figure class="code"><figcaption><span class="fname">live.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { liveSignal } from "@dxjs/transport";
+import { watchPrices } from "./api";
+
+const price = liveSignal(transport, watchPrices, { symbol: "KZ" }, {
+  initial: null,
+  pollMs: 2000,   // used only if the transport has no native stream
+});
+
+html`&lt;span&gt;${() =&gt; price()?.last ?? "—"} Kz&lt;/span&gt;`;</code></pre></figure>
+    </section>
+
+    <section class="doc" id="openapi">
+      <p class="eyebrow">Reactive data</p>
+      <h2>openapiClient — typed from your spec</h2>
+      <p class="sub">Point <code>@dxjs/openapi</code> at an <code>openapi.json</code> and get a client whose calls are
+        validated against the request schema — over any adapter.</p>
+      <figure class="code"><figcaption><span class="fname">openapi.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { openapiClient } from "@dxjs/openapi";
+import { restAdapter } from "@dxjs/transport";
+
+const doc = await fetch("/openapi.json").then((r) =&gt; r.json());
+const api = openapiClient(doc, restAdapter({ baseUrl: "http://127.0.0.1:8000" }));
+
+const users = await api.call("listUsers", { q: "ana" });   // validated before it leaves the browser</code></pre></figure>
+      <div class="callout"><span class="ci">◆</span><p>Siblings <b>@dxjs/soap</b> and <b>@dxjs/proto</b> add SOAP and protobuf over the same port — the UI
+        keeps calling <code>api.call(...)</code> regardless of what the server speaks.</p></div>
+    </section>
+
+    <section class="doc" id="matrix">
+      <p class="eyebrow">Reference</p>
+      <h2>Which adapter should I use?</h2>
+      <p class="sub">Capabilities are each adapter's real <code>caps</code> — what the port guarantees at runtime.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Adapter</th><th>Carries</th><th>Capabilities</th><th>Reach for it when…</th></tr></thead>
+          <tbody>
+            <tr><td><code>restAdapter</code></td><td>HTTP + JSON</td><td>unary</td><td>a plain REST/JSON API — the default.</td></tr>
+            <tr><td><code>connectAdapter</code></td><td>Connect / gRPC-web</td><td>unary</td><td>the backend is a gRPC service with Connect.</td></tr>
+            <tr><td><code>sseAdapter</code></td><td>text/event-stream</td><td>serverStream</td><td>server→client live updates over plain HTTP.</td></tr>
+            <tr><td><code>wsAdapter</code></td><td>WebSocket</td><td>serverStream · bidi</td><td>low-latency or two-way streams (chat, presence).</td></tr>
+            <tr><td><code>inMemoryAdapter</code></td><td>function call</td><td>serverStream · in-process</td><td>tests, demos, or a monolith before it splits.</td></tr>
+            <tr><td><code>embeddedAdapter</code></td><td>host dispatcher</td><td>serverStream · in-process</td><td>dxjs runs inside/next to the backend (SSR).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><span class="ci">⚑</span><p>Need unary over one transport and streams over another? <code>composeTransport(unary, stream)</code>
+        stitches them into one client — exactly what the SSE example does with REST&nbsp;+&nbsp;SSE.</p></div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="footer-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs</span>
+    <span>A NgolaCloud open-source project.</span>
+    <nav aria-label="Footer">
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <a href="#backend">Backends</a>
+      <a href="#top">Top ↑</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+/* Progressive enhancement only — the page is fully readable without JS. */
+(function () {
+  "use strict";
+  var ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+  function esc(s) { return s.replace(/[&<>]/g, function (c) { return ESC[c]; }); }
+
+  // Multi-language highlighter: comments (// and #, not Rust #[…]), strings, numbers, keywords.
+  var RE = /(\/\/[^\n]*|#(?![\[!])[^\n]*)|(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b(import|from|export|const|let|var|await|async|function|func|fn|def|for|of|in|return|new|if|else|while|match|yield|type|interface|class|struct|impl|pub|use|package|mut|null|undefined|true|false|None|True|False|nil)\b/g;
+  function highlight(src) {
+    var out = "", last = 0, m;
+    while ((m = RE.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += '<span class="c">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="s">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="n">' + esc(m[3]) + "</span>";
+      else if (m[4]) out += '<span class="k">' + esc(m[4]) + "</span>";
+      last = RE.lastIndex;
+    }
+    out += esc(src.slice(last));
+    return out;
+  }
+  document.querySelectorAll("pre code").forEach(function (code) {
+    code.innerHTML = highlight(code.textContent);
+  });
+
+  // Copy buttons.
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      if (!text) {
+        var fig = btn.closest("figure");
+        var code = fig && fig.querySelector("code");
+        text = code ? code.textContent : "";
+      }
+      navigator.clipboard && navigator.clipboard.writeText(text).then(function () {
+        var label = btn.textContent;
+        btn.textContent = "Copied"; btn.classList.add("done");
+        setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 1400);
+      });
+    });
+  });
+
+  // Accessible tabs: click + arrow keys, roving tabindex.
+  document.querySelectorAll("[data-tabs]").forEach(function (group) {
+    var tabs = Array.prototype.slice.call(group.querySelectorAll('[role="tab"]'));
+    function select(tab) {
+      tabs.forEach(function (t) {
+        var on = t === tab;
+        t.setAttribute("aria-selected", on ? "true" : "false");
+        t.tabIndex = on ? 0 : -1;
+        var panel = document.getElementById(t.getAttribute("aria-controls"));
+        if (panel) panel.hidden = !on;
+      });
+    }
+    tabs.forEach(function (tab, i) {
+      tab.addEventListener("click", function () { select(tab); });
+      tab.addEventListener("keydown", function (e) {
+        var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!d) return;
+        e.preventDefault();
+        var next = tabs[(i + d + tabs.length) % tabs.length];
+        select(next); next.focus();
+      });
+    });
+  });
+
+  // Scrollspy.
+  var links = {};
+  document.querySelectorAll(".side-group a[href^='#']").forEach(function (a) {
+    links[a.getAttribute("href").slice(1)] = a;
+  });
+  var obs = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting) {
+        Object.keys(links).forEach(function (k) { links[k].classList.remove("active"); });
+        a.classList.add("active");
+      }
+    });
+  }, { rootMargin: "-20% 0px -70% 0px" });
+  document.querySelectorAll("section[id]").forEach(function (s) { obs.observe(s); });
+})();
+</script>
+</body>
+</html>

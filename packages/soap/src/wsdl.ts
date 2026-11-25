@@ -5,6 +5,7 @@
 // WSDL variant, import graph, or namespace permutation. No eval, no DOM.
 
 import { method, type MethodDescriptor } from "@dxjs/transport";
+import { isXmlName } from "./soap.ts";
 
 export interface WsdlOptions {
   /** Fallback service name when none is found in the document. Defaults to "soap". */
@@ -49,6 +50,9 @@ function collectOperationNames(xml: string): string[] {
     const name = match[1]!;
     if (seen.has(name)) continue;
     seen.add(name);
+    // Skip operation names that are not valid XML Names — they would become the
+    // envelope's body element and cannot be emitted safely (M5 defence-in-depth).
+    if (!isXmlName(name)) continue;
     names.push(name);
   }
   return names;

@@ -218,6 +218,14 @@ function update(node: Node): void {
     CurrentScope = prevScope;
   }
   if (threw) {
+    // A partial run may have created child nodes before throwing. Dispose them so
+    // a HANDLED error leaves no orphaned/leaked effects: otherwise they stay live
+    // until a re-run that may never come (the dep set is also truncated to what was
+    // read before the throw — an inherent limit of a partial read; see report L6).
+    if (node.owned) {
+      for (const child of node.owned) disposeNode(child);
+      node.owned = null;
+    }
     // Route to the nearest error boundary (onError) up the owner tree; if none,
     // rethrow so it surfaces to the caller (a write's flush or the initial run).
     if (!runErrorHandlers(node, error)) throw error;
@@ -290,18 +298,35 @@ const LOOP_LIMIT = 1_000_000;
 function flush(): void {
   if (flushing || batchDepth) return;
   flushing = true;
+  // Isolate each effect: an effect that throws with no error boundary must not
+  // abort the flush and strand the effects queued behind it (they would keep
+  // queued=true/DIRTY, turning every future markStale/enqueue into a no-op — a
+  // permanent freeze). We drain the whole queue, then surface the FIRST unhandled
+  // error after the flush, exactly like Solid's per-effect error isolation.
+  let firstError: unknown;
+  let hasError = false;
   try {
     let i = 0;
     for (; i < queue.length; i++) {
       if (i > LOOP_LIMIT) throw new Error("dxjs: potential infinite update loop");
       const node = queue[i]!; // loop-bounded by queue.length; entries are never undefined
       node.queued = false;
-      if (!node.disposed) updateIfNecessary(node);
+      if (!node.disposed) {
+        try {
+          updateIfNecessary(node);
+        } catch (err) {
+          if (!hasError) {
+            hasError = true;
+            firstError = err;
+          }
+        }
+      }
     }
   } finally {
     queue.length = 0;
     flushing = false;
   }
+  if (hasError) throw firstError;
 }
 
 // --- public API -----------------------------------------------------------

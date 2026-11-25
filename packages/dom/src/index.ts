@@ -3,4 +3,4 @@
 
 export { html, render, list, jsxElement, Fragment } from "./dom.ts";
 export type { TemplateResult, ListResult, ElementResult } from "./dom.ts";
-export { escape } from "./escape.ts";
+export { escape, sanitizeUrl, isUrlAttr, isUnsafeProp } from "./escape.ts";

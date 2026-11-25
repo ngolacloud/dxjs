@@ -11,6 +11,11 @@ export interface ResilienceOptions {
   retries?: number;
   /** Base backoff in ms; grows exponentially (base * 2^(attempt-1)). Default 0. */
   backoff?: number;
+  /** Whether retrying is safe. A retry re-runs the operation, so for a fetcher with
+   *  non-idempotent side effects (a POST/PATCH) replaying it risks a double write.
+   *  Set `false` to suppress retries even when `retries > 0`. Defaults vary by caller
+   *  (a read-like `resource` assumes `true`; the REST client gates per HTTP method). */
+  idempotent?: boolean;
 }
 
 /** Compose the caller's signal (if any) with a fresh per-attempt timeout signal.

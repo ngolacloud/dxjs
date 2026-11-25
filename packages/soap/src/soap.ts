@@ -57,6 +57,24 @@ export function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+/**
+ * Is `s` a safe XML element name? A tag name is structure, not text — it cannot be
+ * escaped the way a value can, so an element/operation name that carries markup
+ * metacharacters (`< > & " ' /`, whitespace) or is empty is an injection, not a name.
+ * We accept a conservative subset of the XML `Name` production: a leading letter/`_`
+ * then letters, digits, `_ . : -`. This rejects `x><script`, `a xmlns=…`, `a/`, `""`.
+ */
+export function isXmlName(s: string): boolean {
+  return /^[A-Za-z_][\w.:-]*$/.test(s);
+}
+
+/** Guard an element/operation name at the point of emission (M5). Throws on markup. */
+function assertXmlName(name: string, role: string): void {
+  if (!isXmlName(name)) {
+    throw transportError("soap", `invalid XML ${role} name (possible injection): ${JSON.stringify(name)}`);
+  }
+}
+
 function soapWire(m: MethodDescriptor): SoapWire {
   return (m.wire?.soap ?? {}) as SoapWire;
 }
@@ -67,6 +85,7 @@ function renderParams(req: unknown): string {
   let out = "";
   for (const [key, value] of Object.entries(req as Record<string, unknown>)) {
     if (value === undefined) continue;
+    assertXmlName(key, "element");
     out += `<${key}>${escapeXml(String(value))}</${key}>`;
   }
   return out;
@@ -74,6 +93,7 @@ function renderParams(req: unknown): string {
 
 /** Build the full SOAP envelope string for an operation. */
 function buildEnvelope(opName: string, targetNamespace: string | undefined, soapNs: string, params: string): string {
+  assertXmlName(opName, "operation");
   const nsAttr = targetNamespace ? ` xmlns="${escapeXml(targetNamespace)}"` : "";
   return (
     `<?xml version="1.0"?>` +

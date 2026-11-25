@@ -131,6 +131,9 @@ export function createDevServer(options: DevServerOptions): DevServer {
     timer: ReturnType<typeof setTimeout>;
   }
   let waiters: Waiter[] = [];
+  // Cap concurrent long-poll waiters so a client can't pin unbounded open sockets
+  // (loopback-only, but still a resource bound). Over the cap → answer now. (L5)
+  const MAX_WAITERS = 256;
 
   function updatesSince(since: number): Array<{ path: string; version: number }> {
     const latest = new Map<string, number>();
@@ -225,7 +228,13 @@ export function createDevServer(options: DevServerOptions): DevServer {
   // --- static assets from the app root -------------------------------------
   async function serveStatic(relPath: string): Promise<Response> {
     const abs = resolve(root, relPath);
-    if (!abs.startsWith(root)) return new Response("Forbidden", { status: 403, headers: headers() });
+    // Containment by path semantics, NOT string prefix: `startsWith(root)` lets a
+    // sibling that shares the prefix (root `…/app` vs `…/app-x`) escape via an
+    // encoded `..`. `isWithin` compares the relative path instead.
+    if (!isWithin(abs, root)) return new Response("Forbidden", { status: 403, headers: headers() });
+    // Dotfiles / dot-directories (`.env`, `.git/…`) are never app assets.
+    if (relative(root, abs).split(/[/\\]/).some((seg) => seg.startsWith(".")))
+      return new Response("Forbidden", { status: 403, headers: headers() });
     try {
       const body = await readFile(abs);
       const ext = extname(abs);
@@ -258,7 +267,9 @@ export function createDevServer(options: DevServerOptions): DevServer {
     "/@dx/client.js": async () => {
       const result = await esbuild.build({
         entryPoints: [CLIENT_SRC],
-        bundle: false,
+        // Bundle so the client's local imports (e.g. ./hmr-guard) are inlined into
+        // the single served module — the browser loads it as one file. (L13)
+        bundle: true,
         write: false,
         format: "esm",
         platform: "browser",
@@ -268,8 +279,15 @@ export function createDevServer(options: DevServerOptions): DevServer {
       return jsResponse(result.outputFiles![0]!.text);
     },
     "/@dx/hmr": async (req) => {
-      const since = Number(new URL(req.url).searchParams.get("since") ?? 0);
-      if (epoch > since) return jsonResponse({ epoch, updates: updatesSince(since) });
+      // Sanitise the cursor: a non-numeric/negative `since` (NaN from Number("abc"))
+      // would mis-cursor updatesSince and hold the socket. Treat an invalid cursor as
+      // a fresh client and answer immediately with the current epoch. (L5)
+      const raw = Number(new URL(req.url).searchParams.get("since") ?? 0);
+      const valid = Number.isFinite(raw) && raw >= 0;
+      const since = valid ? Math.floor(raw) : 0;
+      if (!valid || epoch > since) return jsonResponse({ epoch, updates: updatesSince(since) });
+      // Bound the waiter pool: over the cap, don't hold — tell the client to re-poll. (L5)
+      if (waiters.length >= MAX_WAITERS) return new Response(null, { status: 204, headers: headers() });
       // Hold the connection until a change arrives or the window closes. The
       // edge handler naturally keeps the socket open while this promise is
       // pending (nodeListener awaits the Response).
@@ -287,7 +305,23 @@ export function createDevServer(options: DevServerOptions): DevServer {
     },
   });
 
+  // --- DNS-rebinding guard --------------------------------------------------
+  // The dev server only ever answers for loopback; a request whose `Host` is a
+  // name an attacker rebinds to 127.0.0.1 is rejected, so a foreign page can
+  // never read local source / HMR state through this origin.
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+  if (options.host) allowedHosts.add(options.host.toLowerCase());
+  function hostAllowed(hostHeader: string | null): boolean {
+    if (!hostHeader) return false; // HTTP/1.1 requires Host; a browser always sends it
+    const h = hostHeader.trim().toLowerCase();
+    // Strip the port, keeping the IPv6 bracket form (`[::1]:5173` → `[::1]`).
+    const name = h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.split(":", 1)[0]!;
+    return allowedHosts.has(name);
+  }
+
   const handler: FetchHandler = async (request) => {
+    if (!hostAllowed(request.headers.get("host")))
+      return new Response("Forbidden", { status: 403, headers: headers() });
     const url = new URL(request.url);
     const path = url.pathname;
     if (path.startsWith("/@fs/")) {
@@ -295,10 +329,20 @@ export function createDevServer(options: DevServerOptions): DevServer {
       if (!isWithin(abs, REPO_ROOT) || !JS_EXT.has(extname(abs))) {
         return new Response("Forbidden", { status: 403, headers: headers() });
       }
+      // Containment by the REAL path: a symlink inside the repo whose target is
+      // OUTSIDE must not escape the guard. `isWithin(abs,…)` only checks the link's
+      // own path; re-check after `realpath`. (L4)
+      const real = await realpath(abs).catch(() => abs);
+      if (!isWithin(real, REPO_ROOT)) {
+        return new Response("Forbidden", { status: 403, headers: headers() });
+      }
       try {
         return jsResponse(await transformModule(abs));
       } catch (err) {
-        return new Response(String((err as Error).message ?? err), {
+        // Do NOT echo the raw esbuild message (it embeds source frames/paths). The
+        // full error goes to the dev's terminal; the client gets a terse 500. (L4)
+        console.error("[dxjs] transform failed for", abs, "\n", err);
+        return new Response("500 Internal Server Error (build failed — see dev server log)", {
           status: 500,
           headers: headers({ "content-type": "text/plain; charset=utf-8" }),
         });

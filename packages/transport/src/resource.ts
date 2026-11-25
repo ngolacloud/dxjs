@@ -27,7 +27,12 @@ export function resource<T>(
   const loading = signal(false);
   const error = signal<unknown>(undefined);
   const timeout = options.timeout ?? 0;
-  const retries = options.retries ?? 0;
+  // Gate retries on idempotency (symmetry with the REST client): re-running a fetcher
+  // with non-idempotent side effects would double-execute it. A resource is read-like,
+  // so the default is idempotent; `idempotent:false` suppresses retries entirely (M8).
+  // The per-attempt `timeout` still applies — it only cancels, it never re-runs.
+  const canRetry = options.idempotent ?? true;
+  const retries = canRetry ? (options.retries ?? 0) : 0;
   const backoff = options.backoff ?? 0;
   let controller: AbortController | null = null;
   let gen = 0;

@@ -30,6 +30,31 @@ export type SchemaValidator = (values: Record<string, unknown>) => Record<string
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// `schema.pattern` comes from the (untrusted) runtime openapi.json and is run
+// against user input, so a catastrophic-backtracking pattern such as ^(a+)+$ is a
+// ReDoS vector (exponential time, freezes the tab). Defence: (1) reject patterns
+// whose shape is a nested quantifier — a quantifier applied to a group that already
+// contains one, the classic exponential form — and (2) cap the input length handed
+// to the matcher. A rejected/oversized pattern is treated as "no pattern", exactly
+// like an unparseable one. Compiled regexes are cached (was recompiled per call).
+const NESTED_QUANTIFIER = /\([^()]*[+*{][^()]*\)[+*{?]/;
+const MAX_PATTERN_INPUT = 2048;
+const reCache = new Map<string, RegExp | null>();
+function safePattern(src: string): RegExp | null {
+  const hit = reCache.get(src);
+  if (hit !== undefined) return hit;
+  let re: RegExp | null = null;
+  if (!NESTED_QUANTIFIER.test(src)) {
+    try {
+      re = new RegExp(src);
+    } catch {
+      re = null; // an unparseable server pattern is not a client error
+    }
+  }
+  reCache.set(src, re);
+  return re;
+}
+
 function deref(s: JsonSchema, resolve: Resolver, depth = 0): JsonSchema {
   if (s.$ref && depth < 10) {
     const target = resolve(s.$ref);
@@ -62,13 +87,10 @@ function checkValue(schema: JsonSchema, value: unknown): string | null {
     if (schema.maxLength != null && value.length > schema.maxLength) return `must be at most ${schema.maxLength} characters`;
     if (schema.format === "email" && !EMAIL.test(value)) return "must be a valid email";
     if (schema.pattern) {
-      let re: RegExp | null = null;
-      try {
-        re = new RegExp(schema.pattern);
-      } catch {
-        re = null; // an unparseable server pattern is not a client error
-      }
-      if (re && !re.test(value)) return "has an invalid format";
+      const re = safePattern(schema.pattern);
+      // Skip oversized inputs: even a linear pattern over a huge string is a DoS;
+      // the server revalidates authoritatively.
+      if (re && value.length <= MAX_PATTERN_INPUT && !re.test(value)) return "has an invalid format";
     }
   }
   if (typeof value === "number") {

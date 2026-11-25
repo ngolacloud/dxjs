@@ -28,6 +28,17 @@ import {
 import { html, type TemplateResult } from "@dxjs/dom";
 import { mount, type Component } from "./index.ts";
 
+/** Decode a path segment, falling back to the raw value on a malformed escape.
+ *  `decodeURIComponent("%E0%A4")` throws `URIError`; an attacker-shaped URL must
+ *  not crash the router, so a bad escape yields the undecoded segment. (Audit L3) */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
 /** Per-level context passed to a route's component. `data()` is this level's
  *  loader result (undefined until it resolves, or when there is no loader). */
 export interface RouteContext {
@@ -172,7 +183,7 @@ export function createRouter(routes: Route[], options: RouterOptions = {}): Rout
   function buildLevels(c: Compiled, m: RegExpExecArray, pathname: string, query: URLSearchParams): MatchLevel[] {
     const params: Record<string, string> = {};
     c.names.forEach((n, i) => {
-      params[n] = decodeURIComponent(m[i + 1] ?? "");
+      params[n] = safeDecode(m[i + 1] ?? "");
     });
     return c.chain.map((route, i) => {
       const data = signal<unknown>(undefined);
