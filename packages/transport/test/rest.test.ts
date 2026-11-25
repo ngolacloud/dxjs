@@ -147,6 +147,19 @@ test("{ idempotent: false } forbids retrying an otherwise-safe GET", async () =>
   assert.equal(n, 1, "the explicit opt-out wins over the method default");
 });
 
+// A real fetch holds a socket open, which keeps Node's event loop alive while it
+// waits; these fake fetches hold nothing, and AbortSignal.timeout() uses an
+// unref'd timer — so the runner could see an idle loop and cancel the test
+// before the timeout fires. Hold the loop open for the test's duration.
+async function holdingLoop<T>(run: () => Promise<T>): Promise<T> {
+  const keep = setInterval(() => {}, 1000);
+  try {
+    return await run();
+  } finally {
+    clearInterval(keep);
+  }
+}
+
 test("a per-attempt timeout aborts the request", async () => {
   let aborted = false;
   // Never resolves on its own; rejects only when the (timeout) signal fires.
@@ -160,7 +173,7 @@ test("a per-attempt timeout aborts the request", async () => {
         });
     })) as unknown as typeof fetch;
   const api = createClient({ fetch: fn, timeout: 20 });
-  await assert.rejects(() => api.get("/slow"));
+  await holdingLoop(() => assert.rejects(() => api.get("/slow")));
   assert.equal(aborted, true, "the attempt's fetch saw the timeout abort");
 });
 
@@ -175,7 +188,7 @@ test("timeout is per-attempt: a hung try is retried and the next one succeeds", 
     return jsonResponse(200, { ok: true });
   }) as unknown as typeof fetch;
   const api = createClient({ fetch: fn, timeout: 20, retries: 1, backoff: 0 });
-  const r = await api.get<{ ok: boolean }>("/x");
+  const r = await holdingLoop(() => api.get<{ ok: boolean }>("/x"));
   assert.deepEqual(r, { ok: true });
   assert.equal(n, 2, "first attempt timed out and was retried");
 });
