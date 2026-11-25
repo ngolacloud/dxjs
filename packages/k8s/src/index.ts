@@ -70,7 +70,10 @@ export function createResourceStore(): ResourceStore {
     const events = Array.isArray(event) ? event : [event];
     if (events.length === 0) return;
     for (const e of events) {
-      const uid = e.object.metadata.uid;
+      // Validate the event shape: a malformed event (no object/metadata/uid, or an
+      // unknown type) must be SKIPPED, not throw and abort the whole batch. (L7)
+      const uid = e?.object?.metadata?.uid;
+      if (!uid || (e.type !== "DELETED" && e.type !== "ADDED" && e.type !== "MODIFIED")) continue;
       if (e.type === "DELETED") map.delete(uid);
       else map.set(uid, e.object); // ADDED or MODIFIED → upsert
       const next = e.object.metadata.resourceVersion;

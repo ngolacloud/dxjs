@@ -21,6 +21,13 @@ export interface GrpcChannelOptions {
    * `http2.connect` this client relies on.
    */
   fetchImpl?: typeof http2.connect;
+  /**
+   * Reuse ONE HTTP/2 session across unary calls (multiplexed) instead of opening
+   * and closing a session per call. Reconnects if the session closes/errors. When
+   * enabled you MUST call `close()` to release the pooled session. Default false
+   * (stateless per-call — no lifecycle to manage). (Audit L11)
+   */
+  keepAlive?: boolean;
 }
 
 export interface GrpcUnaryOptions {
@@ -42,6 +49,8 @@ export interface GrpcChannel {
     bytes: Uint8Array,
     opts?: GrpcUnaryOptions,
   ): Promise<Uint8Array>;
+  /** Release the pooled HTTP/2 session (only meaningful with `keepAlive`). (L11) */
+  close?(): void;
 }
 
 function grpcError(code: number, details: string): GrpcError {
@@ -85,21 +94,48 @@ function deframe(buf: Uint8Array): Uint8Array {
  */
 export function createGrpcChannel(options: GrpcChannelOptions): GrpcChannel {
   const connect = options.fetchImpl ?? http2.connect;
+  const keepAlive = options.keepAlive ?? false;
+
+  // With keepAlive, one session is reused across calls (reconnected if it drops);
+  // without it, each call gets its own session, closed when the call settles. (L11)
+  let pooled: ReturnType<typeof connect> | null = null;
+  const acquire = (): ReturnType<typeof connect> => {
+    if (!keepAlive) return connect(options.url);
+    if (pooled && !pooled.closed && !pooled.destroyed) return pooled;
+    const s = connect(options.url);
+    pooled = s;
+    const drop = (): void => {
+      if (pooled === s) pooled = null;
+    };
+    s.on("close", drop);
+    s.on("error", drop);
+    return s;
+  };
 
   return {
+    close(): void {
+      if (pooled) {
+        pooled.close();
+        pooled = null;
+      }
+    },
     unary(service, method, bytes, opts: GrpcUnaryOptions = {}): Promise<Uint8Array> {
       return new Promise<Uint8Array>((resolve, reject) => {
-        const session = connect(options.url);
+        const session = acquire();
         let settled = false;
 
+        const onSessionError = (err: Error): void => finish(() => reject(err));
         const finish = (fn: () => void): void => {
           if (settled) return;
           settled = true;
           fn();
-          session.close();
+          session.removeListener("error", onSessionError);
+          // Close the SESSION only when not pooling; a pooled session is reused
+          // across calls (its per-call streams close on their own) until close().
+          if (!keepAlive) session.close();
         };
 
-        session.on("error", (err) => finish(() => reject(err)));
+        session.on("error", onSessionError);
 
         const headers: http2.OutgoingHttpHeaders = {
           ":method": "POST",

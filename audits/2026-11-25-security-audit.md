@@ -82,12 +82,12 @@ que o framework não impõe nem verifica.
 | ~~L4~~ | BAIXO **✔ corrigido** | `/@fs` não faz `realpath` → symlink no repo escapa à contenção; erro do esbuild ecoa conteúdo | `dev/server.ts:293` |
 | ~~L5~~ | BAIXO **✔ corrigido** | HMR long-poll sem limite de waiters/sockets; `since=Number()` aceita `NaN` | `dev/server.ts:270` |
 | ~~L6~~ | BAIXO **✔ corrigido** | `onError` tratado trunca as dependências lidas do efeito (pode não auto-recuperar) + filhos órfãos | `core/graph.ts:202` |
-| L7 | BAIXO | `k8s.apply` confia na forma do evento; evento malformado aborta o lote inteiro | `k8s/index.ts:69` |
+| ~~L7~~ | BAIXO **✔ corrigido** | `k8s.apply` confia na forma do evento; evento malformado aborta o lote inteiro | `k8s/index.ts:69` |
 | ~~L8~~ | BAIXO **✔ corrigido** | query `keyOf`: chave com `__proto__` colapsa no `JSON.stringify` → colisão de cache | `query/index.ts:69` |
-| L9 | BAIXO | `media`/`avatar` `src`/`poster` sem validação de esquema (delega na CSP) | `ui/media.ts:45,78`; `ui/nav.ts:130` |
+| ~~L9~~ | BAIXO **✔ coberto por H1** | `media`/`avatar` `src`/`poster` sem validação de esquema (delega na CSP) | `ui/media.ts:45,78`; `ui/nav.ts:130` |
 | ~~L10~~ | BAIXO **✔ corrigido** | Confiança cega em `Host`/`X-Forwarded-Proto` ao construir o URL do Request | `edge/edge.ts:59` |
-| L11 | INFO | `createGrpcChannel` abre/fecha sessão HTTP/2 por chamada (sem pooling) | `edge/grpc.ts:92` |
-| L12 | INFO | Resposta do servidor não validada (OpenAPI valida só o pedido; SOAP devolve `as Res`) | `openapi/openapi.ts:131`; `soap/soap.ts:178` |
+| ~~L11~~ | INFO **✔ corrigido** | `createGrpcChannel` abre/fecha sessão HTTP/2 por chamada (sem pooling) | `edge/grpc.ts:92` |
+| L12 | INFO **↷ aceite** | Resposta do servidor não validada (OpenAPI valida só o pedido; SOAP devolve `as Res`) | `openapi/openapi.ts:131`; `soap/soap.ts:178` |
 | ~~L13~~ | INFO **✔ corrigido** | HMR client confia no `path` do servidor para `import()` dinâmico (mitigado por CSP) | `dev/client.ts:89` |
 
 ---
@@ -371,8 +371,23 @@ inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o
 | L5 | `/@dx/hmr` sanitiza o cursor: um `since` não-numérico/negativo (NaN de `Number("abc")`) é tratado como cliente novo → resposta imediata com o epoch actual, em vez de segurar o socket. E o pool de waiters do long-poll é limitado por `MAX_WAITERS` (256); acima do limite responde 204 em vez de segurar | `dev/src/server.ts:277` (`MAX_WAITERS`) | `dev/test/security-l5-hmr-cursor.audit.test.ts` (2) |
 | L13 | O cliente HMR deixa de confiar no `path`/`version` do servidor: `applyUpdate` só faz `import()` se `isTrustedModuleUrl` (URL de módulo same-origin `/@fs`/`/@app`, sem esquema/host protocolo-relativo/backslash/NUL) e `isValidVersion` (número finito ≥0) — senão faz full reload. Guard puro em `hmr-guard.ts` (testável); cliente passa a ser bundled para o inlinar | `dev/src/hmr-guard.ts`, `dev/src/client.ts:89` | `dev/test/security-l13-hmr-guard.audit.test.ts` (2) |
 
-**Backlog restante:** Slice D (L7 k8s evento malformado, L9 `media` src sem esquema,
-L11 gRPC sem pooling, L12 resposta não validada) e os sub-vectores **server-side** de
-M7 (fila `wsAdapter`, corpo `nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5),
-MÉDIO (M1–M11) e os Slices A (L3/L6/L8), B (L1/L2/L10) e C (L4/L5/L13) dos BAIXO/INFO
-estão fechados com PoC red→green.
+### Endurecimento BAIXO/INFO — Slice D (final)
+
+| ID | Correcção | Ficheiros | PoC (regressão) |
+|----|-----------|-----------|-----------------|
+| L7 | `createResourceStore.apply` valida a forma de cada evento (`e?.object?.metadata?.uid` + `type ∈ {ADDED,MODIFIED,DELETED}`): um evento malformado é **saltado** (`continue`), não lança nem aborta o lote — os eventos válidos do mesmo lote continuam a aplicar-se | `k8s/src/index.ts:69` | `k8s/test/security-l7-malformed-event.audit.test.ts` (2) |
+| L9 | **Já coberto por H1** — não precisa de código novo nos componentes. `isUrlAttr` inclui `src`/`poster`, logo o renderer (cliente+SSR) passa esses atributos por `sanitizeUrl` no sink; um `src`/`poster` `javascript:`/`data:text/html` em `image`/`video`/`avatar` é neutralizado. PoC de verificação adicionado | `dom/src/escape.ts` (isUrlAttr/sanitizeUrl, H1) | `ui/test/security-l9-media-url-scheme.audit.test.ts` (4) |
+| L11 | `createGrpcChannel` ganha `keepAlive` (opt-in) + `close()`: com `keepAlive:true` reutiliza **uma** sessão HTTP/2 multiplexada entre chamadas (reconecta se cair), em vez de abrir/fechar por chamada. O default mantém-se stateless (sessão por chamada — sem ciclo de vida a gerir, zero regressão) | `edge/src/grpc.ts:86` | `edge/test/security-l11-grpc-keepalive.audit.test.ts` (2) |
+
+**L12 — aceite (não corrigido), com fundamentação.** Validar a resposta do servidor
+no cliente é uma **funcionalidade**, não um endurecimento, e desalinhada do âmbito
+actual: (1) o tipo `Operation` do OpenAPI nem sequer modela `responses`, logo não há
+schema de resposta para compilar sem o adicionar; (2) o cliente SOAP devolve `as Res`
+sem schema nenhum; (3) o cliente valida o **pedido** que controla — a resposta é o
+contrato do **servidor**, validado do lado do servidor. Validação de resposta
+opt-in fica como trabalho de uma sessão futura (feature), não deste endurecimento.
+
+**Backlog restante:** apenas os sub-vectores **server-side** de M7 (fila `wsAdapter`,
+corpo `nodeListener`, acumulação gRPC — §8.3). **Todos os ALTO (H1–H5), MÉDIO (M1–M11)
+e BAIXO/INFO (L1–L13) estão fechados** — por correcção com PoC red→green, excepto L9
+(coberto por H1, com PoC de verificação) e L12 (aceite com fundamentação).
