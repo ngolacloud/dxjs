@@ -21,6 +21,8 @@ export type {
 } from "./port.ts";
 export { restAdapter, connectAdapter, inMemoryAdapter, embeddedAdapter, sseAdapter, composeTransport } from "./adapters.ts";
 export type { HttpWire, Handler, InMemoryOptions, EmbeddedOptions, SseAdapterOptions } from "./adapters.ts";
+export { wsAdapter } from "./ws.ts";
+export type { WsAdapterOptions } from "./ws.ts";
 
 export { liveSignal } from "./live.ts";
 export type { LiveSignal, LiveOptions } from "./live.ts";
