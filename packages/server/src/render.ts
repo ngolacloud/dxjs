@@ -107,10 +107,13 @@ function appendAttr(out: string, value: unknown): string {
   if (!m) return out; // not an attribute binding we recognise; leave as-is
   const name = m[1] as string;
   const quoted = m[2] === '"';
-  const v = unwrap(value);
   const prefix = name[0];
 
-  if (prefix === "@") return out.slice(0, m.index); // drop event
+  // Events and refs are client-only. Drop them BEFORE unwrapping: their value
+  // is a function that is not a reactive thunk, and calling it would run the
+  // handler (or the ref callback) on the server.
+  if (prefix === "@" || name === "ref") return out.slice(0, m.index);
+  const v = unwrap(value);
   if (prefix === "?") {
     const bare = out.slice(0, m.index);
     return v ? `${bare}${name.slice(1)}` : bare;
