@@ -76,3 +76,39 @@ test("liveSignal prefers the SSE stream (value tracks the last pushed message)",
     dispose();
   });
 });
+
+test("sseAdapter reconnects and resumes with Last-Event-ID (and parses retry:)", async () => {
+  const bodies = [
+    "id: 1\ndata: {\"n\":1}\n\n",
+    "retry: 5\nid: 2\ndata: {\"n\":2}\n\n",
+    "id: 3\ndata: {\"n\":3}\n\n",
+  ];
+  const seenIds: Array<string | undefined> = [];
+  let call = 0;
+  const fn = (async (_url: string, init?: RequestInit) => {
+    const h = (init?.headers ?? {}) as Record<string, string>;
+    seenIds.push(h["last-event-id"]);
+    const body = bodies[Math.min(call, bodies.length - 1)]!;
+    call++;
+    return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+  }) as unknown as typeof fetch;
+
+  const t = sseAdapter({ fetch: fn, reconnect: true, retryMs: 1 });
+  const ctrl = new AbortController();
+  const out: Array<{ n: number }> = [];
+  for await (const v of t.serverStream(feed, {}, { signal: ctrl.signal })) {
+    out.push(v);
+    if (out.length === 2) ctrl.abort(); // stop after the reconnect delivered #2
+  }
+  assert.deepEqual(out, [{ n: 1 }, { n: 2 }]);
+  assert.equal(seenIds[0], undefined, "first connect sends no Last-Event-ID");
+  assert.equal(seenIds[1], "1", "the reconnect resumes from the last id");
+  assert.ok(call <= 2, "aborted before a third connect");
+});
+
+test("sseAdapter without reconnect ends when the stream ends (default)", async () => {
+  const fn = (async () => new Response("data: {\"n\":1}\n\n", { headers: { "content-type": "text/event-stream" } })) as unknown as typeof fetch;
+  const out: unknown[] = [];
+  for await (const v of sseAdapter({ fetch: fn }).serverStream(feed, {})) out.push(v);
+  assert.deepEqual(out, [{ n: 1 }], "finite stream terminates (no reconnect)");
+});

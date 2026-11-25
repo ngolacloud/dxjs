@@ -93,12 +93,35 @@ export interface SseAdapterOptions {
   baseUrl?: string;
   fetch?: typeof fetch;
   auth?: AuthToken;
+  /** Reconnect when the stream ends/errors, resuming with Last-Event-ID. Default false. */
+  reconnect?: boolean;
+  /** Base reconnect delay (ms); grows per attempt (capped 30s). A server `retry:`
+   *  line overrides it. Default 1000. */
+  retryMs?: number;
+}
+
+/** Resolve after `ms`, or immediately when `signal` aborts (so a reconnect wait ends
+ *  cleanly without throwing to the consumer). */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    const id = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(id);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 /** An adapter whose `serverStream` reads a `text/event-stream` response and yields
  *  each event's JSON `data`. Stream-only (compose with restAdapter for unary); the
  *  native stream that lets `liveSignal` prefer SSE over polling. CSP-safe: plain
- *  fetch streaming, no eval, no EventSource needed (so custom headers/auth work). */
+ *  fetch streaming, no eval, no EventSource needed (so custom headers/auth work).
+ *  With `reconnect:true` it recovers from drops, resuming from the last `id:`. */
 export function sseAdapter(options: SseAdapterOptions = {}): Transport {
   const base = options.baseUrl ?? "";
   return {
@@ -108,6 +131,9 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
     },
     async *serverStream<Req, Res>(m: MethodDescriptor<Req, Res>, req: Req, ctx: CallCtx = {}): AsyncIterable<Res> {
       const f = options.fetch ?? fetch;
+      const reconnect = options.reconnect ?? false;
+      let retryMs = options.retryMs ?? 1000;
+
       const http = (m.wire?.http ?? {}) as { path?: string | ((r: unknown) => string) };
       let path = typeof http.path === "function" ? http.path(req) : (http.path ?? `/${m.service}/${m.method}`);
       if (req && typeof req === "object") {
@@ -116,46 +142,71 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
         const s = qs.toString();
         if (s) path += (path.includes("?") ? "&" : "?") + s;
       }
-      const headers: Record<string, string> = { accept: "text/event-stream", ...(ctx.meta ?? {}) };
+      const baseHeaders: Record<string, string> = { accept: "text/event-stream", ...(ctx.meta ?? {}) };
       const token = resolveAuth(ctx.auth ?? options.auth);
-      if (token) headers["authorization"] = "Bearer " + token;
-      if (ctx.traceId) headers["traceparent"] = ctx.traceId;
+      if (token) baseHeaders["authorization"] = "Bearer " + token;
+      if (ctx.traceId) baseHeaders["traceparent"] = ctx.traceId;
 
-      const res = await f(base + path, { headers, signal: ctx.signal });
-      if (!res.ok || !res.body) throw transportError("stream", `SSE request failed (${res.status})`);
-      const reader = res.body.getReader();
       const dec = new TextDecoder();
-      let buf = "";
-      try {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf = (buf + dec.decode(value, { stream: true })).replace(/\r\n/g, "\n");
-          let idx: number;
-          while ((idx = buf.indexOf("\n\n")) >= 0) {
-            const frame = buf.slice(0, idx);
-            buf = buf.slice(idx + 2);
-            const data = frame
-              .split("\n")
-              .filter((l) => l.startsWith("data:"))
-              .map((l) => l.slice(5).replace(/^ /, ""))
-              .join("\n");
-            if (!data) continue;
-            let parsed: unknown = data;
-            try {
-              parsed = JSON.parse(data);
-            } catch {
-              /* a non-JSON event: yield the raw string */
-            }
-            yield parsed as Res;
-          }
-        }
-      } finally {
+      let lastId: string | undefined;
+      let attempt = 0;
+
+      for (;;) {
+        if (ctx.signal?.aborted) return;
+        const headers = { ...baseHeaders };
+        if (lastId !== undefined) headers["last-event-id"] = lastId; // resume
         try {
-          reader.releaseLock();
-        } catch {
-          /* already released */
+          const res = await f(base + path, { headers, signal: ctx.signal });
+          if (!res.ok || !res.body) throw transportError("stream", `SSE request failed (${res.status})`);
+          attempt = 0; // a good connection resets backoff
+          const reader = res.body.getReader();
+          let buf = "";
+          try {
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buf = (buf + dec.decode(value, { stream: true })).replace(/\r\n/g, "\n");
+              let idx: number;
+              while ((idx = buf.indexOf("\n\n")) >= 0) {
+                const frame = buf.slice(0, idx);
+                buf = buf.slice(idx + 2);
+                let data = "";
+                let gotData = false;
+                for (const line of frame.split("\n")) {
+                  if (line.startsWith("data:")) {
+                    data += (gotData ? "\n" : "") + line.slice(5).replace(/^ /, "");
+                    gotData = true;
+                  } else if (line.startsWith("id:")) {
+                    lastId = line.slice(3).replace(/^ /, "");
+                  } else if (line.startsWith("retry:")) {
+                    const r = parseInt(line.slice(6).trim(), 10);
+                    if (Number.isFinite(r)) retryMs = r;
+                  }
+                }
+                if (!gotData) continue;
+                let parsed: unknown = data;
+                try {
+                  parsed = JSON.parse(data);
+                } catch {
+                  /* a non-JSON event: yield the raw string */
+                }
+                yield parsed as Res;
+              }
+            }
+          } finally {
+            try {
+              reader.releaseLock();
+            } catch {
+              /* already released */
+            }
+          }
+        } catch (e) {
+          if (ctx.signal?.aborted) return;
+          if (!reconnect) throw e;
+          // fall through to backoff + reconnect
         }
+        if (!reconnect || ctx.signal?.aborted) return;
+        await sleep(Math.min(retryMs * 2 ** attempt++, 30000), ctx.signal);
       }
     },
   };
