@@ -12,3 +12,12 @@ export type { LiveSource, LiveSourceConfig, TopicOptions } from "./sse.ts";
 
 export { createConnectClient } from "./connect.ts";
 export type { ConnectClient, ConnectOptions, ConnectCallOptions, ConnectError } from "./connect.ts";
+
+// ADR 0001 — the protocol-neutral transport port + adapters.
+export { method, withInterceptors, createRpcClient, fromMethod, transportError } from "./port.ts";
+export type {
+  Transport, MethodDescriptor, MethodKind, CallCtx, TransportCaps, AuthToken,
+  Interceptor, RpcClient, TransportError,
+} from "./port.ts";
+export { restAdapter, connectAdapter, inMemoryAdapter } from "./adapters.ts";
+export type { HttpWire, Handler, InMemoryOptions } from "./adapters.ts";
