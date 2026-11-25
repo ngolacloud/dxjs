@@ -9,7 +9,7 @@
 // value, and @/?/. attributes are written unquoted (`@click=${fn}`).
 
 import { untrack } from "@dxjs/core";
-import { escape, type TemplateResult } from "@dxjs/dom";
+import { escape, isUrlAttr, sanitizeUrl, isUnsafeProp, type TemplateResult } from "@dxjs/dom";
 
 function isTemplate(v: unknown): v is TemplateResult {
   return !!v && typeof v === "object" && (v as { _dx?: unknown })._dx === true;
@@ -109,21 +109,27 @@ function appendAttr(out: string, value: unknown): string {
   const quoted = m[2] === '"';
   const v = unwrap(value);
   const prefix = name[0];
+  const head = out.slice(0, m.index); // `out` with the `name=` tail stripped
 
-  if (prefix === "@") return out.slice(0, m.index); // drop event
-  if (prefix === "?") {
-    const bare = out.slice(0, m.index);
-    return v ? `${bare}${name.slice(1)}` : bare;
-  }
+  if (prefix === "@") return head; // drop event
+  if (prefix === "?") return v ? `${head}${name.slice(1)}` : head;
   if (prefix === ".") {
     const real = name.slice(1);
-    const body = `${out.slice(0, m.index)}${real}="${escape(v)}`;
+    // Drop raw-HTML properties entirely (don't even emit an inert attribute): the
+    // live renderer and hydration refuse them, so emitting one would re-introduce
+    // the SSR↔hydration mismatch. (M2)
+    if (isUnsafeProp(real)) return head;
+    const body = `${head}${real}="${escape(v)}`;
     return quoted ? body : `${body}"`;
   }
+  // An on* name without `@` must not be written as an inline handler — drop it. (M1)
+  if (/^on/i.test(name)) return head;
   // normal attribute
-  if (v == null || v === false) return out.slice(0, m.index); // omit
-  if (v === true) return `${out.slice(0, m.index)}${name}`;
-  return quoted ? `${out}${escape(v)}` : `${out.slice(0, m.index)}${name}="${escape(v)}"`;
+  if (v == null || v === false) return head; // omit
+  if (v === true) return `${head}${name}`;
+  // URL-bearing attributes get scheme-sanitised before escaping (H1).
+  const safe = isUrlAttr(name) ? sanitizeUrl(String(v)) : v;
+  return quoted ? `${out}${escape(safe)}` : `${head}${name}="${escape(safe)}"`;
 }
 
 export interface RenderOptions {
@@ -163,42 +169,117 @@ export function renderToString(view: TemplateResult, options: RenderOptions = {}
 // attribute binding never crosses a chunk boundary — the buffer is flushed only
 // at CHILD positions, which are always safe split points.
 
-async function* streamChild(value: unknown): AsyncGenerator<string> {
+// --- streaming resilience (M11) -------------------------------------------
+// Every streaming entry point bounds each Suspense `load()` by a timeout (and an
+// optional abort signal) and, in the out-of-order path, by a concurrency limit. A
+// boundary that times out, rejects or is aborted degrades to its own fallback —
+// it NEVER hangs the response nor truncates the document already emitted.
+
+/** Resilience knobs for the streaming SSR entry points. */
+export interface StreamOptions {
+  /** Max ms to await each Suspense `load()` before showing its fallback.
+   *  Default 30000. `0` or `Infinity` disables the per-boundary timeout. */
+  timeout?: number;
+  /** Max Suspense boundaries loaded concurrently (out-of-order path). Default 8. */
+  concurrency?: number;
+  /** When aborted, pending boundaries stop (each shows its fallback) and the
+   *  stream ends. */
+  signal?: AbortSignal;
+}
+
+interface Opts {
+  timeout: number;
+  concurrency: number;
+  signal?: AbortSignal;
+}
+
+function resolveOpts(o: StreamOptions = {}): Opts {
+  return {
+    timeout: o.timeout ?? 30000,
+    concurrency: o.concurrency && o.concurrency > 0 ? o.concurrency : 8,
+    signal: o.signal,
+  };
+}
+
+/** Await a boundary's `load()` under its timeout + abort signal. Rejects on
+ *  timeout or abort (the caller then renders the fallback) and ALWAYS clears its
+ *  timer on settle, so a never-resolving `load()` leaves nothing alive in the
+ *  event loop once the timeout fires. */
+function loadBounded(load: () => unknown | Promise<unknown>, o: Opts): Promise<unknown> {
+  const p = Promise.resolve().then(load);
+  if ((!o.timeout || o.timeout === Infinity) && !o.signal) return p;
+  return new Promise<unknown>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const settle =
+      (fn: (v: unknown) => void) =>
+      (v: unknown): void => {
+        if (timer) clearTimeout(timer);
+        o.signal?.removeEventListener("abort", onAbort);
+        fn(v);
+      };
+    const onAbort = (): void => settle(reject)(o.signal?.reason ?? new Error("aborted"));
+    if (o.timeout && o.timeout !== Infinity) {
+      timer = setTimeout(() => settle(reject)(new Error("Suspense boundary timed out")), o.timeout);
+    }
+    if (o.signal) {
+      if (o.signal.aborted) return onAbort();
+      o.signal.addEventListener("abort", onAbort);
+    }
+    p.then(settle(resolve), settle(reject));
+  });
+}
+
+// `guarded` is true when an errorBoundary is active above this node: a failing
+// Suspense then RE-THROWS so the nearest boundary (which buffers its subtree)
+// renders its fallback atomically — preserving the existing boundary semantics.
+// With no boundary above, a failing Suspense degrades to its OWN fallback in place:
+// that is the only way the in-order stream can emit the trailing shell instead of
+// truncating the document at the point of failure. (M11)
+async function* streamChild(value: unknown, o: Opts, guarded = false): AsyncGenerator<string> {
   if (isSuspense(value)) {
-    yield* streamChild(await value.load());
+    let loaded: unknown;
+    try {
+      loaded = await loadBounded(value.load, o);
+    } catch (err) {
+      if (guarded) throw err; // let an enclosing errorBoundary handle it
+      // Timeout / rejection / abort, unguarded → show the fallback; never truncate.
+      yield* streamChild(value.fallback, o, guarded);
+      return;
+    }
+    yield* streamChild(loaded, o, guarded);
     return;
   }
   if (isErrorBoundary(value)) {
     // Buffer the subtree so a mid-stream throw/reject yields ONLY the fallback.
     try {
       const parts: string[] = [];
-      for await (const c of streamChild(value.children)) parts.push(c);
+      for await (const c of streamChild(value.children, o, true)) parts.push(c);
       for (const c of parts) yield c;
     } catch (err) {
-      yield* streamChild(value.fallback(err));
+      yield* streamChild(value.fallback(err), o, guarded);
     }
     return;
   }
   if (isList(value)) {
     const arr =
       typeof value.items === "function" ? untrack(() => (value.items as () => unknown[])()) : value.items;
-    for (let i = 0; i < arr.length; i++) yield* streamView(value.render(arr[i], i));
+    for (let i = 0; i < arr.length; i++) yield* streamView(value.render(arr[i], i), o, guarded);
     return;
   }
   const v = unwrap(value);
   if (v == null || v === false || v === true || v === "") return;
   if (isTemplate(v)) {
-    yield* streamView(v);
+    yield* streamView(v, o, guarded);
     return;
   }
   if (Array.isArray(v)) {
-    for (const x of v) yield* streamChild(x);
+    for (const x of v) yield* streamChild(x, o, guarded);
     return;
   }
   yield escape(String(v));
 }
 
-async function* streamView(view: TemplateResult): AsyncGenerator<string> {
+async function* streamView(view: TemplateResult, o: Opts, guarded = false): AsyncGenerator<string> {
   const { strings, values } = view;
   const ctx = scanContexts(strings);
   let out = "";
@@ -210,7 +291,7 @@ async function* streamView(view: TemplateResult): AsyncGenerator<string> {
           yield out; // flush the shell before awaiting any async child
           out = "";
         }
-        yield* streamChild(values[i]);
+        yield* streamChild(values[i], o, guarded);
       } else {
         out = appendAttr(out, values[i]); // attribute: edits the un-yielded buffer
       }
@@ -220,22 +301,22 @@ async function* streamView(view: TemplateResult): AsyncGenerator<string> {
 }
 
 /** Render a view to an async string generator, awaiting Suspense boundaries. */
-export function renderToChunks(view: TemplateResult): AsyncGenerator<string> {
-  return streamView(view);
+export function renderToChunks(view: TemplateResult, options?: StreamOptions): AsyncGenerator<string> {
+  return streamView(view, resolveOpts(options));
 }
 
 /** Render a view to a complete HTML string, awaiting every Suspense boundary. */
-export async function renderToStringAsync(view: TemplateResult): Promise<string> {
+export async function renderToStringAsync(view: TemplateResult, options?: StreamOptions): Promise<string> {
   let html = "";
-  for await (const chunk of streamView(view)) html += chunk;
+  for await (const chunk of streamView(view, resolveOpts(options))) html += chunk;
   return html;
 }
 
 /** Render a view to a Web `ReadableStream<Uint8Array>` (edge-ready), streaming
  *  the shell first and each Suspense boundary in document order as it resolves. */
-export function renderToStream(view: TemplateResult): ReadableStream<Uint8Array> {
+export function renderToStream(view: TemplateResult, options?: StreamOptions): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  const gen = streamView(view);
+  const gen = streamView(view, resolveOpts(options));
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {
@@ -310,14 +391,16 @@ function renderTemplateCollecting(view: TemplateResult, state: CollectState, que
   return out;
 }
 
-async function* oooChunks(view: TemplateResult): AsyncGenerator<string> {
+async function* oooChunks(view: TemplateResult, o: Opts): AsyncGenerator<string> {
   const state: CollectState = { nextId: 0 };
   const queue: PendingBoundary[] = [];
   // 1) the shell, with a placeholder slot per boundary — flushed immediately.
   yield renderTemplateCollecting(view, state, queue);
 
-  // 2) resolve boundaries AS COMPLETED (not in document order), streaming each.
+  // 2) resolve boundaries AS COMPLETED (not in document order), streaming each —
+  //    at most `o.concurrency` in flight, each bounded by `o.timeout`/signal.
   type Settled = { id: number; result?: unknown; error?: unknown; ref: Promise<Settled> };
+  const waiting: PendingBoundary[] = queue.splice(0);
   const pool = new Set<Promise<Settled>>();
   const start = (b: PendingBoundary): void => {
     // Assigned synchronously below, before the async body (which reads `ref`) runs;
@@ -325,37 +408,44 @@ async function* oooChunks(view: TemplateResult): AsyncGenerator<string> {
     let ref!: Promise<Settled>;
     ref = (async (): Promise<Settled> => {
       try {
-        return { id: b.id, result: await b.boundary.load(), ref };
+        return { id: b.id, result: await loadBounded(b.boundary.load, o), ref };
       } catch (err) {
         return { id: b.id, error: err, ref };
       }
     })();
     pool.add(ref);
   };
-  for (const b of queue.splice(0)) start(b);
+  const fill = (): void => {
+    while (pool.size < o.concurrency && waiting.length) start(waiting.shift() as PendingBoundary);
+  };
+  fill();
 
   while (pool.size) {
     const settled = await Promise.race(pool);
     pool.delete(settled.ref);
-    if ("error" in settled) continue; // a rejected boundary keeps its fallback slot
-    // The resolved content may itself contain nested Suspense → more pendings.
-    const html = renderCollecting(settled.result, state, queue);
-    for (const b of queue.splice(0)) start(b);
-    yield `<template data-dxs-content="${settled.id}">${html}</template>`;
+    if (!("error" in settled)) {
+      // The resolved content may itself contain nested Suspense → more pending.
+      const html = renderCollecting(settled.result, state, queue);
+      for (const b of queue.splice(0)) waiting.push(b);
+      yield `<template data-dxs-content="${settled.id}">${html}</template>`;
+    }
+    // A rejected/timed-out boundary keeps its fallback slot (already in the shell):
+    // graceful degradation, never a truncated document.
+    fill();
   }
 }
 
 /** Render a view to an async string generator, streaming Suspense boundaries
  *  out-of-order (shell first, then each boundary as it resolves). */
-export function renderToChunksOOO(view: TemplateResult): AsyncGenerator<string> {
-  return oooChunks(view);
+export function renderToChunksOOO(view: TemplateResult, options?: StreamOptions): AsyncGenerator<string> {
+  return oooChunks(view, resolveOpts(options));
 }
 
 /** Out-of-order streaming SSR to a Web `ReadableStream<Uint8Array>`. Pair with
  *  `installStreamClient` on the browser (same-origin, script-src 'self'). */
-export function renderToStreamOOO(view: TemplateResult): ReadableStream<Uint8Array> {
+export function renderToStreamOOO(view: TemplateResult, options?: StreamOptions): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
-  const gen = oooChunks(view);
+  const gen = oooChunks(view, resolveOpts(options));
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {

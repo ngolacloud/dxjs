@@ -14,7 +14,13 @@ const BUDGETS = [
   { name: "@dxjs/dom", entry: "packages/dom/src/index.ts", budget: 3072 },
   { name: "@dxjs/jsx", entry: "packages/jsx/src/index.ts", budget: 1024 },
   { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
-  { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3072 },
+  // 3200 (was 3072): the security-audit hardening added per-sink guards to the SSR
+  // string renderer and hydration — URL-scheme sanitising (H1), dropping inline on*
+  // (M1) and raw-HTML .prop (M2). ~40 B gzipped, deliberately not obfuscated.
+  // 3456 (was 3200): M11 streaming resilience — per-Suspense `timeout`/abort bound
+  // + out-of-order `concurrency` gate, so a stuck boundary degrades to its fallback
+  // instead of hanging or truncating. ~270 B gzipped, deliberately not obfuscated.
+  { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3456 },
   // + ADR 0001 transport port, adapters (REST/Connect/in-memory/embedded/SSE/WS),
   // composeTransport and liveSignal.
   { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 5120 },

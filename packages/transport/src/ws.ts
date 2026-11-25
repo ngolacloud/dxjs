@@ -21,8 +21,19 @@ export interface WsAdapterOptions {
   protocols?: string | string[];
   /** Injectable WebSocket constructor for tests (defaults to the global). */
   WebSocket?: typeof WebSocket;
-  /** Credential (reserved for a future auth-over-WS slice). */
+  /** Credential for the subscription. Browsers cannot set an `Authorization`
+   *  header on a WebSocket handshake, so the adapter sends an authentication
+   *  frame `{ type: "authorization", authorization: "Bearer <token>" }` as the
+   *  FIRST message on open, before the request frame. The server MUST authenticate
+   *  that frame and emit nothing until it validates — a configured credential is
+   *  always transmitted, never silently dropped (M9). */
   auth?: AuthToken;
+}
+
+/** Resolve a static or lazy credential to a non-empty string, else undefined. */
+function resolveAuth(auth: AuthToken | undefined): string | undefined {
+  const v = typeof auth === "function" ? auth() : auth;
+  return v || undefined;
 }
 
 /** An adapter whose `serverStream` opens a WebSocket, sends the request as JSON on
@@ -53,6 +64,11 @@ export function wsAdapter(options: WsAdapterOptions): Transport {
       };
 
       ws.onopen = (): void => {
+        // Authenticate FIRST (before the request): a configured credential must be
+        // transmitted, not ignored (M9). The server validates this frame before
+        // honouring the subscription request that follows.
+        const token = resolveAuth(options.auth);
+        if (token) ws.send(JSON.stringify({ type: "authorization", authorization: "Bearer " + token }));
         // Send the request so the server can scope the subscription.
         ws.send(JSON.stringify(req));
       };

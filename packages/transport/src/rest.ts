@@ -77,6 +77,22 @@ function buildUrl(base: string, path: string, query?: RequestOptions["query"]): 
   return url;
 }
 
+/** Whether the final request URL stays on the origin of trust (`baseUrl`). A
+ *  relative URL is always on the app origin; an absolute URL is trusted only when
+ *  its origin equals the configured baseUrl's origin. With no baseUrl there is no
+ *  trusted origin, so an absolute URL is treated as untrusted. Guards the bearer
+ *  from leaking to an attacker host via an absolute `path` (H4). */
+function isTrustedOrigin(base: string, url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return true; // relative → app origin
+  try {
+    const target = new URL(url);
+    if (!/^https?:\/\//i.test(base)) return false; // absolute URL, no trusted base
+    return target.origin === new URL(base).origin;
+  } catch {
+    return false;
+  }
+}
+
 /** A transient HTTP status worth retrying: server errors, rate-limit, timeout. */
 function retriableStatus(status: number): boolean {
   return status >= 500 || status === 429 || status === 408;
@@ -109,15 +125,18 @@ export function createClient(options: ClientOptions = {}): Client {
     const retries = opts.retries ?? options.retries ?? 0;
     const backoff = opts.backoff ?? options.backoff ?? 0;
 
+    const url = buildUrl(base, path, opts.query);
+
     const headers: Record<string, string> = { "content-type": "application/json" };
     const token = options.auth?.();
-    if (token) headers["authorization"] = "Bearer " + token;
+    // Attach the bearer ONLY when the final URL stays on the trusted origin — an
+    // absolute cross-origin path must never carry the user's credential (H4).
+    if (token && isTrustedOrigin(base, url)) headers["authorization"] = "Bearer " + token;
     if (options.headers) Object.assign(headers, options.headers());
     if (opts.headers) Object.assign(headers, opts.headers);
 
     const baseInit: RequestInit = { method, headers };
     if (body !== undefined) baseInit.body = JSON.stringify(body);
-    const url = buildUrl(base, path, opts.query);
 
     // Replaying a lost non-idempotent write risks a double effect: cap its retry
     // budget at zero unless the caller opts in (explicit flag or Idempotency-Key).

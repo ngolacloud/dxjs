@@ -12,6 +12,7 @@ export {
   errorBoundary,
   planParts,
   type RenderOptions,
+  type StreamOptions,
   type SuspenseResult,
   type ErrorBoundaryResult,
 } from "./render.ts";

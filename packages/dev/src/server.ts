@@ -225,7 +225,13 @@ export function createDevServer(options: DevServerOptions): DevServer {
   // --- static assets from the app root -------------------------------------
   async function serveStatic(relPath: string): Promise<Response> {
     const abs = resolve(root, relPath);
-    if (!abs.startsWith(root)) return new Response("Forbidden", { status: 403, headers: headers() });
+    // Containment by path semantics, NOT string prefix: `startsWith(root)` lets a
+    // sibling that shares the prefix (root `…/app` vs `…/app-x`) escape via an
+    // encoded `..`. `isWithin` compares the relative path instead.
+    if (!isWithin(abs, root)) return new Response("Forbidden", { status: 403, headers: headers() });
+    // Dotfiles / dot-directories (`.env`, `.git/…`) are never app assets.
+    if (relative(root, abs).split(/[/\\]/).some((seg) => seg.startsWith(".")))
+      return new Response("Forbidden", { status: 403, headers: headers() });
     try {
       const body = await readFile(abs);
       const ext = extname(abs);
@@ -287,7 +293,23 @@ export function createDevServer(options: DevServerOptions): DevServer {
     },
   });
 
+  // --- DNS-rebinding guard --------------------------------------------------
+  // The dev server only ever answers for loopback; a request whose `Host` is a
+  // name an attacker rebinds to 127.0.0.1 is rejected, so a foreign page can
+  // never read local source / HMR state through this origin.
+  const allowedHosts = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+  if (options.host) allowedHosts.add(options.host.toLowerCase());
+  function hostAllowed(hostHeader: string | null): boolean {
+    if (!hostHeader) return false; // HTTP/1.1 requires Host; a browser always sends it
+    const h = hostHeader.trim().toLowerCase();
+    // Strip the port, keeping the IPv6 bracket form (`[::1]:5173` → `[::1]`).
+    const name = h.startsWith("[") ? h.slice(0, h.indexOf("]") + 1) : h.split(":", 1)[0]!;
+    return allowedHosts.has(name);
+  }
+
   const handler: FetchHandler = async (request) => {
+    if (!hostAllowed(request.headers.get("host")))
+      return new Response("Forbidden", { status: 403, headers: headers() });
     const url = new URL(request.url);
     const path = url.pathname;
     if (path.startsWith("/@fs/")) {

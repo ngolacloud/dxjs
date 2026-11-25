@@ -13,6 +13,7 @@
 // innerHTML of data, no inline handlers → runs under a strict CSP.
 
 import { effect, createRoot, onCleanup } from "@dxjs/core";
+import { isUrlAttr, sanitizeUrl, isUnsafeProp } from "./escape.ts";
 
 const ATTR_MARKER = "__dxm_attr__";
 const CHILD_MARKER = "dxm";
@@ -140,6 +141,9 @@ function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): vo
   if (prefix === ".") {
     const prop = name.slice(1);
     el.removeAttribute(name);
+    // Refuse raw-HTML properties (innerHTML/outerHTML/srcdoc): a `.prop` bind must
+    // never be an implicit HTML sink — use a dedicated unsafe-HTML seam. (M2)
+    if (isUnsafeProp(prop)) return;
     ds.push(effect(() => {
       (el as unknown as Record<string, unknown>)[prop] = val(value);
     }));
@@ -153,10 +157,20 @@ function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): vo
     }));
     return;
   }
+  // An on* name without the `@` prefix must NOT become an inline handler — the
+  // only event path is @event → addEventListener. Refuse it. (M1)
+  if (/^on/i.test(name)) {
+    el.removeAttribute(name);
+    return;
+  }
   ds.push(effect(() => {
     const v = val(value);
     if (v == null || v === false) el.removeAttribute(name);
-    else el.setAttribute(name, v === true ? "" : String(v));
+    else {
+      const s = v === true ? "" : String(v);
+      // URL-bearing attributes get scheme-sanitised (block javascript:/data:text/html). (H1)
+      el.setAttribute(name, isUrlAttr(name) ? sanitizeUrl(s) : s);
+    }
   }));
 }
 
@@ -201,6 +215,9 @@ function bindProp(el: Element, name: string, value: unknown, ds: Disposer[]): vo
       }
       return;
     }
+    // An on* name that isn't a recognised camelCase/`on:` event (e.g. lowercase
+    // "onclick", often via a `{...spread}`) must NOT become an inline handler. (M1)
+    return;
   }
   if (name === "className") name = "class";
   if (name === "style" && value !== null && typeof value === "object" && typeof value !== "function") {
@@ -220,7 +237,11 @@ function bindProp(el: Element, name: string, value: unknown, ds: Disposer[]): vo
   ds.push(effect(() => {
     const v = val(value);
     if (v == null || v === false) el.removeAttribute(name);
-    else el.setAttribute(name, v === true ? "" : String(v));
+    else {
+      const s = v === true ? "" : String(v);
+      // URL-bearing attributes get scheme-sanitised (block javascript:/data:text/html). (H1)
+      el.setAttribute(name, isUrlAttr(name) ? sanitizeUrl(s) : s);
+    }
   }));
 }
 

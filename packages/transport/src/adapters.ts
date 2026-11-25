@@ -95,9 +95,19 @@ export interface SseAdapterOptions {
   auth?: AuthToken;
   /** Reconnect when the stream ends/errors, resuming with Last-Event-ID. Default false. */
   reconnect?: boolean;
-  /** Base reconnect delay (ms); grows per attempt (capped 30s). A server `retry:`
-   *  line overrides it. Default 1000. */
+  /** Base reconnect delay (ms); grows per attempt (capped by `maxRetryMs`). A server
+   *  `retry:` line is honoured but clamped to [`minRetryMs`, `maxRetryMs`]. Default 1000. */
   retryMs?: number;
+  /** Floor for every reconnect wait (ms). Guarantees the client never hot-loops even
+   *  if the server sends `retry:0`. Default 250. */
+  minRetryMs?: number;
+  /** Ceiling for every reconnect wait (ms), after backoff and any server `retry:`.
+   *  Default 30000. */
+  maxRetryMs?: number;
+  /** Max bytes buffered while waiting for a frame boundary (`\n\n`). A server that
+   *  streams without ever closing a frame would otherwise grow this unbounded (M7);
+   *  exceeding it aborts the stream. Default 1 MiB. Set 0 to disable. */
+  maxBufferBytes?: number;
 }
 
 /** Resolve after `ms`, or immediately when `signal` aborts (so a reconnect wait ends
@@ -132,7 +142,11 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
     async *serverStream<Req, Res>(m: MethodDescriptor<Req, Res>, req: Req, ctx: CallCtx = {}): AsyncIterable<Res> {
       const f = options.fetch ?? fetch;
       const reconnect = options.reconnect ?? false;
-      let retryMs = options.retryMs ?? 1000;
+      const minRetryMs = Math.max(0, options.minRetryMs ?? 250);
+      const maxRetryMs = Math.max(minRetryMs, options.maxRetryMs ?? 30000);
+      const clampRetry = (ms: number): number => Math.min(Math.max(ms, minRetryMs), maxRetryMs);
+      let retryMs = clampRetry(options.retryMs ?? 1000);
+      const maxBufferBytes = Math.max(0, options.maxBufferBytes ?? 1_048_576);
 
       const http = (m.wire?.http ?? {}) as { path?: string | ((r: unknown) => string) };
       let path = typeof http.path === "function" ? http.path(req) : (http.path ?? `/${m.service}/${m.method}`);
@@ -180,7 +194,9 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
                     lastId = line.slice(3).replace(/^ /, "");
                   } else if (line.startsWith("retry:")) {
                     const r = parseInt(line.slice(6).trim(), 10);
-                    if (Number.isFinite(r)) retryMs = r;
+                    // Honour the server hint but clamp it: a `retry:0` (or a huge value)
+                    // must not turn into a hot reconnect loop or an unbounded stall (M6).
+                    if (Number.isFinite(r)) retryMs = clampRetry(r);
                   }
                 }
                 if (!gotData) continue;
@@ -191,6 +207,15 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
                   /* a non-JSON event: yield the raw string */
                 }
                 yield parsed as Res;
+              }
+              // After draining every complete frame, what remains is an unterminated
+              // frame. Bound it so a server that never closes a frame can't exhaust
+              // client memory (M7).
+              if (maxBufferBytes && buf.length > maxBufferBytes) {
+                throw transportError(
+                  "stream",
+                  `SSE frame exceeded ${maxBufferBytes} bytes without a boundary`,
+                );
               }
             }
           } finally {
@@ -206,7 +231,11 @@ export function sseAdapter(options: SseAdapterOptions = {}): Transport {
           // fall through to backoff + reconnect
         }
         if (!reconnect || ctx.signal?.aborted) return;
-        await sleep(Math.min(retryMs * 2 ** attempt++, 30000), ctx.signal);
+        // Exponential backoff, capped at maxRetryMs, with a floor and "full jitter"
+        // (decorrelates reconnecting clients). minRetryMs guarantees a non-zero wait.
+        const ceil = Math.min(retryMs * 2 ** attempt++, maxRetryMs);
+        const delay = minRetryMs + Math.random() * (ceil - minRetryMs);
+        await sleep(delay, ctx.signal);
       }
     },
   };

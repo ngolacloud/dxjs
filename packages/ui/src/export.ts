@@ -20,8 +20,14 @@ const cellOf = <T>(col: ExportColumn<T>, row: T): string | number => {
 const isNum = (v: string | number): v is number => typeof v === "number" && Number.isFinite(v);
 
 // --- CSV (RFC 4180) --------------------------------------------------------
+// A leading = + - @ TAB or CR makes Excel/LibreOffice/Sheets treat the cell as a
+// formula/DDE (CWE-1236: CSV formula injection). Quoting does NOT help — Excel
+// evaluates "=..." all the same — so we prefix the value with an apostrophe, which
+// those apps render literally. Applied before RFC-4180 quoting.
+const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
 const csvField = (v: string | number): string => {
-  const s = String(v);
+  let s = String(v);
+  if (FORMULA_TRIGGER.test(s)) s = "'" + s;
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 export function toCsv<T>(rows: T[], columns: ExportColumn<T>[]): string {

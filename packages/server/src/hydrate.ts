@@ -22,7 +22,7 @@
 // reorder. `hydrateReplace` remains the whole-host fallback.
 
 import { effect, createRoot, onCleanup } from "@dxjs/core";
-import { render, type TemplateResult } from "@dxjs/dom";
+import { render, isUrlAttr, sanitizeUrl, isUnsafeProp, type TemplateResult } from "@dxjs/dom";
 import { planParts } from "./render.ts";
 
 const COMMENT_NODE = 8;
@@ -64,6 +64,9 @@ function attachAttr(el: Element, name: string, value: unknown, ds: Disposer[]): 
   }
   if (prefix === ".") {
     const prop = name.slice(1);
+    // Refuse raw-HTML properties (innerHTML/outerHTML/srcdoc) — same posture as the
+    // live renderer, and it keeps hydration in agreement with the escaped SSR. (M2)
+    if (isUnsafeProp(prop)) return;
     ds.push(effect(() => {
       (el as unknown as Record<string, unknown>)[prop] = val(value);
     }));
@@ -76,10 +79,17 @@ function attachAttr(el: Element, name: string, value: unknown, ds: Disposer[]): 
     }));
     return;
   }
+  // An on* name without `@` must not become an inline handler. (M1)
+  if (/^on/i.test(name)) return;
   ds.push(effect(() => {
     const v = val(value);
     if (v == null || v === false) el.removeAttribute(name);
-    else el.setAttribute(name, v === true ? "" : String(v));
+    else {
+      const s = v === true ? "" : String(v);
+      // URL-bearing attributes get scheme-sanitised (keeps SSR and hydration in
+      // agreement, and blocks javascript:/data:text/html). (H1)
+      el.setAttribute(name, isUrlAttr(name) ? sanitizeUrl(s) : s);
+    }
   }));
 }
 
