@@ -15,8 +15,9 @@ const BUDGETS = [
   { name: "@dxjs/jsx", entry: "packages/jsx/src/index.ts", budget: 1024 },
   { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
   { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3072 },
-  // + ADR 0001 transport port, adapters (REST/Connect/in-memory/embedded) and liveSignal.
-  { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 4096 },
+  // + ADR 0001 transport port, adapters (REST/Connect/in-memory/embedded/SSE/WS),
+  // composeTransport and liveSignal.
+  { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 5120 },
   { name: "@dxjs/canvas", entry: "packages/canvas/src/index.ts", budget: 3072 },
   { name: "@dxjs/edge", entry: "packages/edge/src/index.ts", budget: 3072 },
   // v2 kit: full control/feedback/nav/picker + advanced suite (calendar/holidays,
@@ -26,6 +27,8 @@ const BUDGETS = [
   { name: "@dxjs/query", entry: "packages/query/src/index.ts", budget: 2048 },
   { name: "@dxjs/forms", entry: "packages/forms/src/index.ts", budget: 2048 },
   { name: "@dxjs/openapi", entry: "packages/openapi/src/index.ts", budget: 2048 },
+  { name: "@dxjs/soap", entry: "packages/soap/src/index.ts", budget: 2048 },
+  { name: "@dxjs/proto", entry: "packages/proto/src/index.ts", budget: 1536 },
   { name: "@dxjs/seiva", entry: "packages/seiva/src/index.ts", budget: 2048 },
 ];
 

@@ -1,0 +1,41 @@
+{
+  "name": "@dxjs/soap",
+  "version": "1.1.0",
+  "description": "SOAP profile for the @dxjs/transport port (ADR 0001): a SOAP 1.1/1.2 adapter with a pluggable response codec, plus a small WSDL-to-MethodDescriptor reader.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/transport": "1.1.0"
+  },
+  "keywords": [
+    "dxjs",
+    "soap",
+    "wsdl",
+    "transport",
+    "adapter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/soap"
+  }
+}

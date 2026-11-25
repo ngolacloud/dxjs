@@ -1,0 +1,41 @@
+{
+  "name": "@dxjs/proto",
+  "version": "1.1.0",
+  "description": "Map a protobuf/gRPC service descriptor into @dxjs/transport MethodDescriptors (ADR 0001): a whole service becomes typed descriptors (ids, service/method names, wire.grpc hints, idempotency) in one call. Service MAP only — payload encoding is the caller's codec on grpcNativeAdapter/connectAdapter.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/transport": "1.1.0"
+  },
+  "keywords": [
+    "dxjs",
+    "protobuf",
+    "grpc",
+    "transport",
+    "descriptor"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/proto"
+  }
+}
