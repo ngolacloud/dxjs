@@ -20,7 +20,7 @@
 import { signal, computed } from "@dxjs/core";
 import { html, type TemplateResult } from "@dxjs/dom";
 import { component, onMount } from "@dxjs/component";
-import type { Client } from "@dxjs/transport";
+import type { Transport } from "@dxjs/transport";
 import { appShell, card, dataTable, statGrid, type Column } from "@dxjs/ui";
 import { classifyOps, bodyFields, opsForResource, type Classified, type OpenApiSpec } from "./contract.ts";
 import { loadRegistry, loadSpec, callOp, type AdminResource } from "./api.ts";
@@ -59,14 +59,14 @@ function collectForm(form: Element): Record<string, unknown> {
 }
 
 /** The create form for a resource (shown only when the caller may create). */
-function createForm(client: Client, token: TokenAccessor, create: NonNullable<Classified["create"]>): TemplateResult {
+function createForm(transport: Transport, token: TokenAccessor, create: NonNullable<Classified["create"]>): TemplateResult {
   const out = signal("");
   const fields = bodyFields(create.op);
   const onSubmit = (ev: Event): void => {
     ev.preventDefault();
     const body = collectForm(ev.target as Element);
     out.set("…");
-    callOp(client, "POST", create.path, body, token())
+    callOp(transport, "POST", create.path, body, token())
       .then(() => out.set("created"))
       .catch((e: unknown) => out.set(describe("create failed", e)));
   };
@@ -83,7 +83,7 @@ function createForm(client: Client, token: TokenAccessor, create: NonNullable<Cl
 /** A resource with a `list` op renders the admin table: optional create + the
  *  @dxjs/ui dataTable (search / sort / paginate), with every cell written as TEXT. */
 function dataResource(
-  client: Client,
+  transport: Transport,
   token: TokenAccessor,
   r: AdminResource,
   k: Classified,
@@ -97,7 +97,7 @@ function dataResource(
   // page controls are replaced by the dataTable's own client-side ones (an
   // example-level choice). Fire-and-forget: results land via the `rows` signal.
   const refresh = (): void => {
-    callOp(client, "GET", list.path, undefined, token())
+    callOp(transport, "GET", list.path, undefined, token())
       .then((data) => {
         const arr = Array.isArray(data) ? (data as Row[]) : [];
         rows.set(arr);
@@ -124,7 +124,7 @@ function dataResource(
     pageSize: r.page_size && r.page_size > 0 ? r.page_size : 10,
   });
 
-  const create = k.create && r.can && r.can.create ? card({ body: createForm(client, token, k.create) }) : "";
+  const create = k.create && r.can && r.can.create ? card({ body: createForm(transport, token, k.create) }) : "";
   return html`<div class="res" data-resource=${r.resource}>
     ${create}${table}
     <div class="rowmsg muted">${() => msg()}</div>
@@ -132,14 +132,14 @@ function dataResource(
 }
 
 /** An operation form for an operations-only resource (no `list` op). */
-function operationForm(client: Client, token: TokenAccessor, method: string, path: string): TemplateResult {
+function operationForm(transport: Transport, token: TokenAccessor, method: string, path: string): TemplateResult {
   const out = signal("");
   const onSubmit = (ev: Event): void => {
     ev.preventDefault();
     const m = method.toUpperCase();
     const body = m === "GET" ? undefined : collectForm(ev.target as Element);
     out.set("…");
-    callOp(client, m, path, body, token())
+    callOp(transport, m, path, body, token())
       .then(() => out.set("ok"))
       .catch((e: unknown) => out.set(describe("failed", e)));
   };
@@ -152,7 +152,7 @@ function operationForm(client: Client, token: TokenAccessor, method: string, pat
 
 /** An operations-only resource: forms for the operations the caller may invoke. */
 function opsResource(
-  client: Client,
+  transport: Transport,
   token: TokenAccessor,
   r: AdminResource,
   spec: OpenApiSpec,
@@ -162,7 +162,7 @@ function opsResource(
     const isWrite = method !== "get";
     // Hide write operations the caller lacks; the server still enforces.
     if (isWrite && !(r.can && (r.can.create || r.can.change))) continue;
-    forms.push(operationForm(client, token, method, path));
+    forms.push(operationForm(transport, token, method, path));
   }
   return html`<div class="res" data-resource=${r.resource}>
     ${card({
@@ -174,18 +174,18 @@ function opsResource(
 
 /** Pick the table UI (list op + can.view) or the operation-forms UI. */
 function renderResource(
-  client: Client,
+  transport: Transport,
   token: TokenAccessor,
   r: AdminResource,
   spec: OpenApiSpec,
 ): TemplateResult {
   const k = classifyOps(spec, r.resource);
-  if (k.list && r.can && r.can.view) return dataResource(client, token, r, k);
-  return opsResource(client, token, r, spec);
+  if (k.list && r.can && r.can.view) return dataResource(transport, token, r, k);
+  return opsResource(transport, token, r, spec);
 }
 
 /** The Seiva admin console as a dxjs component, built on @dxjs/ui. */
-export const SeivaConsole = component<{ client: Client }>((props) => {
+export const SeivaConsole = component<{ transport: Transport }>((props) => {
   const token = signal("");
   const intro = signal("Loading the service contract…");
   const spec = signal<OpenApiSpec>({ paths: {} });
@@ -199,7 +199,7 @@ export const SeivaConsole = component<{ client: Client }>((props) => {
   });
 
   const load = (): void => {
-    Promise.all([loadRegistry(props.client, token()), loadSpec(props.client)])
+    Promise.all([loadRegistry(props.transport, token()), loadSpec(props.transport)])
       .then(([reg, sp]) => {
         spec.set(sp);
         const rs = (reg && reg.resources) || [];
@@ -251,7 +251,7 @@ export const SeivaConsole = component<{ client: Client }>((props) => {
         { label: "Viewable", value: () => String(resources().filter((x) => x.can && x.can.view).length), tone: "pos" },
         { label: "Writable", value: () => String(resources().filter((x) => x.can && (x.can.create || x.can.change)).length), tone: "mut" },
       ])}
-      <div id="resources">${r ? renderResource(props.client, () => token(), r, spec()) : ""}</div>
+      <div id="resources">${r ? renderResource(props.transport, () => token(), r, spec()) : ""}</div>
     `;
   };
 

@@ -5,10 +5,14 @@
 import { body, fire } from "../../../packages/dom/test/setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createClient } from "@dxjs/transport";
+import { restAdapter, withInterceptors } from "@dxjs/transport";
+import { seivaErrors } from "@dxjs/seiva";
 import { mount } from "@dxjs/component";
 import { SeivaConsole } from "../src/console.ts";
 import { callOp } from "../src/api.ts";
+
+/** The console's transport: REST over the mock fetch + the Seiva error profile. */
+const makeTransport = (fetchImpl: typeof fetch) => withInterceptors(restAdapter({ fetch: fetchImpl }), seivaErrors());
 
 // A value that WOULD inject an <img> if ever written as HTML. It must surface as
 // inert text — the whole point of dxjs's safe sinks under a strict CSP.
@@ -76,8 +80,8 @@ async function settle(): Promise<void> {
 test("renders a table, create form, escapes values, and sends the bearer", async () => {
   const host = body();
   const { fetch: mockFetch, calls } = makeMock();
-  const client = createClient({ fetch: mockFetch });
-  mount(SeivaConsole, host, { client });
+  const transport = makeTransport(mockFetch);
+  mount(SeivaConsole, host, { transport });
 
   // Enter a token: fires the input's `change`, which reloads with the bearer.
   const tokenInput = host.querySelector("#token") as HTMLInputElement;
@@ -125,8 +129,8 @@ test("callOp surfaces a structured SeivaError (kind + field errors + trace) on a
       statusText: "Unprocessable",
       text: () => Promise.resolve(JSON.stringify({ fields: { name: "is required" }, trace_id: "tp-9" })),
     } as unknown as Response)) as unknown as typeof fetch;
-  const client = createClient({ fetch: fetch422 });
-  const e = await callOp(client, "POST", "/v1/widgets", { name: "" }, "tok").then(
+  const transport = makeTransport(fetch422);
+  const e = await callOp(transport, "POST", "/v1/widgets", { name: "" }, "tok").then(
     () => null,
     (x: unknown) => x as { name: string; kind: string; fields?: Record<string, string>; traceId?: string },
   );
