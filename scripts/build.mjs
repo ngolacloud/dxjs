@@ -39,6 +39,7 @@ const PKGS = [
   { name: "dev", platform: "node", external: ["esbuild"] }, // node tool: node:* + esbuild peer
   { name: "query" },
   { name: "forms" },
+  { name: "openapi" }, // deps: transport — after transport (its .d.ts is needed)
   { name: "canvas" },
   { name: "shell" }, // deps: core, dom, canvas
   { name: "ui" },

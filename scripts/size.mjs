@@ -25,6 +25,7 @@ const BUDGETS = [
   { name: "@dxjs/ui", entry: "packages/ui/src/index.ts", budget: 18432 },
   { name: "@dxjs/query", entry: "packages/query/src/index.ts", budget: 2048 },
   { name: "@dxjs/forms", entry: "packages/forms/src/index.ts", budget: 2048 },
+  { name: "@dxjs/openapi", entry: "packages/openapi/src/index.ts", budget: 2048 },
 ];
 
 async function sizeWithEsbuild(esbuild, entry) {
