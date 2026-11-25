@@ -34,7 +34,7 @@ function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child" | 
   for (let i = 0; i < strings.length; i++) {
     const s = strings[i] as string;
     for (let j = 0; j < s.length; j++) {
-      const c = s[j];
+      const c = s[j] as string;
       if (rawTag) {
         // Only the matching end tag (`</script`/`</style`, case-insensitive) closes it.
         if (c === "<" && s.slice(j, j + rawTag.length + 2).toLowerCase() === `</${rawTag}`) {
