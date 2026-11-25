@@ -68,3 +68,34 @@ test("L10: X-Forwarded-Proto is constrained to http/https", async () => {
     server.close();
   }
 });
+
+// A Host with an out-of-range port passes the \d{1,5} digit test but makes
+// `new Request` throw synchronously in the end handler — that must NOT crash the
+// server as an uncaught exception.
+function getStatus(port: number, headers: Record<string, string>): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const req = request({ host: "127.0.0.1", port, path: "/echo", headers }, (res) => {
+      res.resume();
+      res.on("end", () => resolve(res.statusCode ?? 0));
+    });
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+test("L10: an out-of-range port Host falls back to loopback (no crash)", async () => {
+  const { port, server } = await serve();
+  const onUncaught = (): void => {};
+  process.on("uncaughtException", onUncaught); // fail-safe: a leak here would crash the run
+  try {
+    // Port 99999 > 65535: regex-digit-valid but an invalid URL port.
+    const echoed = await get(port, { Host: "example.test:99999" });
+    assert.ok(echoed.startsWith("127.0.0.1"), `out-of-range port → loopback — got: ${echoed}`);
+    // An underscore hostname (common in container networks) is honoured, not dropped.
+    const us = await get(port, { Host: "my_service:8080" });
+    assert.ok(us.startsWith("my_service:8080"), `underscore host honoured — got: ${us}`);
+  } finally {
+    process.removeListener("uncaughtException", onUncaught);
+    server.close();
+  }
+});

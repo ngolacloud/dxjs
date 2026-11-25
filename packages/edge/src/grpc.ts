@@ -104,6 +104,11 @@ export function createGrpcChannel(options: GrpcChannelOptions): GrpcChannel {
     if (pooled && !pooled.closed && !pooled.destroyed) return pooled;
     const s = connect(options.url);
     pooled = s;
+    // Each in-flight call adds its own transient 'error' listener (removed on
+    // settle). Concurrent multiplexed calls can exceed the default-10 cap and emit
+    // a spurious MaxListenersExceededWarning — the listeners are bounded and cleaned
+    // up, so lift the cap on the pooled session. (L11 review)
+    s.setMaxListeners?.(0);
     const drop = (): void => {
       if (pooled === s) pooled = null;
     };

@@ -88,6 +88,21 @@ test("M11: out-of-order path bounds in-flight loads by `concurrency`", async () 
   assert.ok(shell.includes(`data-dxs="1"`), "shell carries the placeholder slots");
 });
 
+test("M11: an already-aborted signal degrades to fallback without an unhandled rejection", async () => {
+  // Regression: loadBounded created the load() promise and then returned early on a
+  // pre-aborted signal WITHOUT attaching a .then — a rejecting load() became an
+  // unhandled rejection (node:test fails the run on one). The fix rejects before
+  // invoking load(). This test simply completing cleanly is the assertion.
+  const ac = new AbortController();
+  ac.abort(new Error("aborted-before-start"));
+  const view = html`<div>${suspense(html`<em>fb</em>`, async () => {
+    throw new Error("load-failed");
+  })}</div>`;
+  const out = await renderToStringAsync(view, { signal: ac.signal, timeout: 0 });
+  assert.equal(out, "<div><em>fb</em></div>", "aborted boundary shows its fallback");
+  await new Promise((r) => setTimeout(r, 20)); // let any stray microtask surface
+});
+
 test("M11: out-of-order path cuts a never-resolving boundary by `timeout`", async () => {
   const view = html`<div>${suspense(html`<em>fb</em>`, never)}<span>${suspense("…", async () => html`<b>ok</b>`)}</span></div>`;
   let out = "";

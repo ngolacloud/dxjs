@@ -25,3 +25,12 @@ test("L8: ordinary determinism is unchanged (sorted keys)", () => {
   assert.equal(keyOf(["todos", 1]), '["todos",1]');
   assert.equal(keyOf([{ b: 2, a: 1 }]), keyOf([{ a: 1, b: 2 }]));
 });
+
+test("L8: a plain object must NOT collide with an array-of-pairs", () => {
+  // A bare pair-array serialisation aliased `[{a:1}]` with `[[["a",1]]]`; the
+  // `{o:…}` wrapper keeps objects (braces) distinct from arrays (brackets).
+  assert.notEqual(keyOf([{ a: 1 }]), keyOf([[["a", 1]]]), "object vs array-of-pairs must differ");
+  assert.notEqual(keyOf([{ a: 1, b: 2 }]), keyOf([[["a", 1], ["b", 2]]]));
+  // Nested objects stay deterministic and order-independent.
+  assert.equal(keyOf([{ a: { y: 2, x: 1 } }]), keyOf([{ a: { x: 1, y: 2 } }]));
+});

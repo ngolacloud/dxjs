@@ -353,7 +353,7 @@ inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o
 |----|-----------|-----------|-----------------|
 | L3 | `router` decodifica params via `safeDecode` (try/catch sobre `decodeURIComponent`); um `%`-escape malformado (`/%E0%A4`, `/%`) já não lança `URIError` — o segmento cai para o valor cru em vez de derrubar o router | `component/src/router.ts` (`safeDecode`) | `component/test/security-l3-router-decode.audit.test.ts` (2) |
 | L6 | `graph.update`: num throw **tratado**, os nós-filho criados antes do throw são **dispostos** (`disposeNode`) em vez de ficarem vivos/subscritos (órfãos) até um re-run que pode nunca vir. **Aceite + documentado:** a truncagem do conjunto de dependências lidas é inerente a uma leitura parcial — o efeito re-corre quando muda uma fonte que **chegou a ler**; recuperar de um erro que impediu a leitura de uma fonte exige que o erro limpe por um caminho já lido | `core/src/graph.ts:220` | `core/test/security-l6-orphan-children.audit.test.ts` (1) |
-| L8 | `query.keyOf` serializa objectos simples como array de pares `[chave, valor]` ordenados em vez de reconstruir o objecto; uma chave `__proto__` (própria) deixa de bater no setter do protótipo e desaparecer, logo chaves que só diferem em `__proto__` dão keys de cache distintas | `query/src/index.ts:69` | `query/test/security-l8-keyof-proto.audit.test.ts` (2) |
+| L8 | `query.keyOf` serializa objectos simples como `{ o: pares [chave,valor] ordenados }` em vez de reconstruir o objecto; uma chave `__proto__` (própria) deixa de bater no setter do protótipo e desaparecer (logo chaves que só diferem em `__proto__` dão keys distintas), e o envelope `{o:…}` mantém objectos estruturalmente distintos de arrays (`{a:1}` vs `[["a",1]]` não colidem — colisão apanhada na revisão pós-fix) | `query/src/index.ts:69` | `query/test/security-l8-keyof-proto.audit.test.ts` (3) |
 
 ### Endurecimento BAIXO — Slice B (SSR/edge)
 
@@ -361,7 +361,7 @@ inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o
 |----|-----------|-----------|-----------------|
 | L1 | `scanContexts` passa a detectar elementos **raw-text** (`<script>`/`<style>`): como aí as entidades HTML não são descodificadas, não há escaping genérico seguro de dados não-fiáveis para CSS/JS — logo uma interpolação dinâmica dentro de `<script>`/`<style>` é **recusada (dropada)** em todos os caminhos SSR (`renderToString`, streaming, OOO; sem marcador em modo hidratável). RCDATA (`<title>`/`<textarea>`) mantém o escaping HTML normal (correcto) | `server/src/render.ts:21` (`scanContexts` + os 3 renderers + `planParts`) | `server/test/security-l1-rawtext.audit.test.ts` (5) |
 | L2 | `htmlResponse` emite cabeçalhos de segurança seguros por omissão — `x-content-type-options: nosniff` e `referrer-policy: strict-origin-when-cross-origin` — com has-guard (o valor do chamador ganha). HSTS fica de fora por omissão (quebra http; é decisão de deployment) | `edge/src/edge.ts` (`htmlResponse`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (1) |
-| L10 | `originFromHeaders` deixa de confiar cegamente: um `Host` que não seja uma autoridade simples (regex `HOST_RE`; rejeita path/userinfo/CRLF/espaços) cai para `127.0.0.1`, e `X-Forwarded-Proto` só é honrado se for exactamente `http`/`https` (rejeita arrays e valores injectados) — fecha o envenenamento do URL do Request | `edge/src/edge.ts:59` (`HOST_RE`/`originFromHeaders`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (2) |
+| L10 | `originFromHeaders` deixa de confiar cegamente: um `Host` que não seja uma autoridade simples (regex `HOST_RE`; rejeita path/userinfo/CRLF/espaços) **ou com porta > 65535** cai para `127.0.0.1`, e `X-Forwarded-Proto` só é honrado se for exactamente `http`/`https`. Hostnames com `_` (redes de contentores) são aceites. Backstop: `nodeListener` embrulha `toWebRequest` em try/catch → 400 em vez de deixar escapar um throw síncrono de `new Request` (uncaughtException). Fecha o envenenamento do URL do Request | `edge/src/edge.ts:59` (`HOST_RE`/`originFromHeaders`/`nodeListener`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (3) |
 
 ### Endurecimento BAIXO/INFO — Slice C (dev server)
 
@@ -391,3 +391,18 @@ opt-in fica como trabalho de uma sessão futura (feature), não deste endurecime
 corpo `nodeListener`, acumulação gRPC — §8.3). **Todos os ALTO (H1–H5), MÉDIO (M1–M11)
 e BAIXO/INFO (L1–L13) estão fechados** — por correcção com PoC red→green, excepto L9
 (coberto por H1, com PoC de verificação) e L12 (aceite com fundamentação).
+
+### Validação pós-correcção (revisão adversarial)
+
+Antes de dar por fechado, 4 revisores adversariais varreram a diff desta ronda. Três
+defeitos REAIS foram confirmados (repro concreto) e corrigidos com teste de regressão:
+(1) **L8** — a serialização em pares fazia `[{a:1}]` colidir com `[[["a",1]]]` (objecto
+vs array-de-pares); corrigido com o envelope `{o:…}`. (2) **M11** — `loadBounded` criava
+a promessa de `load()` e saía cedo num `signal` já abortado SEM anexar o handler → um
+`load()` rejeitante virava `unhandledRejection`; corrigido rejeitando antes de invocar
+`load()`. (3) **L10** — `HOST_RE` aceitava porta > 65535, e `new Request` lança
+síncronamente no handler `end` (fora do `.catch`) → uncaughtException; corrigido com
+range-check da porta + backstop try/catch→400 no `nodeListener`. `npm run check` =
+**408 testes** verdes após as correcções. O resto da diff (scanner raw-text L1, guard
+`guarded`/concorrência M11, ciclo de vida do pooling gRPC L11, L4/L5/L13/M10/L7) foi
+verificado correcto.

@@ -235,9 +235,15 @@ function resolveOpts(o: StreamOptions = {}): Opts {
  *  timer on settle, so a never-resolving `load()` leaves nothing alive in the
  *  event loop once the timeout fires. */
 function loadBounded(load: () => unknown | Promise<unknown>, o: Opts): Promise<unknown> {
-  const p = Promise.resolve().then(load);
-  if ((!o.timeout || o.timeout === Infinity) && !o.signal) return p;
+  if ((!o.timeout || o.timeout === Infinity) && !o.signal) return Promise.resolve().then(load);
   return new Promise<unknown>((resolve, reject) => {
+    // Already aborted: reject WITHOUT invoking load() — otherwise a rejecting load()
+    // would be a promise with no attached handler → unhandledRejection. (verify fix)
+    if (o.signal?.aborted) {
+      reject(o.signal.reason ?? new Error("aborted"));
+      return;
+    }
+    const p = Promise.resolve().then(load);
     let timer: ReturnType<typeof setTimeout> | undefined;
     const settle =
       (fn: (v: unknown) => void) =>
@@ -250,10 +256,7 @@ function loadBounded(load: () => unknown | Promise<unknown>, o: Opts): Promise<u
     if (o.timeout && o.timeout !== Infinity) {
       timer = setTimeout(() => settle(reject)(new Error("Suspense boundary timed out")), o.timeout);
     }
-    if (o.signal) {
-      if (o.signal.aborted) return onAbort();
-      o.signal.addEventListener("abort", onAbort);
-    }
+    if (o.signal) o.signal.addEventListener("abort", onAbort);
     p.then(settle(resolve), settle(reject));
   });
 }
