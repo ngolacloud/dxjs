@@ -7,6 +7,8 @@
 // `unsafe-eval`) and a long-poll `fetch` (allowed by `connect-src 'self'`). No
 // eval, no `new Function`, no inline handler, no innerHTML.
 
+import { isTrustedModuleUrl, isValidVersion } from "./hmr-guard.ts";
+
 /** A module's hot context. `data` persists across re-imports of the same id, so
  *  a component can stash its signals there and keep them alive through an edit. */
 export interface DxHot {
@@ -69,6 +71,13 @@ function fullReload(): void {
 }
 
 async function applyUpdate(u: Update): Promise<void> {
+  // Defence-in-depth: never dynamic-import a path the server message smuggled in.
+  // Only a same-origin /@fs|/@app module URL with a finite version is importable;
+  // anything else falls back to a full reload rather than importing it. (L13)
+  if (!isTrustedModuleUrl(u.path) || !isValidVersion(u.version)) {
+    fullReload();
+    return;
+  }
   const reg = registry.get(u.path);
   // A changed module with no hot boundary can't swap safely → full reload.
   if (!reg || !reg.accepted) {

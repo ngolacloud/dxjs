@@ -79,8 +79,8 @@ que o framework não impõe nem verifica.
 | ~~L1~~ | BAIXO **✔ corrigido** | `<script>`/`<style>` não são contexto raw-text no scanner → CSS injection em `<style>${data}</style>` | `server/render.ts:21` |
 | ~~L2~~ | BAIXO **✔ corrigido** | Sem cabeçalhos de segurança nem `Content-Type`/charset por omissão (CSP/HSTS/nosniff) | `server/*`, `edge/edge.ts:34` |
 | ~~L3~~ | BAIXO **✔ corrigido** | `decodeURIComponent` sobre params de rota pode lançar `URIError` e derrubar o router | `component/router.ts:175` |
-| L4 | BAIXO | `/@fs` não faz `realpath` → symlink no repo escapa à contenção; erro do esbuild ecoa conteúdo | `dev/server.ts:293` |
-| L5 | BAIXO | HMR long-poll sem limite de waiters/sockets; `since=Number()` aceita `NaN` | `dev/server.ts:270` |
+| ~~L4~~ | BAIXO **✔ corrigido** | `/@fs` não faz `realpath` → symlink no repo escapa à contenção; erro do esbuild ecoa conteúdo | `dev/server.ts:293` |
+| ~~L5~~ | BAIXO **✔ corrigido** | HMR long-poll sem limite de waiters/sockets; `since=Number()` aceita `NaN` | `dev/server.ts:270` |
 | ~~L6~~ | BAIXO **✔ corrigido** | `onError` tratado trunca as dependências lidas do efeito (pode não auto-recuperar) + filhos órfãos | `core/graph.ts:202` |
 | L7 | BAIXO | `k8s.apply` confia na forma do evento; evento malformado aborta o lote inteiro | `k8s/index.ts:69` |
 | ~~L8~~ | BAIXO **✔ corrigido** | query `keyOf`: chave com `__proto__` colapsa no `JSON.stringify` → colisão de cache | `query/index.ts:69` |
@@ -88,7 +88,7 @@ que o framework não impõe nem verifica.
 | ~~L10~~ | BAIXO **✔ corrigido** | Confiança cega em `Host`/`X-Forwarded-Proto` ao construir o URL do Request | `edge/edge.ts:59` |
 | L11 | INFO | `createGrpcChannel` abre/fecha sessão HTTP/2 por chamada (sem pooling) | `edge/grpc.ts:92` |
 | L12 | INFO | Resposta do servidor não validada (OpenAPI valida só o pedido; SOAP devolve `as Res`) | `openapi/openapi.ts:131`; `soap/soap.ts:178` |
-| L13 | INFO | HMR client confia no `path` do servidor para `import()` dinâmico (mitigado por CSP) | `dev/client.ts:89` |
+| ~~L13~~ | INFO **✔ corrigido** | HMR client confia no `path` do servidor para `import()` dinâmico (mitigado por CSP) | `dev/client.ts:89` |
 
 ---
 
@@ -363,7 +363,16 @@ inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o
 | L2 | `htmlResponse` emite cabeçalhos de segurança seguros por omissão — `x-content-type-options: nosniff` e `referrer-policy: strict-origin-when-cross-origin` — com has-guard (o valor do chamador ganha). HSTS fica de fora por omissão (quebra http; é decisão de deployment) | `edge/src/edge.ts` (`htmlResponse`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (1) |
 | L10 | `originFromHeaders` deixa de confiar cegamente: um `Host` que não seja uma autoridade simples (regex `HOST_RE`; rejeita path/userinfo/CRLF/espaços) cai para `127.0.0.1`, e `X-Forwarded-Proto` só é honrado se for exactamente `http`/`https` (rejeita arrays e valores injectados) — fecha o envenenamento do URL do Request | `edge/src/edge.ts:59` (`HOST_RE`/`originFromHeaders`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (2) |
 
-**Backlog restante:** Slices C (dev server L4/L5/L13) e D (L7/L9/L11/L12), e os
-sub-vectores **server-side** de M7 (fila `wsAdapter`, corpo `nodeListener`, acumulação
-gRPC). Todos os ALTO (H1–H5), MÉDIO (M1–M11) e os Slices A (L3/L6/L8) e B (L1/L2/L10)
-dos BAIXO estão fechados com PoC red→green.
+### Endurecimento BAIXO/INFO — Slice C (dev server)
+
+| ID | Correcção | Ficheiros | PoC (regressão) |
+|----|-----------|-----------|-----------------|
+| L4 | `/@fs` passa a validar a contenção pelo caminho **real**: após `isWithin(link)`, faz `realpath` e re-verifica `isWithin(real, REPO_ROOT)` — um symlink no repo que aponte para fora dá 403. E um erro de transform deixa de ecoar a mensagem crua do esbuild (que embebe frames/caminhos de código): o detalhe vai para o terminal (`console.error`), o cliente recebe um 500 genérico | `dev/src/server.ts:315` | `dev/test/security-l4-fs-symlink.audit.test.ts` (2) |
+| L5 | `/@dx/hmr` sanitiza o cursor: um `since` não-numérico/negativo (NaN de `Number("abc")`) é tratado como cliente novo → resposta imediata com o epoch actual, em vez de segurar o socket. E o pool de waiters do long-poll é limitado por `MAX_WAITERS` (256); acima do limite responde 204 em vez de segurar | `dev/src/server.ts:277` (`MAX_WAITERS`) | `dev/test/security-l5-hmr-cursor.audit.test.ts` (2) |
+| L13 | O cliente HMR deixa de confiar no `path`/`version` do servidor: `applyUpdate` só faz `import()` se `isTrustedModuleUrl` (URL de módulo same-origin `/@fs`/`/@app`, sem esquema/host protocolo-relativo/backslash/NUL) e `isValidVersion` (número finito ≥0) — senão faz full reload. Guard puro em `hmr-guard.ts` (testável); cliente passa a ser bundled para o inlinar | `dev/src/hmr-guard.ts`, `dev/src/client.ts:89` | `dev/test/security-l13-hmr-guard.audit.test.ts` (2) |
+
+**Backlog restante:** Slice D (L7 k8s evento malformado, L9 `media` src sem esquema,
+L11 gRPC sem pooling, L12 resposta não validada) e os sub-vectores **server-side** de
+M7 (fila `wsAdapter`, corpo `nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5),
+MÉDIO (M1–M11) e os Slices A (L3/L6/L8), B (L1/L2/L10) e C (L4/L5/L13) dos BAIXO/INFO
+estão fechados com PoC red→green.

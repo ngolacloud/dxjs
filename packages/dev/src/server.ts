@@ -131,6 +131,9 @@ export function createDevServer(options: DevServerOptions): DevServer {
     timer: ReturnType<typeof setTimeout>;
   }
   let waiters: Waiter[] = [];
+  // Cap concurrent long-poll waiters so a client can't pin unbounded open sockets
+  // (loopback-only, but still a resource bound). Over the cap → answer now. (L5)
+  const MAX_WAITERS = 256;
 
   function updatesSince(since: number): Array<{ path: string; version: number }> {
     const latest = new Map<string, number>();
@@ -264,7 +267,9 @@ export function createDevServer(options: DevServerOptions): DevServer {
     "/@dx/client.js": async () => {
       const result = await esbuild.build({
         entryPoints: [CLIENT_SRC],
-        bundle: false,
+        // Bundle so the client's local imports (e.g. ./hmr-guard) are inlined into
+        // the single served module — the browser loads it as one file. (L13)
+        bundle: true,
         write: false,
         format: "esm",
         platform: "browser",
@@ -274,8 +279,15 @@ export function createDevServer(options: DevServerOptions): DevServer {
       return jsResponse(result.outputFiles![0]!.text);
     },
     "/@dx/hmr": async (req) => {
-      const since = Number(new URL(req.url).searchParams.get("since") ?? 0);
-      if (epoch > since) return jsonResponse({ epoch, updates: updatesSince(since) });
+      // Sanitise the cursor: a non-numeric/negative `since` (NaN from Number("abc"))
+      // would mis-cursor updatesSince and hold the socket. Treat an invalid cursor as
+      // a fresh client and answer immediately with the current epoch. (L5)
+      const raw = Number(new URL(req.url).searchParams.get("since") ?? 0);
+      const valid = Number.isFinite(raw) && raw >= 0;
+      const since = valid ? Math.floor(raw) : 0;
+      if (!valid || epoch > since) return jsonResponse({ epoch, updates: updatesSince(since) });
+      // Bound the waiter pool: over the cap, don't hold — tell the client to re-poll. (L5)
+      if (waiters.length >= MAX_WAITERS) return new Response(null, { status: 204, headers: headers() });
       // Hold the connection until a change arrives or the window closes. The
       // edge handler naturally keeps the socket open while this promise is
       // pending (nodeListener awaits the Response).
@@ -317,10 +329,20 @@ export function createDevServer(options: DevServerOptions): DevServer {
       if (!isWithin(abs, REPO_ROOT) || !JS_EXT.has(extname(abs))) {
         return new Response("Forbidden", { status: 403, headers: headers() });
       }
+      // Containment by the REAL path: a symlink inside the repo whose target is
+      // OUTSIDE must not escape the guard. `isWithin(abs,…)` only checks the link's
+      // own path; re-check after `realpath`. (L4)
+      const real = await realpath(abs).catch(() => abs);
+      if (!isWithin(real, REPO_ROOT)) {
+        return new Response("Forbidden", { status: 403, headers: headers() });
+      }
       try {
         return jsResponse(await transformModule(abs));
       } catch (err) {
-        return new Response(String((err as Error).message ?? err), {
+        // Do NOT echo the raw esbuild message (it embeds source frames/paths). The
+        // full error goes to the dev's terminal; the client gets a terse 500. (L4)
+        console.error("[dxjs] transform failed for", abs, "\n", err);
+        return new Response("500 Internal Server Error (build failed — see dev server log)", {
           status: 500,
           headers: headers({ "content-type": "text/plain; charset=utf-8" }),
         });
