@@ -20,7 +20,9 @@ const BUDGETS = [
   // 3456 (was 3200): M11 streaming resilience — per-Suspense `timeout`/abort bound
   // + out-of-order `concurrency` gate, so a stuck boundary degrades to its fallback
   // instead of hanging or truncating. ~270 B gzipped, deliberately not obfuscated.
-  { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3456 },
+  // 3584 (was 3456): L1 raw-text scanner — detects <script>/<style> so dynamic
+  // interpolation there is refused (no safe CSS/JS escaping). ~55 B gzipped.
+  { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3584 },
   // + ADR 0001 transport port, adapters (REST/Connect/in-memory/embedded/SSE/WS),
   // composeTransport and liveSignal.
   { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 5120 },

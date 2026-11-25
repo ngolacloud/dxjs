@@ -76,8 +76,8 @@ que o framework não impõe nem verifica.
 
 | ID | Sev | Achado | Local |
 |----|-----|--------|-------|
-| L1 | BAIXO | `<script>`/`<style>` não são contexto raw-text no scanner → CSS injection em `<style>${data}</style>` | `server/render.ts:21` |
-| L2 | BAIXO | Sem cabeçalhos de segurança nem `Content-Type`/charset por omissão (CSP/HSTS/nosniff) | `server/*`, `edge/edge.ts:34` |
+| ~~L1~~ | BAIXO **✔ corrigido** | `<script>`/`<style>` não são contexto raw-text no scanner → CSS injection em `<style>${data}</style>` | `server/render.ts:21` |
+| ~~L2~~ | BAIXO **✔ corrigido** | Sem cabeçalhos de segurança nem `Content-Type`/charset por omissão (CSP/HSTS/nosniff) | `server/*`, `edge/edge.ts:34` |
 | ~~L3~~ | BAIXO **✔ corrigido** | `decodeURIComponent` sobre params de rota pode lançar `URIError` e derrubar o router | `component/router.ts:175` |
 | L4 | BAIXO | `/@fs` não faz `realpath` → symlink no repo escapa à contenção; erro do esbuild ecoa conteúdo | `dev/server.ts:293` |
 | L5 | BAIXO | HMR long-poll sem limite de waiters/sockets; `since=Number()` aceita `NaN` | `dev/server.ts:270` |
@@ -85,7 +85,7 @@ que o framework não impõe nem verifica.
 | L7 | BAIXO | `k8s.apply` confia na forma do evento; evento malformado aborta o lote inteiro | `k8s/index.ts:69` |
 | ~~L8~~ | BAIXO **✔ corrigido** | query `keyOf`: chave com `__proto__` colapsa no `JSON.stringify` → colisão de cache | `query/index.ts:69` |
 | L9 | BAIXO | `media`/`avatar` `src`/`poster` sem validação de esquema (delega na CSP) | `ui/media.ts:45,78`; `ui/nav.ts:130` |
-| L10 | BAIXO | Confiança cega em `Host`/`X-Forwarded-Proto` ao construir o URL do Request | `edge/edge.ts:59` |
+| ~~L10~~ | BAIXO **✔ corrigido** | Confiança cega em `Host`/`X-Forwarded-Proto` ao construir o URL do Request | `edge/edge.ts:59` |
 | L11 | INFO | `createGrpcChannel` abre/fecha sessão HTTP/2 por chamada (sem pooling) | `edge/grpc.ts:92` |
 | L12 | INFO | Resposta do servidor não validada (OpenAPI valida só o pedido; SOAP devolve `as Res`) | `openapi/openapi.ts:131`; `soap/soap.ts:178` |
 | L13 | INFO | HMR client confia no `path` do servidor para `import()` dinâmico (mitigado por CSP) | `dev/client.ts:89` |
@@ -355,7 +355,15 @@ inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o
 | L6 | `graph.update`: num throw **tratado**, os nós-filho criados antes do throw são **dispostos** (`disposeNode`) em vez de ficarem vivos/subscritos (órfãos) até um re-run que pode nunca vir. **Aceite + documentado:** a truncagem do conjunto de dependências lidas é inerente a uma leitura parcial — o efeito re-corre quando muda uma fonte que **chegou a ler**; recuperar de um erro que impediu a leitura de uma fonte exige que o erro limpe por um caminho já lido | `core/src/graph.ts:220` | `core/test/security-l6-orphan-children.audit.test.ts` (1) |
 | L8 | `query.keyOf` serializa objectos simples como array de pares `[chave, valor]` ordenados em vez de reconstruir o objecto; uma chave `__proto__` (própria) deixa de bater no setter do protótipo e desaparecer, logo chaves que só diferem em `__proto__` dão keys de cache distintas | `query/src/index.ts:69` | `query/test/security-l8-keyof-proto.audit.test.ts` (2) |
 
-**Backlog restante:** Slices B (SSR/edge L1/L2/L10), C (dev server L4/L5/L13), D
-(L7/L9/L11/L12), e os sub-vectores **server-side** de M7 (fila `wsAdapter`, corpo
-`nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5) e MÉDIO (M1–M11) e o Slice A
-dos BAIXO (L3/L6/L8) estão fechados com PoC red→green.
+### Endurecimento BAIXO — Slice B (SSR/edge)
+
+| ID | Correcção | Ficheiros | PoC (regressão) |
+|----|-----------|-----------|-----------------|
+| L1 | `scanContexts` passa a detectar elementos **raw-text** (`<script>`/`<style>`): como aí as entidades HTML não são descodificadas, não há escaping genérico seguro de dados não-fiáveis para CSS/JS — logo uma interpolação dinâmica dentro de `<script>`/`<style>` é **recusada (dropada)** em todos os caminhos SSR (`renderToString`, streaming, OOO; sem marcador em modo hidratável). RCDATA (`<title>`/`<textarea>`) mantém o escaping HTML normal (correcto) | `server/src/render.ts:21` (`scanContexts` + os 3 renderers + `planParts`) | `server/test/security-l1-rawtext.audit.test.ts` (5) |
+| L2 | `htmlResponse` emite cabeçalhos de segurança seguros por omissão — `x-content-type-options: nosniff` e `referrer-policy: strict-origin-when-cross-origin` — com has-guard (o valor do chamador ganha). HSTS fica de fora por omissão (quebra http; é decisão de deployment) | `edge/src/edge.ts` (`htmlResponse`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (1) |
+| L10 | `originFromHeaders` deixa de confiar cegamente: um `Host` que não seja uma autoridade simples (regex `HOST_RE`; rejeita path/userinfo/CRLF/espaços) cai para `127.0.0.1`, e `X-Forwarded-Proto` só é honrado se for exactamente `http`/`https` (rejeita arrays e valores injectados) — fecha o envenenamento do URL do Request | `edge/src/edge.ts:59` (`HOST_RE`/`originFromHeaders`) | `edge/test/security-l2-l10-edge-hardening.audit.test.ts` (2) |
+
+**Backlog restante:** Slices C (dev server L4/L5/L13) e D (L7/L9/L11/L12), e os
+sub-vectores **server-side** de M7 (fila `wsAdapter`, corpo `nodeListener`, acumulação
+gRPC). Todos os ALTO (H1–H5), MÉDIO (M1–M11) e os Slices A (L3/L6/L8) e B (L1/L2/L10)
+dos BAIXO estão fechados com PoC red→green.

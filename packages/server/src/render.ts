@@ -18,22 +18,49 @@ function unwrap(v: unknown): unknown {
   return typeof v === "function" ? untrack(() => (v as () => unknown)()) : v;
 }
 
-function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child"> {
-  const ctx: Array<"attr" | "child"> = [];
+// A `child` interpolation lands in text; an `attr` one inside a start tag. A
+// `rawtext` one lands inside a RAW-TEXT element (`<script>`/`<style>`), where HTML
+// entities are NOT decoded — so `escape()` neither prevents a `</script>`/`</style>`
+// breakout usefully nor stops CSS/JS injection. There is no safe generic escaping of
+// untrusted data into CSS/JS, so a rawtext interpolation is REFUSED (dropped), the
+// same posture as inline `on*` (M1) and raw-HTML `.prop` (M2). (Audit L1)
+function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child" | "rawtext"> {
+  const ctx: Array<"attr" | "child" | "rawtext"> = [];
   let inTag = false;
   let quote = "";
+  let name = ""; // tag name being read right after `<`
+  let reading = false; // reading the tag name
+  let rawTag = ""; // non-empty while inside a <script>/<style> raw-text element
   for (let i = 0; i < strings.length; i++) {
     const s = strings[i] as string;
     for (let j = 0; j < s.length; j++) {
       const c = s[j];
+      if (rawTag) {
+        // Only the matching end tag (`</script`/`</style`, case-insensitive) closes it.
+        if (c === "<" && s.slice(j, j + rawTag.length + 2).toLowerCase() === `</${rawTag}`) {
+          rawTag = "";
+          inTag = true;
+        }
+        continue;
+      }
       if (quote) {
         if (c === quote) quote = "";
       } else if (inTag) {
         if (c === '"' || c === "'") quote = c;
-        else if (c === ">") inTag = false;
-      } else if (c === "<") inTag = true;
+        else if (reading && /[a-z]/i.test(c)) name += c.toLowerCase();
+        else if (c === ">") {
+          inTag = false;
+          reading = false;
+          if (name === "script" || name === "style") rawTag = name;
+          name = "";
+        } else reading = false;
+      } else if (c === "<") {
+        inTag = true;
+        reading = true;
+        name = "";
+      }
     }
-    if (i < strings.length - 1) ctx.push(inTag ? "attr" : "child");
+    if (i < strings.length - 1) ctx.push(rawTag ? "rawtext" : inTag ? "attr" : "child");
   }
   return ctx;
 }
@@ -149,7 +176,9 @@ export function renderToString(view: TemplateResult, options: RenderOptions = {}
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
     if (i < values.length) {
-      if (ctx[i] === "child") {
+      if (ctx[i] === "rawtext") {
+        // Refuse dynamic content inside <script>/<style>: drop it, no marker. (L1)
+      } else if (ctx[i] === "child") {
         const content = childToString(values[i]); // nested templates render markerless
         out += options.hydratable ? `<!--dx:${i}-->${content}<!--/dx:${i}-->` : content;
       } else {
@@ -286,7 +315,9 @@ async function* streamView(view: TemplateResult, o: Opts, guarded = false): Asyn
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
     if (i < values.length) {
-      if (ctx[i] === "child") {
+      if (ctx[i] === "rawtext") {
+        // Refuse dynamic content inside <script>/<style>: drop it. (L1)
+      } else if (ctx[i] === "child") {
         if (out) {
           yield out; // flush the shell before awaiting any async child
           out = "";
@@ -384,7 +415,9 @@ function renderTemplateCollecting(view: TemplateResult, state: CollectState, que
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
     if (i < values.length) {
-      if (ctx[i] === "child") out += renderCollecting(values[i], state, queue);
+      if (ctx[i] === "rawtext") {
+        /* refuse dynamic <script>/<style> content (L1) */
+      } else if (ctx[i] === "child") out += renderCollecting(values[i], state, queue);
       else out = appendAttr(out, values[i]);
     }
   }
@@ -469,7 +502,10 @@ export function planParts(
   const ctx = scanContexts(strings);
   const parts: Array<{ kind: "child" } | { kind: "attr"; name: string }> = [];
   for (let i = 0; i < ctx.length; i++) {
-    if (ctx[i] === "child") parts.push({ kind: "child" });
+    // A rawtext interpolation is refused by the SSR renderers (no marker emitted);
+    // keep it a child slot so part/value indices stay aligned — hydration then finds
+    // no marker for it and safely binds nothing. (L1)
+    if (ctx[i] === "child" || ctx[i] === "rawtext") parts.push({ kind: "child" });
     else {
       const m = /([.@?]?[A-Za-z_][\w:-]*)=("?)$/.exec(strings[i] as string);
       parts.push({ kind: "attr", name: m ? (m[1] as string) : "" });
