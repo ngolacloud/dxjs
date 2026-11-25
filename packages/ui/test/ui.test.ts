@@ -97,6 +97,7 @@ test("dataTable paginates, searches and sorts", () => {
       rows: () => rows(),
       rowKey: (r) => r.id,
       pageSize: 5,
+      debounce: 0, // this test drives search synchronously; the debounced path is covered by security-m10-*
     }),
     host,
   );

@@ -66,7 +66,7 @@ atributos `on*`, limites de recurso. A narrativa — "secure by default", "outpu
 | **M7** | MÉDIO | API4 | Streams sem limite de recurso (buffer SSE, fila WS, corpo `nodeListener`, acumulação gRPC) | `transport/{adapters,ws}.ts`, `edge/{edge,grpc}.ts` |
 | **M8** | MÉDIO | resiliência | `resource()` retry sem gate de idempotência (assimétrico vs `rest.ts`) | `transport/resource.ts:47` |
 | **M9** | MÉDIO | API2 | `wsAdapter.auth` aceite mas ignorado → risco CSWSH / stream não autenticada | `transport/ws.ts:24` |
-| **M10** | MÉDIO | DoS-cliente | `dataTable` filtra O(n·m) síncrono a cada tecla, sem debounce | `ui/index.ts:217` |
+| ~~**M10**~~ | ~~MÉDIO~~ **✔ corrigido** | DoS-cliente | `dataTable` filtra O(n·m) síncrono a cada tecla, sem debounce | `ui/index.ts:217` |
 | ~~**M11**~~ | ~~MÉDIO~~ **✔ corrigido** | A04 | SSR streaming: sem timeout/concorrência/cancelamento em Suspense; truncagem em erro | `server/render.ts:236,313` |
 
 *H1 é ALTO em impacto mas **mitigado por CSP `script-src` estrita** (sem `unsafe-inline`),
@@ -340,12 +340,13 @@ verde (**370 testes**, 0 falhas; gates `no-eval`/`jsx-types`/`size` PASS —
 |----|-----------|-----------|-----------------|
 | M8 | `resource()` ganha um **gate de idempotência** simétrico ao cliente REST: `ResilienceOptions.idempotent` (default `true`, pois um resource é read-like) decide se os `retries` se aplicam — `idempotent:false` suprime-os, evitando que um fetcher com efeitos não idempotentes (POST) seja re-executado. O `timeout` por tentativa continua a aplicar-se (só cancela, não re-executa) | `transport/src/retry.ts:14`; `transport/src/resource.ts:29` | `transport/test/security-m8-resource-idempotency.audit.test.ts` |
 | M9 | `wsAdapter.auth` deixa de ser aceite-e-ignorado. Como o browser não permite header `Authorization` no handshake WS, a credencial é transmitida como **primeiro frame** `{type:"authorization",authorization:"Bearer <t>"}`, ANTES do frame de request; o servidor autentica esse frame antes de emitir. Credencial vazia/falsy = ausente (sem frame). Fecha a stream não autenticada / falsa sensação de segurança (CSWSH) | `transport/src/ws.ts:24,55` | `transport/test/security-m9-ws-auth.audit.test.ts` |
+| M10 | `dataTable` ganha `debounce?` (ms, default 150; `0` desliga). O `@input` da pesquisa deixa de chamar `query.set` por tecla — passa por um `onSearch` que coalesce o burst de teclas numa **única** passagem do filtro O(n·m), tirando o trabalho pesado do caminho da tecla (o `<input>` é não-controlado, logo o texto digitado continua a aparecer de imediato). Fecha o DoS-cliente (jank/bloqueio da main thread ao escrever numa tabela grande) | `ui/src/index.ts:217` (`onSearch`/`debounce`) | `ui/test/security-m10-datatable-debounce.audit.test.ts` (3 testes) |
 | M11 | SSR streaming ganha `StreamOptions{ timeout, concurrency, signal }` em todas as entradas (`renderToStringAsync`/`renderToChunks`/`renderToStream`/`…OOO`). Cada `load()` de Suspense corre sob `loadBounded` (timeout — default 30000 ms — + `AbortSignal`, com o timer sempre limpo no settle → um `load()` que nunca resolve não deixa nada vivo no event loop). Uma boundary que **excede o timeout, rejeita ou é abortada** degrada para a sua própria fallback **em vez de pendurar a resposta ou truncar o documento já emitido**; se estiver sob um `errorBoundary`, re-lança para este o tratar (semântica preservada via flag `guarded`). O caminho out-of-order limita as loads simultâneas por `concurrency` (default 8). | `server/src/render.ts:172` (StreamOptions/`loadBounded`/`streamChild`), `:319` (`oooChunks` gate) | `server/test/security-m11-ssr-streaming.audit.test.ts` (5 testes) |
 
 **Contrato do servidor (M9).** O servidor WS DEVE validar o frame de autenticação
 inicial e não emitir dados da subscrição até o validar. Esta fatia entrega o lado
 **cliente** (transmissão da credencial); a validação no `edge` server é trabalho seu.
 
-**Backlog restante:** M10 (debounce `dataTable`) + 13 BAIXO/INFO, e os sub-vectores
-**server-side** de M7 (fila `wsAdapter`, corpo `nodeListener`, acumulação gRPC).
-Prioridade seguinte sugerida: M10 (DoS-cliente).
+**Backlog restante:** 13 BAIXO/INFO, e os sub-vectores **server-side** de M7
+(fila `wsAdapter`, corpo `nodeListener`, acumulação gRPC). Todos os ALTO (H1–H5) e
+MÉDIO (M1–M11) estão fechados com PoC red→green.
