@@ -88,9 +88,33 @@ export interface InMemoryOptions {
   caps?: Partial<TransportCaps>;
 }
 
+// --- Embedded (in-process host-dispatch) adapter ---------------------------
+export interface EmbeddedOptions {
+  /** The host's dispatcher (e.g. Seiva's): routes EVERY call to the real handler,
+   *  in-process or over a local socket — no network, no public surface. */
+  invoke: (m: MethodDescriptor, req: unknown, ctx: CallCtx) => unknown | Promise<unknown> | AsyncIterable<unknown>;
+  caps?: Partial<TransportCaps>;
+}
+
+/** The embedded adapter: when dxjs runs inside/next to the backend (SSR, co-located,
+ *  served by the binary), it delegates every call to the host's `invoke` — fast (no
+ *  HTTP round-trip) and secure (no network exposure). The same app runs over this or
+ *  over restAdapter/connectAdapter; only the bootstrap swaps. */
+export function embeddedAdapter(o: EmbeddedOptions): Transport {
+  return {
+    caps: { serverStream: true, bidi: false, binary: true, inProcess: true, ...o.caps },
+    async unary<Req, Res>(m: MethodDescriptor<Req, Res>, req: Req, ctx: CallCtx = {}): Promise<Res> {
+      return (await o.invoke(m, req, ctx)) as Res;
+    },
+    async *serverStream<Req, Res>(m: MethodDescriptor<Req, Res>, req: Req, ctx: CallCtx = {}): AsyncIterable<Res> {
+      yield* (await o.invoke(m, req, ctx)) as AsyncIterable<Res>;
+    },
+  };
+}
+
 /** An in-process adapter: dispatches to a local handler map, no network. It is the
- *  test double for the port AND the precursor of the embedded adapter (which swaps
- *  the handler map for the host backend's dispatch). */
+ *  test double for the port AND a simple embedded variant (the handler map instead
+ *  of a host dispatcher). */
 export function inMemoryAdapter(o: InMemoryOptions): Transport {
   const find = <Req, Res>(m: MethodDescriptor<Req, Res>): Handler<Req, Res> => {
     const h = o.handlers[m.id];

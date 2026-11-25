@@ -19,5 +19,8 @@ export type {
   Transport, MethodDescriptor, MethodKind, CallCtx, TransportCaps, AuthToken,
   Interceptor, RpcClient, TransportError,
 } from "./port.ts";
-export { restAdapter, connectAdapter, inMemoryAdapter } from "./adapters.ts";
-export type { HttpWire, Handler, InMemoryOptions } from "./adapters.ts";
+export { restAdapter, connectAdapter, inMemoryAdapter, embeddedAdapter } from "./adapters.ts";
+export type { HttpWire, Handler, InMemoryOptions, EmbeddedOptions } from "./adapters.ts";
+
+export { liveSignal } from "./live.ts";
+export type { LiveSignal, LiveOptions } from "./live.ts";

@@ -23,7 +23,8 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0"
+    "@dxjs/core": "1.1.0",
+    "@dxjs/transport": "1.1.0"
   },
   "keywords": [
     "dxjs",

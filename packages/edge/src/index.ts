@@ -17,3 +17,7 @@ export type {
   GrpcUnaryOptions,
   GrpcError,
 } from "./grpc.ts";
+
+// ADR 0001 — native-gRPC adapter for the @dxjs/transport port.
+export { grpcNativeAdapter } from "./grpc-adapter.ts";
+export type { GrpcCodec, GrpcNativeAdapterOptions } from "./grpc-adapter.ts";

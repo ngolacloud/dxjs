@@ -15,7 +15,8 @@ const BUDGETS = [
   { name: "@dxjs/jsx", entry: "packages/jsx/src/index.ts", budget: 1024 },
   { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
   { name: "@dxjs/server", entry: "packages/server/src/index.ts", budget: 3072 },
-  { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 3072 },
+  // + ADR 0001 transport port, adapters (REST/Connect/in-memory/embedded) and liveSignal.
+  { name: "@dxjs/transport", entry: "packages/transport/src/index.ts", budget: 4096 },
   { name: "@dxjs/canvas", entry: "packages/canvas/src/index.ts", budget: 3072 },
   { name: "@dxjs/edge", entry: "packages/edge/src/index.ts", budget: 3072 },
   // v2 kit: full control/feedback/nav/picker + advanced suite (calendar/holidays,
