@@ -7,6 +7,7 @@
 // returns nothing. /openapi.json is public, so loadSpec sends no token.
 
 import type { Client } from "@dxjs/transport";
+import { toSeivaError } from "@dxjs/seiva";
 import type { OpenApiSpec } from "./contract.ts";
 
 /** The per-operation permission flags (presentational; the server still enforces). */
@@ -49,12 +50,16 @@ function authHeaders(token?: string): Record<string, string> {
  * by the caller's Principal, so the token must ride on THIS fetch.
  */
 export function loadRegistry(client: Client, token?: string): Promise<Registry> {
-  return client.get<Registry>("/admin/registry.json", { headers: authHeaders(token) });
+  return client.get<Registry>("/admin/registry.json", { headers: authHeaders(token) }).catch((e: unknown) => {
+    throw toSeivaError(e);
+  });
 }
 
 /** GET /openapi.json (public, same-origin) — the full service contract. */
 export function loadSpec(client: Client): Promise<OpenApiSpec> {
-  return client.get<OpenApiSpec>("/openapi.json");
+  return client.get<OpenApiSpec>("/openapi.json").catch((e: unknown) => {
+    throw toSeivaError(e);
+  });
 }
 
 /**
@@ -69,5 +74,9 @@ export function callOp(
   body?: unknown,
   token?: string,
 ): Promise<unknown> {
-  return client.request<unknown>(method, path, body, { headers: authHeaders(token) });
+  // Map any failure to a structured SeivaError (kind + field errors + trace ref),
+  // so the console can show the user a precise, recoverable message.
+  return client.request<unknown>(method, path, body, { headers: authHeaders(token) }).catch((e: unknown) => {
+    throw toSeivaError(e);
+  });
 }

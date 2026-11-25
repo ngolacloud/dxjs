@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { createClient } from "@dxjs/transport";
 import { mount } from "@dxjs/component";
 import { SeivaConsole } from "../src/console.ts";
+import { callOp } from "../src/api.ts";
 
 // A value that WOULD inject an <img> if ever written as HTML. It must surface as
 // inert text — the whole point of dxjs's safe sinks under a strict CSP.
@@ -114,4 +115,24 @@ test("renders a table, create form, escapes values, and sends the bearer", async
   const specHeaders = (specCall?.init.headers ?? {}) as Record<string, string>;
   assert.equal(specHeaders.authorization, undefined, "no bearer on the public spec fetch");
   assert.ok(!calls.some((c) => c.url.includes("TESTTOKEN")), "the token never appears in a URL");
+});
+
+test("callOp surfaces a structured SeivaError (kind + field errors + trace) on a 422", async () => {
+  const fetch422 = (() =>
+    Promise.resolve({
+      ok: false,
+      status: 422,
+      statusText: "Unprocessable",
+      text: () => Promise.resolve(JSON.stringify({ fields: { name: "is required" }, trace_id: "tp-9" })),
+    } as unknown as Response)) as unknown as typeof fetch;
+  const client = createClient({ fetch: fetch422 });
+  const e = await callOp(client, "POST", "/v1/widgets", { name: "" }, "tok").then(
+    () => null,
+    (x: unknown) => x as { name: string; kind: string; fields?: Record<string, string>; traceId?: string },
+  );
+  assert.ok(e, "the call rejected");
+  assert.equal(e!.name, "SeivaError");
+  assert.equal(e!.kind, "validation");
+  assert.deepEqual(e!.fields, { name: "is required" });
+  assert.equal(e!.traceId, "tp-9");
 });

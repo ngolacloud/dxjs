@@ -24,9 +24,23 @@ import type { Client } from "@dxjs/transport";
 import { appShell, card, dataTable, statGrid, type Column } from "@dxjs/ui";
 import { classifyOps, bodyFields, opsForResource, type Classified, type OpenApiSpec } from "./contract.ts";
 import { loadRegistry, loadSpec, callOp, type AdminResource } from "./api.ts";
+import type { SeivaError } from "@dxjs/seiva";
 
 type TokenAccessor = () => string;
 type Row = Record<string, unknown>;
+
+const isSeivaError = (e: unknown): e is SeivaError =>
+  !!e && typeof e === "object" && (e as { name?: string }).name === "SeivaError";
+
+/** A user-facing description of a failure: for a SeivaError, the message plus any
+ *  per-field errors and the trace ref; otherwise the raw string. */
+function describe(prefix: string, e: unknown): string {
+  if (!isSeivaError(e)) return `${prefix}: ${String(e)}`;
+  const lines = [`${prefix}: ${e.message}`];
+  if (e.fields) for (const [k, v] of Object.entries(e.fields)) lines.push(`• ${k}: ${v}`);
+  if (e.traceId) lines.push(`(ref ${e.traceId})`);
+  return lines.join("\n");
+}
 
 /** A stable id for a resource (its nav key / active selector). */
 const resKey = (r: AdminResource): string => `${r.namespace}/${r.resource}`;
@@ -54,7 +68,7 @@ function createForm(client: Client, token: TokenAccessor, create: NonNullable<Cl
     out.set("…");
     callOp(client, "POST", create.path, body, token())
       .then(() => out.set("created"))
-      .catch((e: unknown) => out.set("create failed: " + String(e)));
+      .catch((e: unknown) => out.set(describe("create failed", e)));
   };
   return html`<form class="op create" @submit=${onSubmit}>
     <div class="sig"><span class="m">POST</span><span class="path">${create.path}</span></div>
@@ -89,7 +103,7 @@ function dataResource(
         rows.set(arr);
         msg.set(arr.length ? "" : "no records yet");
       })
-      .catch((e: unknown) => msg.set("could not list: " + String(e)));
+      .catch((e: unknown) => msg.set(describe("could not list", e)));
   };
   refresh();
 
@@ -127,7 +141,7 @@ function operationForm(client: Client, token: TokenAccessor, method: string, pat
     out.set("…");
     callOp(client, m, path, body, token())
       .then(() => out.set("ok"))
-      .catch((e: unknown) => out.set("failed: " + String(e)));
+      .catch((e: unknown) => out.set(describe("failed", e)));
   };
   return html`<form class="op" @submit=${onSubmit}>
     <div class="sig"><span class="m">${method.toUpperCase()}</span><span class="path">${path}</span></div>
