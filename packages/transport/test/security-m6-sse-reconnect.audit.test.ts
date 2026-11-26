@@ -35,7 +35,11 @@ test("M6: a `retry:0` server cannot drive a tight reconnect loop", async () => {
   const t = sseAdapter({ fetch: fn, reconnect: true, minRetryMs: 25, maxRetryMs: 25 });
 
   const ac = new AbortController();
-  const WINDOW = 160;
+  // Wide enough that a loaded event loop (full suite in parallel) still fits one
+  // 25ms floored wait; the upper bound below scales with the time that actually
+  // elapsed, so the window size does not weaken the hot-loop check.
+  const WINDOW = 400;
+  const started = performance.now();
   const stop = setTimeout(() => ac.abort(), WINDOW);
   try {
     // The stream never yields data; the loop just reconnects until we abort.
@@ -43,12 +47,15 @@ test("M6: a `retry:0` server cannot drive a tight reconnect loop", async () => {
   } finally {
     clearTimeout(stop);
   }
+  const elapsed = performance.now() - started;
 
   const dials = count();
-  // Floored at ~25ms, ~160ms admits a handful of reconnects — never a hot loop.
-  // Without the floor (sleep(0)), this count would be in the hundreds/thousands.
+  // Floored at 25ms, at most one dial per 25ms elapsed (+ the initial dial and
+  // one of slack) — never a hot loop. Without the floor (sleep(0)), this count
+  // would be in the hundreds/thousands.
+  const ceiling = Math.floor(elapsed / 25) + 2;
   assert.ok(dials >= 2, `should have reconnected at least once (got ${dials})`);
-  assert.ok(dials <= 20, `reconnect must stay bounded, not hot-loop (got ${dials})`);
+  assert.ok(dials <= ceiling, `reconnect must stay bounded, not hot-loop (got ${dials} in ${Math.round(elapsed)}ms, ceiling ${ceiling})`);
 });
 
 test("M6: minRetryMs defaults keep a server retry:0 from meaning zero", async () => {
