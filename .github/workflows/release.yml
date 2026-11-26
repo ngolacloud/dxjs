@@ -1,36 +1,58 @@
 name: release
 
-# Publishes every @dxjs/* package to npm when a v* tag is pushed. The private
-# root package (private: true) is skipped by npm automatically. Gate + build run
-# first, so a tag never publishes a red tree.
+# Cuts a GitHub Release when a v* tag is pushed. Gate + build run first, so a
+# tag never releases a red tree.
+#
+# Not published to npm: the `@dxjs` scope on npmjs.com belongs to an unrelated
+# account (`@dxjs/core` 2.x, 2022), so `npm publish` under it is impossible.
+# Each package is instead attached to the release as an `npm pack` tarball,
+# installable with `npm install <tarball-url>`. Revisit once the packages move
+# to a scope we own.
 on:
   push:
     tags:
       - "v*"
 
 permissions:
-  contents: read
-  id-token: write # npm provenance
+  contents: write # create the GitHub Release + upload the tarballs
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          registry-url: "https://registry.npmjs.org"
       - name: install
         run: npm install
       - name: check (no-eval + jsx-types + tests + size)
         run: npm run check
       - name: build (dist/index.js + dist/index.d.ts for every package)
         run: npm run build
-      # Publish all workspaces (packages/*). Public scope for @dxjs/*; provenance
-      # ties the artifact to this workflow+commit. Requires an NPM_TOKEN secret
-      # with publish rights to the @dxjs org.
-      - name: publish @dxjs/* to npm
-        run: npm publish --workspaces --access public --provenance
+      - name: tag matches the package versions
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          bad=$(node -e 'const fs=require("fs");const v=process.argv[1];for(const d of fs.readdirSync("packages")){const p=JSON.parse(fs.readFileSync(`packages/${d}/package.json`));if(p.version!==v)console.log(`${p.name}@${p.version}`)}' "$want")
+          if [ -n "$bad" ]; then echo "packages not at $want:"; echo "$bad"; exit 1; fi
+      - name: pack every @dxjs/* package
+        run: |
+          mkdir -p release-assets
+          npm pack --workspaces --pack-destination release-assets
+      - name: release notes from CHANGELOG.md
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          awk -v v="$want" '
+            $0 ~ "^## " v "( |$)" { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md > release-notes.md
+          test -s release-notes.md || { echo "no CHANGELOG.md section for $want"; exit 1; }
+      - name: create the GitHub Release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-assets/*.tgz \
+            --title "dxjs $GITHUB_REF_NAME" \
+            --notes-file release-notes.md \
+            --verify-tag

@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/query",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Cached, deduped, stale-while-revalidate async queries for dxjs (the signal-reactive answer to react-query), with key-based invalidation.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0"
+    "@dxjs/core": "1.2.0"
   },
   "keywords": [
     "dxjs",

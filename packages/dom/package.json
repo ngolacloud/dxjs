@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/dom",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "The dxjs safe reactive renderer: html`` tagged templates bound through escaped DOM sinks. No eval, no inline handlers, no innerHTML of data — strict-CSP safe.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0"
+    "@dxjs/core": "1.2.0"
   },
   "keywords": [
     "dxjs",
