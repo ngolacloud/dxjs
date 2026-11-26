@@ -4,6 +4,52 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
+## 1.2.0 — 2026-11-26
+
+Additive release — new packages, exports and options; every 1.1.0 program keeps
+compiling and behaving. It also closes every finding of the 2026-11-25 security
+audit.
+
+Distribution: the `@dxjs` scope on npmjs.com belongs to an unrelated account, so
+the packages are **not on npm**. Each one is attached to the GitHub Release as an
+`npm pack` tarball (`npm install <tarball-url>`). 1.1.0 never reached npm either
+(its release job failed before publishing).
+
+### Protocol-neutral transport (ADR 0001)
+
+- **@dxjs/transport** — a `Transport` port (method descriptors + call context)
+  with adapters: REST, embedded, **SSE** (reconnect + `Last-Event-ID` resume,
+  capped back-off with jitter), **WebSocket** server-streaming (`wsAdapter`,
+  auth sent as an authorization frame), `composeTransport`, interceptors, and
+  `liveSignal` for streams.
+- **@dxjs/edge** — a native-gRPC adapter (`grpcNativeAdapter`).
+- New packages over the port: **@dxjs/openapi** (OpenAPI document → runtime
+  descriptors + validators), **@dxjs/seiva** (the Seiva profile, structured
+  `SeivaError`), **@dxjs/soap** and **@dxjs/proto**.
+- The `seiva-console` example runs on the port and shows a structured
+  `SeivaError` to the user.
+
+### Security (audit 2026-11-25 — H1–H5, M1–M11, L1–L13)
+
+- XSS/injection: `javascript:`/`data:` URLs sanitised on `href`/`src`/`action`
+  (client + SSR); CSV/formula injection neutralised in table export; SSR never
+  emits inline `on*` handlers; hydration refuses raw-HTML `.prop`; SOAP tag and
+  operation names escaped/validated.
+- Resource bounds: bounded regex use (ReDoS); a throwing effect no longer wedges
+  the graph; SSE buffer and reconnects bounded; `resource()` retries idempotent;
+  `dataTable` search debounced (`debounce`, default 150 ms).
+- SSR streaming: `renderToString`/`Chunks`/`Stream` take
+  `StreamOptions { timeout, concurrency, signal }`; a Suspense boundary that times
+  out, rejects or aborts degrades to its fallback instead of hanging the response.
+- Router params decoded safely (a malformed `%`-escape no longer throws), plus the
+  rest of the LOW tier.
+
+### Fixes
+
+- `@dxjs/server`: never calls `@event` handlers or refs while rendering;
+  `render.ts` compiles under `noUncheckedIndexedAccess`.
+- Build: `devtools` compiles after `dom`.
+
 ## 1.1.0 — 2026-11-25
 
 Additive release — new exports and options only; every 1.0.0 program keeps

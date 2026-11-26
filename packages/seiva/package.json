@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/seiva",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "The Seiva profile for the dxjs transport port: maps the Seiva error envelope to a structured SeivaError (field errors, scope/BOLA, optimistic concurrency) and turns command-bus events into @dxjs/query invalidation — over any adapter (remote or embedded).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,9 +24,9 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0",
-    "@dxjs/transport": "1.1.0",
-    "@dxjs/query": "1.1.0"
+    "@dxjs/core": "1.2.0",
+    "@dxjs/transport": "1.2.0",
+    "@dxjs/query": "1.2.0"
   },
   "keywords": [
     "dxjs",

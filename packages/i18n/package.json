@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/i18n",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "dxjs i18n: a tiny CSP-safe translation + Intl formatting layer with a reactive locale, defaulting to Angolan Portuguese (pt-AO) and the Kwanza (AOA).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -23,7 +23,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0"
+    "@dxjs/core": "1.2.0"
   },
   "keywords": [
     "dxjs",

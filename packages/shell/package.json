@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/shell",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "dxjs shell: Cloud Shell interaction primitives — a command palette, idempotent (deduped-by-key) toasts, and a topology-graph builder over @dxjs/canvas. CSP-safe.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -23,9 +23,9 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.1.0",
-    "@dxjs/dom": "1.1.0",
-    "@dxjs/canvas": "1.1.0"
+    "@dxjs/core": "1.2.0",
+    "@dxjs/dom": "1.2.0",
+    "@dxjs/canvas": "1.2.0"
   },
   "keywords": [
     "dxjs",
