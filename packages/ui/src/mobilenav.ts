@@ -82,7 +82,9 @@ export function fab(o: FabOptions): TemplateResult {
   const actions = o.actions ?? [];
   const hasActions = actions.length > 0;
 
-  const close = (): void => open.set(false);
+  const close = (): void => {
+    open.set(false);
+  };
   onCleanup(close);
 
   const onTrigger = (): void => {

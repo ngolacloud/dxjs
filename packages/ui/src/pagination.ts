@@ -57,7 +57,7 @@ function windowOf(count: number, page: number, siblingCount: number, boundaryCou
   );
   const siblingsEnd = Math.min(
     Math.max(page + siblingCount, boundaryCount + siblingCount * 2 + 2),
-    endPages.length > 0 ? endPages[0] - 2 : count - 1,
+    endPages.length > 0 ? endPages[0]! - 2 : count - 1,
   );
 
   return [

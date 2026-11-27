@@ -106,6 +106,7 @@ export interface PullToRefreshOptions {
   /** Externally controlled busy state, OR-ed with the internal one. */
   refreshing?: Maybe<boolean>;
   label?: string;
+  ariaLabel?: string;
 }
 
 /** Distance past which a downward pull commits a refresh (px). */
@@ -221,7 +222,7 @@ export function pickerWheel(o: PickerWheelOptions): TemplateResult {
     const list = opts();
     if (i < 0 || i >= list.length) return;
     pushOffset(i);
-    o.onChange?.(list[i].value);
+    o.onChange?.(list[i]!.value);
   };
   const onKey = (e: KeyboardEvent): void => {
     if (e.key === "ArrowDown") {

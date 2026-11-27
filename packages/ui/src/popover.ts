@@ -37,7 +37,9 @@ export interface PopoverOptions {
 export function popover(o: PopoverOptions): TemplateResult {
   const open = signal(false);
   const panelId = nextId("dx-pop");
-  const close = (): void => open.set(false);
+  const close = (): void => {
+    open.set(false);
+  };
 
   return html`<div
     class="dx-pop"
@@ -86,7 +88,9 @@ export function popconfirm(o: PopconfirmOptions): TemplateResult {
   const panelId = nextId("dx-pop");
   const titleId = nextId("dx-pop-t");
   const tone: Tone = o.tone ?? "neg";
-  const close = (): void => open.set(false);
+  const close = (): void => {
+    open.set(false);
+  };
   const confirm = (): void => {
     o.onConfirm();
     close();
