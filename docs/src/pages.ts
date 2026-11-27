@@ -12,7 +12,7 @@ import { example, runnable, p, h2, callout } from "./example.ts";
 import { learnPages } from "./learn.ts";
 import { LandingPage } from "./landing.ts";
 import { GalleryPage } from "./gallery.ts";
-import { componentPages } from "./components.ts";
+import { componentPages, componentDocs, type ComponentDoc } from "./components.ts";
 
 export interface Page {
   id: string;
@@ -257,70 +257,53 @@ effect(() => { if (trigger() > 0) throw new Error("render failed"); });
 });
 
 // --- ui --------------------------------------------------------------------
-interface Row { id: string; name: string; plan: string; mrr: number; status: "Active" | "Trial" | "Churned"; }
-const ROWS: Row[] = Array.from({ length: 7 }, (_, i) => ({
-  id: `r${i}`,
-  name: ["Acme", "Globex", "Initech", "Umbrella", "Stark", "Wayne", "Hooli"][i]!,
-  plan: i % 2 ? "Team" : "Solo",
-  mrr: 49 + i * 37,
-  status: (["Active", "Trial", "Churned"] as const)[i % 3]!,
-}));
+// The @dxjs/ui page is a handbook: an intro, then the full component reference
+// grouped by family. Each card shows the usage code beside a LIVE result,
+// rendered from the same `componentDocs` registry that drives the per-component
+// pages — one source of truth, one style, no divergence.
+const UI_GROUP_ORDER = [
+  "UI · Controls",
+  "UI · Feedback",
+  "UI · Navigation",
+  "UI · Overlays",
+  "UI · Pickers & data",
+  "UI · Media & mobile",
+  "Componentes", // the rich, standalone pieces (dataTable, calendar, gantt, …)
+] as const;
+const UI_GROUP_LABEL: Record<string, string> = {
+  "Componentes": "Rich components",
+};
+
+/** Group the component registry by family, preserving UI_GROUP_ORDER. */
+const uiGroups = (): Array<[string, ComponentDoc[]]> => {
+  const by = new Map<string, ComponentDoc[]>();
+  for (const d of componentDocs) {
+    const g = d.group ?? "Componentes";
+    (by.get(g) ?? by.set(g, []).get(g)!).push(d);
+  }
+  return UI_GROUP_ORDER.filter((g) => by.has(g)).map((g) => [g, by.get(g)!]);
+};
+
+// Touch surfaces whose position:fixed elements (a bottom bar, a corner FAB, a
+// docked sheet) would otherwise anchor to the whole viewport — framed in a
+// phone so they dock to the card instead.
+const UI_FRAMED = new Set(["c-tabbar", "c-fab", "c-bottomsheet", "c-actionsheet"]);
+
 const UiPage = component(() => html`
-  ${head("@dxjs/ui", "A styled, CSP-safe component kit: appShell, statGrid, card, pill, and a sortable/searchable/paginated dataTable. Classes only — the look lives in ui.css.")}
-  ${example({
-    title: "statGrid",
-    code: `statGrid([
-  { label: "MRR", value: "$62,350", delta: "+12.4%", tone: "pos" },
-  { label: "Churn", value: "2.1%", delta: "-0.3%", tone: "pos" },
-  { label: "Trials", value: "89", delta: "12 this week", tone: "mut" },
-])`,
-    view: statGrid([
-      { label: "MRR", value: "$62,350", delta: "+12.4%", tone: "pos" },
-      { label: "Churn", value: "2.1%", delta: "-0.3%", tone: "pos" },
-      { label: "Trials", value: "89", delta: "12 this week", tone: "mut" },
-    ]),
-  })}
-  ${example({
-    title: "dataTable (sort · search · paginate)",
-    code: `dataTable({
-  title: "Companies",
-  columns: [
-    { key: "name", label: "Company", sortable: true },
-    { key: "mrr", label: "MRR", numeric: true, sortable: true,
-      value: r => r.mrr, render: r => "$" + r.mrr },
-    { key: "status", label: "Status",
-      render: r => pill(r.status, tone(r.status)) },
-  ],
-  rows, rowKey: r => r.id, pageSize: 5,
-})`,
-    view: dataTable<Row>({
-      columns: [
-        { key: "name", label: "Company", sortable: true },
-        { key: "mrr", label: "MRR", numeric: true, sortable: true, value: (r) => r.mrr, render: (r) => `$${r.mrr}` },
-        { key: "status", label: "Status", render: (r) => pill(r.status, r.status === "Active" ? "pos" : r.status === "Trial" ? "mut" : "neg") },
-      ],
-      rows: ROWS,
-      rowKey: (r) => r.id,
-      pageSize: 5,
-    }),
-  })}
-  ${example({
-    title: "virtualList — 10,000 rows, a handful of DOM nodes",
-    code: `virtualList({
-  rows: bigArray,        // 10,000 items
-  rowHeight: 36, height: 300,
-  key: (_, i) => i,
-  render: (row, i) => html\`#\${i} — \${row}\`,
-})`,
-    view: virtualList<string>({
-      rows: Array.from({ length: 10000 }, (_, i) => `item ${i}`),
-      rowHeight: 36,
-      height: 300,
-      key: (_, i) => i,
-      render: (row, i) => html`<span class="demo-out">#${i} — ${row}</span>`,
-    }),
-    note: "Scroll it: only the visible window (+overscan) is ever in the DOM. Sizing is applied via the CSSOM, so it stays CSP-clean.",
-  })}
+  ${head("@dxjs/ui", "A styled, CSP-safe component kit: ~80 components — controls, feedback, navigation, overlays, pickers, data, planning and touch surfaces. Classes only; the look lives in ui.css, so there is nothing inline to violate style-src.")}
+  ${p("Every component below is rendered LIVE by real dxjs, under the same strict CSP as the rest of the site. Flip the Desktop/Mobile toggle on any result to watch the adaptive layer engage. For a full standalone page per component (with a props table) use the sidebar; this page is the one-screen reference.")}
+  ${uiGroups().map(([group, docs]) => html`
+    ${h2(UI_GROUP_LABEL[group] ?? group.replace(/^UI · /, ""))}
+    ${docs.map((d) =>
+      example({
+        title: d.name,
+        code: d.usageCode,
+        filename: `${d.name}.ts`,
+        view: UI_FRAMED.has(d.id) ? html`<div class="doc-phone">${d.demo()}</div>` : d.demo(),
+        note: d.populateNote,
+      }),
+    )}
+  `)}
 `);
 
 // --- charts ----------------------------------------------------------------
