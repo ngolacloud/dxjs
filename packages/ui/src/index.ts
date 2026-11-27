@@ -42,6 +42,9 @@ export * from "./searchfilter.ts";
 export * from "./overlay.ts";
 export * from "./disclosure.ts";
 export * from "./kanban.ts";
+export * from "./icons.ts";
+export * from "./upload.ts";
+export * from "./taskpanel.ts";
 
 // --- App shell ------------------------------------------------------------
 export interface NavItem {

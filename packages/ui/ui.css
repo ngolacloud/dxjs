@@ -681,9 +681,17 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 
 /* --- Gantt ------------------------------------------------------------- */
 .dx-gantt { display: flex; flex-direction: column; border: 1px solid var(--dx-line); border-radius: var(--dx-radius-lg); overflow: hidden; background: var(--dx-panel); font: var(--dx-text-sm)/1.3 var(--dx-font); }
-.dx-gantt-row, .dx-gantt-head { display: grid; grid-template-columns: minmax(96px, 22%) 1fr; align-items: center; border-top: 1px solid var(--dx-line2); min-height: 28px; }
+.dx-gantt-row, .dx-gantt-head { display: grid; grid-template-columns: minmax(170px, 26%) 1fr; align-items: stretch; border-top: 1px solid var(--dx-line2); min-height: 34px; }
+.dx-gantt-row:hover { background: var(--dx-panel-2); }
 .dx-gantt-head { border-top: 0; background: var(--dx-panel-2); }
-.dx-gantt-name { padding: var(--dx-space-1) var(--dx-space-3); color: var(--dx-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-right: 1px solid var(--dx-line2); }
+.dx-gantt-name { display: flex; flex-direction: column; justify-content: center; padding: var(--dx-space-1) var(--dx-space-3); color: var(--dx-ink); min-width: 0; border-right: 1px solid var(--dx-line); }
+.dx-gantt-name-main { font-weight: var(--dx-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dx-gantt-name-sub { display: flex; gap: 6px; color: var(--dx-mut); font-size: var(--dx-text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dx-gantt-who { color: var(--dx-accent-hover); font-weight: var(--dx-weight-medium); }
+.dx-gantt-scale { display: flex; flex-direction: column; justify-content: flex-end; }
+.dx-gantt-months { display: flex; position: relative; height: 15px; }
+.dx-gantt-month { position: absolute; left: var(--dx-band-x, 0%); width: var(--dx-band-w, 0%); padding-left: 4px; color: var(--dx-ink-2); font-size: var(--dx-text-xs); font-weight: var(--dx-weight-semibold); white-space: nowrap; overflow: hidden; border-left: 1px solid var(--dx-line); box-sizing: border-box; }
+.dx-gantt-today { stroke: var(--dx-neg); stroke-width: 1.5; stroke-dasharray: 2 2; vector-effect: non-scaling-stroke; }
 .dx-gantt-corner { background: var(--dx-panel-2); }
 .dx-gantt-cell { position: relative; padding: var(--dx-space-1) var(--dx-space-2); min-width: 0; }
 .dx-gantt-track, .dx-gantt-axis { display: block; width: 100%; height: 16px; }
@@ -1034,3 +1042,81 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 .dx-kb-move { border: 1px solid var(--dx-line); background: var(--dx-panel); cursor: pointer; color: var(--dx-ink-2); border-radius: var(--dx-radius-sm); width: 24px; height: 22px; line-height: 1; font-size: 11px; }
 .dx-kb-move:hover:not(:disabled) { border-color: var(--dx-accent); color: var(--dx-accent); }
 .dx-kb-move:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ===========================================================================
+   Gantt/planner refinement (Odoo/MS Project) + icons, upload, task panel. */
+
+/* --- Planner: today column + now line ------------------------------------- */
+.dx-plan-col-head.is-today { color: var(--dx-accent); font-weight: var(--dx-weight-semibold); }
+.dx-plan-col-head .dx-plan-col-day { display: block; }
+.dx-plan-col-head .dx-plan-col-date { display: block; font-size: var(--dx-text-xs); color: var(--dx-mut); }
+.dx-plan-col-head.is-today .dx-plan-col-date { color: var(--dx-accent); }
+.dx-plan-col.is-today { background: color-mix(in srgb, var(--dx-accent) 5%, transparent); }
+.dx-plan-now { position: absolute; left: 0; right: 0; top: var(--dx-now-top, 0%); height: 0; border-top: 2px solid var(--dx-neg); z-index: 2; pointer-events: none; }
+.dx-plan-now-dot { position: absolute; left: -3px; top: -4px; width: 7px; height: 7px; border-radius: 50%; background: var(--dx-neg); }
+
+/* --- Icons ----------------------------------------------------------------- */
+.dx-icon { display: inline-block; flex: none; vertical-align: middle; }
+
+/* --- Key badge (kbd) ------------------------------------------------------- */
+.dx-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px; background: var(--dx-panel-2); border: 1px solid var(--dx-line); border-bottom-width: 2px; border-radius: var(--dx-radius-sm); color: var(--dx-mut); font: var(--dx-weight-medium) var(--dx-text-xs)/1 var(--dx-mono); }
+
+/* --- File upload ----------------------------------------------------------- */
+.dx-up { display: flex; flex-direction: column; gap: var(--dx-space-3); }
+.dx-up-zone { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--dx-space-6) var(--dx-space-4); border: 1.5px dashed var(--dx-line); border-radius: var(--dx-radius); background: var(--dx-panel-2); color: var(--dx-ink-2); cursor: pointer; text-align: center; transition: border-color .15s ease, background .15s ease; }
+.dx-up-zone:hover { border-color: var(--dx-gray-400); }
+.dx-up-zone.is-drag { border-color: var(--dx-accent); background: var(--dx-accent-weak); color: var(--dx-accent-hover); }
+.dx-up-zone.is-disabled { opacity: .55; cursor: not-allowed; }
+.dx-up-zone-ico { color: var(--dx-mut); }
+.dx-up-zone.is-drag .dx-up-zone-ico { color: var(--dx-accent); }
+.dx-up-prompt { font-size: var(--dx-text-md); }
+.dx-up-prompt strong { color: var(--dx-accent); font-weight: var(--dx-weight-semibold); }
+.dx-up-hint { font-size: var(--dx-text-xs); color: var(--dx-mut); }
+.dx-up-input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+.dx-up-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--dx-space-2); }
+.dx-up-item { display: flex; align-items: center; gap: var(--dx-space-3); padding: var(--dx-space-2) var(--dx-space-3); border: 1px solid var(--dx-line); border-radius: var(--dx-radius-sm); background: var(--dx-panel); }
+.dx-up-item.is-error { border-color: color-mix(in srgb, var(--dx-neg) 40%, var(--dx-line)); }
+.dx-up-file-ico { flex: none; color: var(--dx-mut); display: inline-flex; }
+.dx-up-file { flex: 1; min-width: 0; }
+.dx-up-file-head { display: flex; align-items: baseline; gap: var(--dx-space-2); }
+.dx-up-name { flex: 1; min-width: 0; font-size: var(--dx-text-sm); font-weight: var(--dx-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dx-up-size { flex: none; font-size: var(--dx-text-xs); color: var(--dx-mut); }
+.dx-up-bar { display: block; width: 100%; height: 3px; margin-top: 5px; }
+.dx-up-bar-fill { fill: var(--dx-accent); }
+.dx-up-msg { display: block; margin-top: 3px; font-size: var(--dx-text-xs); color: var(--dx-neg); }
+.dx-up-status { flex: none; display: inline-flex; }
+.dx-up-ok { color: var(--dx-pos); } .dx-up-err { color: var(--dx-neg); }
+.dx-up-x { flex: none; display: inline-flex; border: 0; background: none; cursor: pointer; color: var(--dx-mut); padding: 2px; border-radius: var(--dx-radius-sm); }
+.dx-up-x:hover { color: var(--dx-ink); background: var(--dx-gray-100); }
+
+/* --- Task panel ------------------------------------------------------------ */
+.dx-tp { display: flex; flex-direction: column; width: 320px; max-width: 100%; max-height: 100%; background: var(--dx-panel); border: 1px solid var(--dx-line); border-radius: var(--dx-radius-lg); overflow: hidden; }
+.dx-tp-head { display: flex; align-items: center; gap: var(--dx-space-2); padding: var(--dx-space-3) var(--dx-space-4); border-bottom: 1px solid var(--dx-line); }
+.dx-tp-ico { color: var(--dx-mut); display: inline-flex; }
+.dx-tp-htitle { flex: 0 1 auto; margin: 0; font-size: var(--dx-text-md); font-weight: var(--dx-weight-semibold); }
+.dx-tp-count { min-width: 20px; text-align: center; padding: 1px 7px; background: var(--dx-gray-200); color: var(--dx-ink-2); border-radius: var(--dx-radius-full); font-size: var(--dx-text-xs); font-weight: var(--dx-weight-medium); }
+.dx-tp-action { margin-left: auto; display: inline-flex; border: 1px solid var(--dx-line); background: var(--dx-panel); cursor: pointer; color: var(--dx-ink-2); border-radius: var(--dx-radius-sm); padding: 4px; }
+.dx-tp-action:hover { border-color: var(--dx-accent); color: var(--dx-accent); }
+.dx-tp-body { flex: 1; overflow-y: auto; padding: var(--dx-space-2); }
+.dx-tp-group + .dx-tp-group { margin-top: var(--dx-space-3); }
+.dx-tp-grouphead { display: flex; align-items: center; gap: var(--dx-space-2); padding: var(--dx-space-1) var(--dx-space-2); }
+.dx-tp-grouplabel { font-size: var(--dx-text-xs); font-weight: var(--dx-weight-semibold); text-transform: uppercase; letter-spacing: .04em; color: var(--dx-mut); }
+.dx-tp-groupcount { color: var(--dx-mut); font-size: var(--dx-text-xs); }
+.dx-tp-list { list-style: none; margin: 0; padding: 0; }
+.dx-tp-task { display: flex; align-items: flex-start; gap: var(--dx-space-2); padding: var(--dx-space-2); border-radius: var(--dx-radius-sm); }
+.dx-tp-task:hover { background: var(--dx-panel-2); }
+.dx-tp-check { flex: none; padding-top: 1px; }
+.dx-tp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; border: 0; background: none; padding: 0; text-align: left; cursor: pointer; color: var(--dx-ink); }
+.dx-tp-main:disabled { cursor: default; }
+.dx-tp-title { font-size: var(--dx-text-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dx-tp-task.is-done .dx-tp-title { text-decoration: line-through; color: var(--dx-mut); }
+.dx-tp-meta { display: flex; align-items: center; gap: var(--dx-space-2); font-size: var(--dx-text-xs); color: var(--dx-mut); }
+.dx-tp-due { display: inline-flex; align-items: center; gap: 3px; }
+.dx-tp-bar { display: block; width: 100%; height: 3px; margin-top: 3px; }
+.dx-tp-bar-fill { fill: var(--dx-accent); }
+.dx-tp-pri { flex: none; align-self: center; padding: 1px 7px; border-radius: var(--dx-radius-full); font-size: var(--dx-text-xs); font-weight: var(--dx-weight-medium); text-transform: capitalize; }
+.dx-tp-pri.is-neg { background: var(--dx-neg-weak); color: var(--dx-neg); }
+.dx-tp-pri.is-warn { background: var(--dx-warn-weak); color: var(--dx-warn); }
+.dx-tp-pri.is-mut { background: var(--dx-gray-100); color: var(--dx-mut); }
+.dx-tp-empty { padding: var(--dx-space-6) var(--dx-space-4); text-align: center; color: var(--dx-mut); font-size: var(--dx-text-sm); }
+.dx-tp-foot { padding: var(--dx-space-3) var(--dx-space-4); border-top: 1px solid var(--dx-line); }

@@ -44,8 +44,14 @@ export interface PlannerOptions {
   weekStart?: 0 | 1;
   /** 7 day names, indexed by absolute day (0 = Sunday). Localizable. */
   dayLabels?: string[];
+  /** 7 short dates (e.g. "12"), indexed by absolute day, shown under the name. */
+  dayDates?: string[];
   startHour?: number;
   endHour?: number;
+  /** Absolute day (0=Sun) of today — highlights that column. */
+  todayDay?: number;
+  /** Current time "HH:MM" — draws a "now" line in the today column. */
+  now?: string;
   onSelect?: (id: string) => void;
 }
 
@@ -79,9 +85,22 @@ export function planner(o: PlannerOptions): TemplateResult {
     </button>`;
   };
 
+  const nowTop = (): number | null => {
+    if (o.now == null) return null;
+    const span = (endHour - startHour) * 60 || 1;
+    return ((toMin(o.now) - startHour * 60) / span) * 100;
+  };
+  const nowLine = (day: number): TemplateResult | string => {
+    const top = nowTop();
+    if (day !== o.todayDay || top == null || top < 0 || top > 100) return "";
+    const setVar = (el: Element): void => (el as HTMLElement).style.setProperty("--dx-now-top", `${top}%`);
+    return html`<div class="dx-plan-now" ref=${setVar} aria-hidden="true"><span class="dx-plan-now-dot"></span></div>`;
+  };
+
   const column = (day: number): TemplateResult =>
-    html`<div class="dx-plan-col" role="gridcell" data-day=${day}>
+    html`<div class=${cx("dx-plan-col", day === o.todayDay && "is-today")} role="gridcell" data-day=${day}>
       ${hours.map(() => html`<div class="dx-plan-slot" aria-hidden="true"></div>`)}
+      ${nowLine(day)}
       ${list(
         () => read(o.events).filter((e) => e.day === day),
         (e) => e.id,
@@ -92,7 +111,7 @@ export function planner(o: PlannerOptions): TemplateResult {
   return html`<div class="dx-plan" role="grid" aria-label="Weekly agenda">
     <div class="dx-plan-head" role="row">
       <div class="dx-plan-gutter-head" role="columnheader"></div>
-      ${order.map((d) => html`<div class="dx-plan-col-head" role="columnheader">${labels[d]}</div>`)}
+      ${order.map((d) => html`<div class=${cx("dx-plan-col-head", d === o.todayDay && "is-today")} role="columnheader"><span class="dx-plan-col-day">${labels[d]}</span>${o.dayDates?.[d] ? html`<span class="dx-plan-col-date">${o.dayDates[d]}</span>` : ""}</div>`)}
     </div>
     <div class="dx-plan-body">
       <div class="dx-plan-gutter">

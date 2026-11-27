@@ -1,7 +1,9 @@
-// @dxjs/ui/gantt — a compact horizontal timeline of tasks. Each bar is an inline
-// <svg> whose <rect> x/width are PERCENTAGES of the overall day-range, set as SVG
-// ATTRIBUTES (never an inline style=), so the geometry stays out of `style-src`
-// and the chart is CSP-safe. Pure `barGeom` exported so the math is testable.
+// @dxjs/ui/gantt — a project timeline that reads like Odoo / MS Project: a task
+// column on the left (label + dates + %), a two-level time scale on top (month
+// bands over day ticks), percentage-positioned bars with an inner progress fill,
+// and a vertical "today" marker. Every geometry value is an SVG ATTRIBUTE or a
+// CSS custom property set via a `ref` effect — never an inline `style=` — so the
+// chart is CSP-safe. Pure `barGeom` exported so the math is testable.
 
 import { html, list, type TemplateResult } from "@dxjs/dom";
 import { read, cx, type Maybe, type Tone } from "./base.ts";
@@ -37,14 +39,24 @@ export function barGeom(
   return { x: Math.max(0, x), width: Math.max(0, width) };
 }
 
+/** Position of an ISO date as a percentage of the range, or null if outside it. */
+function dayPct(rStart: string, rEnd: string, iso: string): number | null {
+  const rs = toDay(rStart);
+  const span = toDay(rEnd) - rs || 1;
+  const p = ((toDay(iso) - rs) / span) * 100;
+  return p < 0 || p > 100 ? null : p;
+}
+
 export interface GanttTask {
   id: string;
   label: string;
   start: string;
   end: string;
   tone?: Tone;
-  /** 0..100 completion; draws a second, inner rect. */
+  /** 0..100 completion; draws a second, inner rect and a "%" in the name column. */
   progress?: number;
+  /** Optional assignee shown in the task column. */
+  assignee?: string;
 }
 
 export interface GanttOptions {
@@ -52,6 +64,8 @@ export interface GanttOptions {
   /** Overall range start/end (ISO). Default = min start / max end of tasks. */
   start?: string;
   end?: string;
+  /** ISO date for the "today" marker. Drawn only if inside the range. */
+  today?: string;
   ariaLabel?: string;
 }
 
@@ -82,18 +96,55 @@ function ticksOf(rStart: string, rEnd: string): Array<{ pos: number; label: stri
   return out;
 }
 
-/** A horizontal Gantt timeline. Bars are percentage-positioned SVG rects. */
+/** Month bands over the range: {label "MMM 'YY", x%, w%} — the top scale row. */
+function monthBandsOf(rStart: string, rEnd: string): Array<{ label: string; x: number; w: number }> {
+  const rs = toDay(rStart);
+  const re = toDay(rEnd);
+  const span = re - rs || 1;
+  const bands: Array<{ label: string; x: number; w: number }> = [];
+  const d0 = new Date(rs * DAY_MS);
+  let y = d0.getUTCFullYear();
+  let m = d0.getUTCMonth();
+  for (let guard = 0; guard < 240; guard++) {
+    const monthStart = Math.round(Date.UTC(y, m, 1) / DAY_MS);
+    const nextMonth = Math.round(Date.UTC(y, m + 1, 1) / DAY_MS);
+    const segStart = Math.max(monthStart, rs);
+    const segEnd = Math.min(nextMonth, re);
+    if (segStart < segEnd) {
+      bands.push({
+        label: `${MONTHS[m]} '${String(y).slice(2)}`,
+        x: ((segStart - rs) / span) * 100,
+        w: ((segEnd - segStart) / span) * 100,
+      });
+    }
+    if (nextMonth >= re) break;
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+  return bands;
+}
+
+/** A project Gantt timeline. Bars are percentage-positioned SVG rects; the task
+ *  column carries the label, date span and %; a month scale sits over day ticks;
+ *  a `today` date draws a vertical marker. */
 export function gantt(o: GanttOptions): TemplateResult {
   const range = (): [string, string] => rangeOf(read(o.tasks), o.start, o.end);
+  const todayPct = (): number | null => (o.today ? dayPct(...range(), o.today) : null);
 
   const bar = (t: GanttTask): TemplateResult => {
     const [rs, re] = range();
     const g = barGeom(rs, re, t.start, t.end);
     const prog = t.progress != null ? Math.max(0, Math.min(100, t.progress)) : null;
+    const tp = todayPct();
+    const sub = `${fmtDay(toDay(t.start))} – ${fmtDay(toDay(t.end))}${prog != null ? ` · ${prog}%` : ""}`;
     return html`<div class="dx-gantt-row" role="row">
-      <div class="dx-gantt-name" role="rowheader" title=${t.label}>${t.label}</div>
+      <div class="dx-gantt-name" role="rowheader" title=${t.label}>
+        <span class="dx-gantt-name-main">${t.label}</span>
+        <span class="dx-gantt-name-sub">${t.assignee ? html`<span class="dx-gantt-who">${t.assignee}</span>` : ""}${sub}</span>
+      </div>
       <div class="dx-gantt-cell" role="gridcell">
         <svg class="dx-gantt-track" viewBox=${`0 0 100 ${H}`} preserveAspectRatio="none" role="img" aria-label=${`${t.label}: ${t.start} to ${t.end}`}>
+          ${tp != null ? html`<line class="dx-gantt-today" x1=${tp} y1="0" x2=${tp} y2=${H}></line>` : ""}
           <rect class=${cx("dx-gantt-bar", t.tone && `is-${t.tone}`)} x=${g.x} y="3" width=${g.width} height=${H - 6} rx="2"></rect>
           ${prog != null
             ? html`<rect class="dx-gantt-prog" x=${g.x} y="3" width=${(g.width * prog) / 100} height=${H - 6} rx="2"></rect>`
@@ -103,11 +154,24 @@ export function gantt(o: GanttOptions): TemplateResult {
     </div>`;
   };
 
+  const months = (): TemplateResult => {
+    const bands = monthBandsOf(...range());
+    const setBand = (b: { x: number; w: number }) => (el: Element): void => {
+      const s = (el as HTMLElement).style;
+      s.setProperty("--dx-band-x", `${b.x}%`);
+      s.setProperty("--dx-band-w", `${b.w}%`);
+    };
+    return html`<div class="dx-gantt-months">${bands.map(
+      (b) => html`<span class="dx-gantt-month" ref=${setBand(b)}>${b.label}</span>`,
+    )}</div>`;
+  };
+
   const axis = (): TemplateResult => {
     const ts = ticksOf(...range());
+    const tp = todayPct();
     return html`<svg class="dx-gantt-axis" viewBox=${`0 0 100 ${H}`} preserveAspectRatio="none" aria-hidden="true">${ts.map(
       (t) => html`<line class="dx-gantt-tick" x1=${t.pos} y1="0" x2=${t.pos} y2=${H}></line>`,
-    )}</svg>`;
+    )}${tp != null ? html`<line class="dx-gantt-today" x1=${tp} y1="0" x2=${tp} y2=${H}></line>` : ""}</svg>`;
   };
   const labels = (): TemplateResult => {
     const ts = ticksOf(...range());
@@ -116,8 +180,8 @@ export function gantt(o: GanttOptions): TemplateResult {
 
   return html`<div class="dx-gantt" role="grid" aria-label=${o.ariaLabel ?? "Timeline"}>
     <div class="dx-gantt-head" role="row">
-      <div class="dx-gantt-name dx-gantt-corner" role="columnheader"></div>
-      <div class="dx-gantt-cell" role="columnheader">${() => axis()}${() => labels()}</div>
+      <div class="dx-gantt-name dx-gantt-corner" role="columnheader">Task</div>
+      <div class="dx-gantt-cell dx-gantt-scale" role="columnheader">${() => months()}${() => axis()}${() => labels()}</div>
     </div>
     ${list(() => read(o.tasks), (t) => t.id, bar)}
   </div>`;

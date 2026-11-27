@@ -201,6 +201,8 @@ export interface CheckboxOptions {
   label?: string;
   disabled?: Maybe<boolean>;
   id?: string;
+  /** Accessible name when there is no visible `label`. */
+  ariaLabel?: string;
 }
 export function checkbox(o: CheckboxOptions): TemplateResult {
   const id = o.id ?? nextId("dx-cb");
@@ -209,6 +211,7 @@ export function checkbox(o: CheckboxOptions): TemplateResult {
       type="checkbox"
       id=${id}
       class="dx-check-input"
+      aria-label=${o.ariaLabel ?? false}
       .checked=${() => read(o.checked)}
       ?disabled=${() => read(o.disabled ?? false)}
       @change=${(e: Event) => o.onChange?.((e.target as HTMLInputElement).checked)}

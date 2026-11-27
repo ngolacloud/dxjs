@@ -55,3 +55,35 @@ test("gantt: reactive task list updates the bars", () => {
   ]);
   assert.equal(host.querySelectorAll(".dx-gantt-bar").length, 2);
 });
+
+test("gantt: today marker inside the range, month band, enriched name column", () => {
+  const host = body();
+  render(
+    gantt({
+      start: "2026-01-01",
+      end: "2026-01-11",
+      today: "2026-01-05",
+      tasks: [{ id: "a", label: "Design", start: "2026-01-02", end: "2026-01-06", progress: 40, assignee: "AO" }],
+    }),
+    host,
+  );
+  // today 2026-01-05 = day 4 of a 10-day span → 40%. Present in axis + each row track.
+  const todays = [...host.querySelectorAll(".dx-gantt-today")];
+  assert.ok(todays.length >= 2, "today line in axis and row");
+  assert.equal(todays[0]!.getAttribute("x1"), "40");
+  // month scale band for January 2026.
+  assert.equal(host.querySelectorAll(".dx-gantt-month").length, 1);
+  assert.ok(host.querySelector(".dx-gantt-month")!.textContent!.startsWith("Jan"));
+  // enriched name column: assignee + date span + percent.
+  assert.equal(host.querySelector(".dx-gantt-who")!.textContent, "AO");
+  assert.ok(host.querySelector(".dx-gantt-name-sub")!.textContent!.includes("40%"));
+});
+
+test("gantt: no today marker when the date is outside the range", () => {
+  const host = body();
+  render(
+    gantt({ start: "2026-01-01", end: "2026-01-11", today: "2026-03-01", tasks: [{ id: "a", label: "X", start: "2026-01-02", end: "2026-01-04" }] }),
+    host,
+  );
+  assert.equal(host.querySelectorAll(".dx-gantt-today").length, 0);
+});

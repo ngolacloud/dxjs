@@ -56,3 +56,28 @@ test("planner: weekStart=1 puts Monday first", () => {
   assert.equal(heads[0], "Mon");
   assert.equal(heads[6], "Sun");
 });
+
+test("planner: today column highlight + now line with dates", () => {
+  const host = body();
+  render(
+    planner({
+      startHour: 8,
+      endHour: 18,
+      todayDay: 3,
+      now: "12:00",
+      dayDates: ["10", "11", "12", "13", "14", "15", "16"],
+      events: [],
+    }),
+    host,
+  );
+  // the day=3 header and column are marked today
+  assert.ok(host.querySelector('.dx-plan-col[data-day="3"]')!.classList.contains("is-today"));
+  const todayHead = [...host.querySelectorAll(".dx-plan-col-head")].find((hd) => hd.classList.contains("is-today"))!;
+  assert.ok(todayHead, "a column header is marked today");
+  assert.equal(todayHead.querySelector(".dx-plan-col-date")!.textContent, "13");
+  // now 12:00 over 08..18 → (4/10)*100 = 40%, only in the today column
+  const now = host.querySelector('.dx-plan-col[data-day="3"] .dx-plan-now')! as unknown as HTMLElement;
+  assert.ok(now, "now line in today column");
+  assert.equal(now.style.getPropertyValue("--dx-now-top"), "40%");
+  assert.equal(host.querySelectorAll(".dx-plan-now").length, 1, "now line only in today column");
+});
