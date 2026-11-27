@@ -27,8 +27,18 @@ const head = (title: string, lead: string): TemplateResult =>
   html`<h1 class="doc-h1">${title}</h1><p class="doc-lead">${lead}</p>`;
 
 // --- Getting started -------------------------------------------------------
+// The @dxjs/* packages ship as tarballs on each GitHub Release (the @dxjs name on
+// the npm registry belongs to an unrelated project). docs/build.mjs defines the
+// version being built.
+declare const __DXJS_VERSION__: string;
+const DXJS_VERSION = typeof __DXJS_VERSION__ === "string" ? __DXJS_VERSION__ : "1.4.0";
+const RELEASE = `https://github.com/ngolacloud/dxjs/releases/download/v${DXJS_VERSION}`;
+/** `npm install` of some @dxjs packages from the release (bash/zsh brace form). */
+const installLine = (pkgs: string[]) => `npm install ${RELEASE}/dxjs-{${pkgs.join(",")}}-${DXJS_VERSION}.tgz`;
+const tgz = (pkg: string) => `${RELEASE}/dxjs-${pkg}-${DXJS_VERSION}.tgz`;
+
 const GettingStarted = component(() => html`
-  ${head("Getting started", "dxjs runs with NO build in the browser (loaded from a CDN) and in Node (installed from npm, native TypeScript). Each example is a COMPLETE file with its full path — switch the Browser (CDN) or Node (install) tab and copy it as-is.")}
+  ${head("Getting started", "dxjs runs with NO build in the browser (an import map over the installed packages) and in Node (native TypeScript). The @dxjs/* packages install from the GitHub Release tarballs — the @dxjs name on the npm registry belongs to an unrelated project, so never npm install @dxjs/… by name. Each example is a COMPLETE file with its full path — switch the Browser or Node tab and copy it as-is.")}
 
   ${h2("Hello, reactive — the same counter, two ways")}
   ${runnable({
@@ -36,16 +46,29 @@ const GettingStarted = component(() => html`
     browser: {
       path: "index.html",
       code: `<!doctype html>
-<!-- Open this file directly — no bundler, no build. dxjs loads from a CDN. -->
+<!-- No bundler, no build. First install the packages next to this file:
+       ${installLine(["core", "dom", "component"])}
+     then serve the folder over HTTP (python3 -m http.server, npx serve …). -->
 <html lang="en">
-<head><meta charset="utf-8" /><title>dxjs counter</title></head>
+<head>
+  <meta charset="utf-8" />
+  <title>dxjs counter</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "@dxjs/core": "./node_modules/@dxjs/core/dist/index.js",
+        "@dxjs/dom": "./node_modules/@dxjs/dom/dist/index.js",
+        "@dxjs/component": "./node_modules/@dxjs/component/dist/index.js"
+      }
+    }
+  </script>
+</head>
 <body>
   <div id="app"></div>
   <script type="module">
-    // Load dxjs straight from esm.sh — no npm, no build step.
-    import { signal } from "https://esm.sh/@dxjs/core";
-    import { html } from "https://esm.sh/@dxjs/dom";
-    import { component, mount } from "https://esm.sh/@dxjs/component";
+    import { signal } from "@dxjs/core";
+    import { html } from "@dxjs/dom";
+    import { component, mount } from "@dxjs/component";
 
     const Counter = component(() => {
       const n = signal(0);
@@ -61,7 +84,7 @@ const GettingStarted = component(() => html`
     },
     node: {
       path: "counter.ts",
-      code: `// 1. Install:  npm install @dxjs/core @dxjs/dom @dxjs/server
+      code: `// 1. Install:  ${installLine(["core", "dom", "server"])}
 // 2. Run:      node counter.ts        (Node >= 22 runs TypeScript natively)
 import { signal } from "@dxjs/core";
 import { html } from "@dxjs/dom";
@@ -74,10 +97,10 @@ const view = html\`<button>n = \${() => n()}</button>\`;
 console.log(renderToString(view)); // → <button>n = 41</button>
 n.set(42); // in the browser, this would patch the DOM in place`,
     },
-    note: "No-build browser → one <script type=module> importing from esm.sh. Node → npm install, then run the .ts directly. Same source, two runtimes.",
+    note: "No-build browser → an import map over the installed packages, served same-origin. Node → install from the release, then run the .ts directly. Same source, two runtimes.",
   })}
 
-  ${callout("note", "Self-hosted instead of a CDN?", "Prefer no third-party CDN? dxjs also emits a single-file bundle (cdn/dxjs.js, ~4.5 KB gzip) you can serve same-origin: import { signal } from \"./dxjs.js\". It satisfies a strict script-src 'self' with no external origin at all.")}
+  ${callout("note", "One self-hosted file instead?", "A dxjs checkout builds a single-file bundle (node scripts/build.mjs → cdn/dxjs.js, ~4.5 KB gzip) you can serve same-origin: import { signal } from \"./dxjs.js\". Like the import map, it satisfies a strict script-src 'self' with no external origin at all.")}
 
   ${h2("Add the component kit (@dxjs/ui)")}
   ${runnable({
@@ -85,16 +108,27 @@ n.set(42); // in the browser, this would patch the DOM in place`,
     browser: {
       path: "dashboard.html",
       code: `<!doctype html>
+<!-- ${installLine(["core", "dom", "component", "ui"])} -->
 <head>
-  <!-- the kit's stylesheet, from the CDN -->
-  <link rel="stylesheet" href="https://esm.sh/@dxjs/ui/ui.css" />
+  <!-- the kit's stylesheet, from the installed package -->
+  <link rel="stylesheet" href="./node_modules/@dxjs/ui/ui.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "@dxjs/core": "./node_modules/@dxjs/core/dist/index.js",
+        "@dxjs/dom": "./node_modules/@dxjs/dom/dist/index.js",
+        "@dxjs/component": "./node_modules/@dxjs/component/dist/index.js",
+        "@dxjs/ui": "./node_modules/@dxjs/ui/dist/index.js"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="app"></div>
   <script type="module">
-    import { html } from "https://esm.sh/@dxjs/dom";
-    import { component, mount } from "https://esm.sh/@dxjs/component";
-    import { statGrid, card } from "https://esm.sh/@dxjs/ui";
+    import { html } from "@dxjs/dom";
+    import { component, mount } from "@dxjs/component";
+    import { statGrid, card } from "@dxjs/ui";
 
     const Dash = component(() => html\`
       \${statGrid([
@@ -113,15 +147,15 @@ n.set(42); // in the browser, this would patch the DOM in place`,
   "name": "my-app",
   "type": "module",
   "dependencies": {
-    "@dxjs/core": "^1.0.0",
-    "@dxjs/dom": "^1.0.0",
-    "@dxjs/component": "^1.0.0",
-    "@dxjs/ui": "^1.0.0"
+    "@dxjs/core": "${tgz("core")}",
+    "@dxjs/dom": "${tgz("dom")}",
+    "@dxjs/component": "${tgz("component")}",
+    "@dxjs/ui": "${tgz("ui")}"
   },
   "scripts": { "start": "node src/main.ts" }
 }`,
     },
-    note: "Browser: load ui.css + the kit from the CDN. Node: npm install the same packages. Components only toggle classes, so the look lives in ui.css — no inline styles to violate style-src.",
+    note: "Browser: ui.css + the kit from the installed packages, via the import map. Node: the same packages, pinned to the release tarballs in package.json. Components only toggle classes, so the look lives in ui.css — no inline styles to violate style-src.",
   })}
 
   ${h2("Security — the premise")}

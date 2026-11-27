@@ -9,8 +9,12 @@ seam as REST, Connect/gRPC-web, native gRPC and in-process.
 
 ## Install
 
+The `@dxjs/*` packages ship as tarballs on each
+[GitHub Release](https://github.com/ngolacloud/dxjs/releases) — the `@dxjs` name
+on the npm registry belongs to an unrelated project, so install from the release:
+
 ```sh
-npm install @dxjs/soap @dxjs/transport
+npm install https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-{core,transport,soap}-1.4.0.tgz
 ```
 
 ## Usage

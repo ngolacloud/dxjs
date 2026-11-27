@@ -102,11 +102,19 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     assert.ok((await page.textContent(".cb-name")).includes("index.html"), "code block shows the browser filename");
     assert.ok(await page.$(".cb-pre .tok-kw"), "syntax highlighting emitted token spans");
     assert.ok((await page.$$(".cb-copy")).length > 0, "copy buttons rendered on code blocks");
-    // the CDN variant loads dxjs from esm.sh (shown as code text)
-    assert.ok((await page.textContent(".run-pane:not([hidden]) .cb-pre")).includes("esm.sh"), "browser tab shows CDN import");
+    // The browser variant is an import map over the installed packages, and both
+    // variants install from the GitHub Release — never `npm install @dxjs/…` by
+    // name (that npm scope belongs to an unrelated project) and never esm.sh,
+    // which resolves through the npm registry.
+    const browserCode = await page.textContent(".run-pane:not([hidden]) .cb-pre");
+    assert.ok(browserCode.includes("importmap"), "browser tab uses an import map");
+    assert.ok(browserCode.includes("github.com/ngolacloud/dxjs/releases/download/"), "browser tab installs from the release");
+    assert.ok(!browserCode.includes("esm.sh"), "no esm.sh import");
     await page.locator(".run-tab", { hasText: "Node" }).first().click();
     await page.waitForTimeout(40);
-    assert.ok((await page.textContent(".run-pane:not([hidden]) .cb-pre")).includes("npm install"), "Node tab shows install step");
+    const nodeCode = await page.textContent(".run-pane:not([hidden]) .cb-pre");
+    assert.ok(nodeCode.includes("npm install https://github.com/ngolacloud/dxjs/releases/download/"), "Node tab installs from the release");
+    assert.ok(!/npm install @dxjs\//.test(nodeCode), "no npm install @dxjs/… by name");
 
     // Responsive: the appShell exposes a hamburger (shown via CSS on small screens).
     assert.ok(await page.$(".dtop-burger"), "responsive hamburger present in the shell");
