@@ -28,7 +28,9 @@
     "check": "npm run gate:no-eval && npm run gate:jsx-types && npm test && npm run gate:size",
     "shell:build": "node examples/cloud-shell/build.mjs",
     "shell:serve": "node examples/cloud-shell/build.mjs && node examples/cloud-shell/serve.mjs",
-    "test:shell": "node examples/cloud-shell/build.mjs && node --test examples/cloud-shell/test/browser.test.mjs"
+    "test:shell": "node examples/cloud-shell/build.mjs && node --test examples/cloud-shell/test/browser.test.mjs",
+    "gallery:build": "node examples/ui-gallery/build.mjs",
+    "gallery:serve": "node examples/ui-gallery/build.mjs && node examples/ui-gallery/serve.mjs"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,286 @@
+/* ui-gallery chrome — class-only, CSP-safe (no inline styles). Everything reads
+   the kit's design tokens from ui.css (--dx-*), so the gallery follows the same
+   light/dark theme the components do, with zero per-theme rules of its own. */
+
+body {
+  margin: 0;
+  background: var(--dx-bg);
+  color: var(--dx-ink);
+  font-family: var(--dx-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.gx {
+  min-height: 100vh;
+}
+
+/* --- header -------------------------------------------------------------- */
+.gx-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dx-space-3);
+  padding: var(--dx-space-3) var(--dx-space-5);
+  background: color-mix(in srgb, var(--dx-panel) 90%, transparent);
+  backdrop-filter: saturate(160%) blur(10px);
+  border-bottom: 1px solid var(--dx-line);
+}
+.gx-brand {
+  font-size: var(--dx-text-lg);
+  font-weight: 700;
+}
+.gx-brand-sub {
+  color: var(--dx-mut);
+  font-weight: 500;
+  font-size: var(--dx-text-sm);
+}
+.gx-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dx-space-1);
+}
+.gx-nav-link {
+  padding: 4px var(--dx-space-2);
+  border-radius: var(--dx-radius);
+  color: var(--dx-ink-2);
+  text-decoration: none;
+  font-size: var(--dx-text-sm);
+  font-weight: 500;
+}
+.gx-nav-link:hover {
+  color: var(--dx-ink);
+  background: var(--dx-panel-2);
+}
+.gx-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--dx-space-2);
+  margin-left: auto;
+}
+
+.gx-hint {
+  max-width: 1200px;
+  margin: var(--dx-space-4) auto 0;
+  padding: 0 var(--dx-space-5);
+  color: var(--dx-mut);
+  font-size: var(--dx-text-sm);
+  line-height: 1.5;
+}
+
+/* --- sections ------------------------------------------------------------ */
+.gx-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--dx-space-5);
+}
+.gx-sec {
+  margin-top: var(--dx-space-7);
+  scroll-margin-top: 72px;
+}
+.gx-sec-title {
+  margin: 0 0 var(--dx-space-4);
+  padding-bottom: var(--dx-space-2);
+  border-bottom: 1px solid var(--dx-line);
+  font-size: var(--dx-text-xl);
+  font-weight: 700;
+}
+
+.gx-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--dx-space-4);
+  align-items: start;
+}
+.gx-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-3);
+  padding: var(--dx-space-4);
+  background: var(--dx-panel);
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-radius-lg);
+  min-width: 0;
+}
+.gx-demo.is-wide {
+  grid-column: 1 / -1;
+}
+.gx-demo-label {
+  font-size: var(--dx-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dx-mut);
+}
+.gx-demo-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--dx-space-3);
+  min-width: 0;
+}
+.gx-demo-body > * {
+  min-width: 0;
+}
+
+/* --- misc demo surfaces -------------------------------------------------- */
+.gx-ctx {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 56px;
+  border: 1px dashed var(--dx-line);
+  border-radius: var(--dx-radius);
+  color: var(--dx-mut);
+  font-size: var(--dx-text-sm);
+}
+.gx-splitwrap {
+  width: 100%;
+  height: 160px;
+}
+/* contain the full-height appShell grid inside the demo card */
+.gx-shellwrap {
+  width: 100%;
+  height: 460px;
+  overflow: hidden;
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-radius-lg);
+  transform: translateZ(0);
+}
+.gx-shellwrap .dx-shell {
+  min-height: 100%;
+  height: 100%;
+}
+.gx-shellcontent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-3);
+}
+.gx-shelltitle {
+  margin: 0;
+  font-size: var(--dx-text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.gx-shellsub {
+  margin: 0 0 var(--dx-space-2);
+  color: var(--dx-mut);
+  font-size: var(--dx-text-md);
+}
+.gx-cardtext {
+  margin: 0;
+  color: var(--dx-ink-2);
+  font-size: var(--dx-text-md);
+}
+.gx-pane {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--dx-ink-2);
+  font-size: var(--dx-text-sm);
+}
+.gx-vlistwrap {
+  width: 100%;
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-radius);
+  overflow: hidden;
+}
+.gx-vrow {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--dx-space-3);
+  border-bottom: 1px solid var(--dx-line);
+  font-size: var(--dx-text-sm);
+}
+.gx-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-4);
+}
+
+/* --- icon catalogue ------------------------------------------------------ */
+.gx-icons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--dx-space-3);
+  width: 100%;
+}
+.gx-ico {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: var(--dx-space-3) var(--dx-space-2);
+  border: 1px solid var(--dx-line);
+  border-radius: var(--dx-radius);
+  min-width: 0;
+}
+.gx-ico-glyph {
+  color: var(--dx-ink);
+  line-height: 0;
+}
+.gx-ico-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--dx-mut);
+}
+
+/* --- phone frame (mobile section) ---------------------------------------
+   `transform` makes the frame the containing block for the kit's
+   position:fixed surfaces (tab bar, FAB, sheets), so they dock to the phone
+   instead of the whole page. */
+.gx-phone {
+  position: relative;
+  width: 328px;
+  max-width: 100%;
+  height: 600px;
+  margin: 0 auto;
+  transform: translateZ(0);
+  overflow: hidden;
+  background: var(--dx-bg);
+  border: 10px solid color-mix(in srgb, var(--dx-ink) 85%, transparent);
+  border-radius: 36px;
+  box-shadow: var(--dx-shadow-lg);
+}
+.gx-phone-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding-bottom: 72px; /* clear the fixed tab bar */
+}
+.gx-phone-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--dx-space-4) var(--dx-space-4) var(--dx-space-3);
+  background: var(--dx-panel);
+  border-bottom: 1px solid var(--dx-line);
+  font-weight: 700;
+}
+.gx-phone-list {
+  display: flex;
+  flex-direction: column;
+}
+.gx-phone-row {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 var(--dx-space-4);
+  background: var(--dx-panel);
+  border-bottom: 1px solid var(--dx-line);
+  font-size: var(--dx-text-md);
+}
+.gx-phone-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dx-space-2);
+  padding: var(--dx-space-4);
+}

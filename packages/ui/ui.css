@@ -35,6 +35,11 @@
   --dx-accent-ink: #ffffff;
   --dx-accent-hover: #1d4ed8;
   --dx-accent-weak: #eff4fe;
+  /* Primary action = high-contrast ink (black on light, white on dark) — the
+     Sentinel look. Links/focus keep the blue --dx-accent. */
+  --dx-primary: var(--dx-gray-900);
+  --dx-primary-ink: #ffffff;
+  --dx-primary-hover: var(--dx-gray-700);
   --dx-pos: #16a34a;
   --dx-pos-weak: #f0fdf4;
   --dx-neg: #dc2626;
@@ -44,20 +49,31 @@
   --dx-info: #0891b2;
   --dx-info-weak: #ecfeff;
 
-  /* --- Sidebar (dark by design) ---------------------------------------- */
+  /* --- Dark surface (terminal, code panes) — kept dark in both themes --- */
   --dx-side: #0b1220;
   --dx-side-ink: #cbd5e1;
   --dx-side-ink-dim: #7c8aa3;
   --dx-side-active: #1e293b;
   --dx-side-hover: #121c2e;
 
+  /* --- Shell navigation (light, matches the panel — the Sentinel sidebar).
+     Separate from --dx-side so the terminal stays dark. Flips with the theme
+     because it resolves to panel/ink tokens. ----------------------------- */
+  --dx-nav-bg: var(--dx-panel);
+  --dx-nav-ink: var(--dx-ink-2);
+  --dx-nav-ink-dim: var(--dx-mut);
+  --dx-nav-ink-strong: var(--dx-ink);
+  --dx-nav-active: var(--dx-gray-100);
+  --dx-nav-hover: var(--dx-gray-50);
+  --dx-nav-line: var(--dx-line);
+
   /* --- Focus ring ------------------------------------------------------- */
   --dx-ring: color-mix(in srgb, var(--dx-accent) 45%, transparent);
 
-  /* --- Radii (graduated) ------------------------------------------------ */
-  --dx-radius-sm: 6px;
-  --dx-radius: 8px;        /* v1 default was 12px — tightened */
-  --dx-radius-lg: 12px;
+  /* --- Radii (graduated, softened to the Sentinel look) ----------------- */
+  --dx-radius-sm: 7px;
+  --dx-radius: 10px;
+  --dx-radius-lg: 14px;
   --dx-radius-full: 999px;
 
   /* --- Shadows (layered, subtle) --------------------------------------- */
@@ -69,17 +85,17 @@
   --dx-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --dx-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* --- Typographic scale (compact; px for deterministic layout) --------- */
-  --dx-text-xs: 11.5px;
-  --dx-text-sm: 12.5px;
-  --dx-text-md: 13.5px;   /* body */
-  --dx-text-lg: 15px;
-  --dx-text-xl: 17px;
-  --dx-text-2xl: 21px;
-  --dx-text-3xl: 27px;
-  --dx-text-4xl: 34px;
+  /* --- Typographic scale (a touch larger for the spacious Sentinel feel) - */
+  --dx-text-xs: 12px;
+  --dx-text-sm: 13px;
+  --dx-text-md: 14px;     /* body */
+  --dx-text-lg: 15.5px;
+  --dx-text-xl: 18px;
+  --dx-text-2xl: 22px;
+  --dx-text-3xl: 28px;
+  --dx-text-4xl: 36px;
   --dx-leading-tight: 1.25;
-  --dx-leading-normal: 1.55;
+  --dx-leading-normal: 1.6;
   --dx-weight-normal: 400;
   --dx-weight-medium: 500;
   --dx-weight-semibold: 600;
@@ -98,12 +114,12 @@
   /* --- Control sizing — Bootstrap-style scale (xs·sm·md·lg·xl·xxl ≡ 1–6).
      Controls read the generic --dx-ctl-* vars; the .dx-sz-* classes override
      them. md is the default (no class). ------------------------------------ */
-  --dx-ctl-h: 32px;            /* md — the height controls read by default */
-  --dx-ctl-pad-x: 12px;
+  --dx-ctl-h: 34px;            /* md — the height controls read by default */
+  --dx-ctl-pad-x: 13px;
   --dx-ctl-fs: var(--dx-text-md);
   /* legacy aliases still referenced by the shell/table chrome */
-  --dx-ctl-h-sm: 28px;
-  --dx-ctl-h-md: 32px;
+  --dx-ctl-h-sm: 30px;
+  --dx-ctl-h-md: 34px;
   --dx-ctl-pad-sm: 0 10px;
   --dx-ctl-pad-md: 0 12px;
 }
@@ -142,6 +158,9 @@
   --dx-accent: #3b82f6;
   --dx-accent-hover: #60a5fa;
   --dx-accent-weak: #16233f;
+  --dx-primary: #f1f5f9;
+  --dx-primary-ink: #0b1120;
+  --dx-primary-hover: #e2e8f0;
   --dx-pos-weak: #0e2a1c;
   --dx-neg-weak: #2a1515;
   --dx-warn-weak: #2a2110;
@@ -177,6 +196,9 @@
     --dx-accent: #3b82f6;
     --dx-accent-hover: #60a5fa;
     --dx-accent-weak: #16233f;
+    --dx-primary: #f1f5f9;
+    --dx-primary-ink: #0b1120;
+    --dx-primary-hover: #e2e8f0;
     --dx-pos-weak: #0e2a1c;
     --dx-neg-weak: #2a1515;
     --dx-warn-weak: #2a2110;
@@ -195,16 +217,17 @@ body { margin: 0; background: var(--dx-bg); color: var(--dx-ink); font: var(--dx
 
 /* --- App shell --------------------------------------------------------- */
 .dx-shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; }
-.dx-side { background: var(--dx-side); color: var(--dx-side-ink); display: flex; flex-direction: column; padding: var(--dx-space-4) var(--dx-space-3); gap: var(--dx-space-1); }
-.dx-brand { font-size: var(--dx-text-xl); font-weight: 700; color: #fff; letter-spacing: -.01em; padding: 6px 8px 14px; display: flex; align-items: center; gap: 9px; }
+.dx-side { background: var(--dx-nav-bg); color: var(--dx-nav-ink); display: flex; flex-direction: column; padding: var(--dx-space-4) var(--dx-space-3); gap: var(--dx-space-1); border-right: 1px solid var(--dx-nav-line); }
+.dx-brand { font-size: var(--dx-text-xl); font-weight: 700; color: var(--dx-nav-ink-strong); letter-spacing: -.02em; padding: 6px 8px 16px; display: flex; align-items: center; gap: 9px; }
 .dx-nav { display: flex; flex-direction: column; gap: 2px; }
-.dx-nav-item { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: var(--dx-radius-sm); color: var(--dx-side-ink); font-size: var(--dx-text-md); font-weight: 500; cursor: pointer; border: 0; background: transparent; text-align: left; width: 100%; line-height: 1.3; }
-.dx-nav-item:hover { background: var(--dx-side-hover); color: #e2e8f0; }
-.dx-nav-item.is-active { background: var(--dx-side-active); color: #fff; }
-.dx-nav-item .dx-ico { width: 16px; height: 16px; flex: none; opacity: .85; }
-.dx-nav-item .dx-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .45; flex: none; }
+.dx-nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--dx-radius-sm); color: var(--dx-nav-ink); font-size: var(--dx-text-md); font-weight: 500; cursor: pointer; border: 0; background: transparent; text-align: left; width: 100%; line-height: 1.3; transition: background .12s, color .12s; }
+.dx-nav-item:hover { background: var(--dx-nav-hover); color: var(--dx-nav-ink-strong); }
+.dx-nav-item.is-active { background: var(--dx-nav-active); color: var(--dx-nav-ink-strong); font-weight: 600; }
+.dx-nav-item .dx-ico { width: 16px; height: 16px; flex: none; opacity: .75; }
+.dx-nav-item.is-active .dx-ico { opacity: 1; }
+.dx-nav-item .dx-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .4; flex: none; }
 .dx-nav-item.is-active .dx-dot { opacity: 1; background: var(--dx-accent); }
-.dx-nav-group { font-size: var(--dx-text-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--dx-side-ink-dim); font-weight: 600; padding: 14px 10px 5px; }
+.dx-nav-group { font-size: var(--dx-text-xs); letter-spacing: .07em; text-transform: uppercase; color: var(--dx-nav-ink-dim); font-weight: 600; padding: 16px 10px 6px; }
 
 .dx-main { display: flex; flex-direction: column; min-width: 0; }
 .dx-top { display: flex; align-items: center; gap: var(--dx-space-4); padding: 10px var(--dx-space-6); background: var(--dx-panel); border-bottom: 1px solid var(--dx-line); min-height: 52px; }
@@ -247,13 +270,13 @@ body { margin: 0; background: var(--dx-bg); color: var(--dx-ink); font: var(--dx
 /* Keep the table chrome compact regardless of the global default. */
 .dx-tbl-toolbar .dx-btn, .dx-tbl-foot .dx-btn { --dx-ctl-h: 28px; --dx-ctl-fs: var(--dx-text-sm); }
 .dx-btn:hover { background: var(--dx-gray-50); border-color: var(--dx-gray-300); }
-.dx-btn.is-primary { background: var(--dx-accent); border-color: var(--dx-accent); color: var(--dx-accent-ink); }
-.dx-btn.is-primary:hover { background: var(--dx-accent-hover); border-color: var(--dx-accent-hover); }
+.dx-btn.is-primary { background: var(--dx-primary); border-color: var(--dx-primary); color: var(--dx-primary-ink); }
+.dx-btn.is-primary:hover { background: var(--dx-primary-hover); border-color: var(--dx-primary-hover); }
 .dx-btn:disabled { opacity: .5; cursor: default; }
 .dx-tbl-wrap { overflow-x: auto; }
 table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-md); }
 .dx-tbl th, .dx-tbl td { text-align: left; padding: 9px 16px; border-top: 1px solid var(--dx-line2); vertical-align: middle; white-space: nowrap; }
-.dx-tbl thead th { border-top: 0; color: var(--dx-mut); font-weight: 600; font-size: var(--dx-text-xs); letter-spacing: .04em; text-transform: uppercase; background: var(--dx-panel-2); }
+.dx-tbl thead th { border-top: 0; border-bottom: 1px solid var(--dx-line); color: var(--dx-mut); font-weight: 600; font-size: var(--dx-text-xs); letter-spacing: .04em; text-transform: uppercase; background: var(--dx-panel-2); }
 .dx-tbl th.is-sortable { cursor: pointer; user-select: none; }
 .dx-tbl th.is-sortable:hover { color: var(--dx-ink); }
 .dx-tbl th .dx-arrow { color: var(--dx-accent); margin-left: 5px; font-size: 10px; }
@@ -799,7 +822,9 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 .dx-tbl th.dx-ta-center, .dx-tbl td.dx-ta-center { text-align: center; }
 .dx-tbl th.dx-ta-right, .dx-tbl td.dx-ta-right { text-align: right; }
 .dx-tbl.is-compact th, .dx-tbl.is-compact td { padding-top: 5px; padding-bottom: 5px; }
-.dx-tbl.is-striped tbody tr:nth-child(even) { background: var(--dx-panel-2); }
+/* Zebra: a theme-aware ink wash (reads in both light and dark, unlike panel-2
+   which is near-invisible on white). Hover still wins over the stripe. */
+.dx-tbl.is-striped tbody tr:nth-child(even) { background: color-mix(in srgb, var(--dx-ink) 3%, transparent); }
 .dx-tbl.is-striped tbody tr:hover { background: var(--dx-gray-50); }
 .dx-tbl tbody tr.is-click { cursor: pointer; }
 .dx-tbl tbody tr.is-click:focus-visible { outline: 2px solid var(--dx-ring); outline-offset: -2px; }
@@ -1603,7 +1628,10 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 }
 
 /* === Number input (stepper) ============================================== */
-.dx-num {
+/* Scoped with :has(> .dx-num-input) so these box styles reach only the stepper
+   widget and never a data-table numeric cell (`td.dx-num`), which shares the
+   bare class name but must stay a plain right-aligned cell. */
+.dx-num:has(> .dx-num-input) {
   display: inline-flex;
   align-items: stretch;
   height: var(--dx-ctl-h);
@@ -1614,7 +1642,7 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
   overflow: hidden;
   transition: border-color .12s ease, box-shadow .12s ease;
 }
-.dx-num:focus-within {
+.dx-num:has(> .dx-num-input):focus-within {
   border-color: var(--dx-accent);
   box-shadow: 0 0 0 3px var(--dx-ring);
 }
