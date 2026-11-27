@@ -357,7 +357,15 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
         seen.add(k);
         let row = rows.get(k);
         if (!row) {
-          const inst = instantiate(lr.render(item, i));
+          // Instantiate the row in its OWN detached root, NOT under this effect's
+          // owner: a row is rendered once and then REUSED across reconciles, but a
+          // re-run of this effect disposes everything it owns — which would kill the
+          // row's reactive bindings and freeze it on its first value. The root ties
+          // the row's lifetime to explicit eviction/teardown (row.dispose) instead.
+          const inst = createRoot((disposeRow) => {
+            const made = instantiate(lr.render(item, i));
+            return { nodes: made.nodes, dispose: disposeRow };
+          });
           row = { nodes: inst.nodes, dispose: inst.dispose };
           rows.set(k, row);
         }

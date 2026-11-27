@@ -1,0 +1,44 @@
+{
+  "name": "@dxjs/stream",
+  "version": "1.2.0",
+  "description": "dxjs streams/queues: reactive streamFeed over SSE/WebSocket/AsyncIterable and a Kafka-envelope source, with batching, key coalescing, windowing (ring buffer) and backpressure — mass-data ingestion the UI consumes without a re-render per message.",
+  "license": "MIT OR Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "browser": "./dist/index.js",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "//exports": "types -> .d.ts, published default -> dist/index.js; the 'development' condition (node --conditions=development) resolves to TS source for intra-repo dev/tests.",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "dependencies": {
+    "@dxjs/core": "1.2.0"
+  },
+  "keywords": [
+    "dxjs",
+    "stream",
+    "queue",
+    "kafka",
+    "sse",
+    "websocket",
+    "backpressure",
+    "reactive"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ngolacloud/dxjs.git",
+    "directory": "packages/stream"
+  }
+}
