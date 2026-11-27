@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/jsx",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "dxjs optional type-safe JSX runtime: <tags/> compile to the reactive renderer — no VDOM, no eval, strict-CSP safe, interleaves with html``.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -38,7 +38,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/dom": "1.2.0"
+    "@dxjs/dom": "1.3.0"
   },
   "keywords": [
     "dxjs",
