@@ -4,7 +4,50 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
-## Unreleased
+## 1.3.0 — 2026-11-27
+
+Additive release — one new package and new `@dxjs/dom` exports; every 1.2.0
+program keeps compiling and behaving. It also fixes the reactive bindings of
+keyed `list()` rows, which went dead after the list first changed.
+
+Distribution is unchanged from 1.2.0: the packages are **not on npm**. Each one
+is attached to the GitHub Release as an `npm pack` tarball
+(`npm install <tarball-url>`), now including `@dxjs/stream`.
+
+### Streams and async rendering
+
+- **@dxjs/stream** (new) — `streamFeed` consumes a `StreamSource`
+  (`fromAsyncIterable`, `fromEventTarget`, `fromWebSocket`, `fromEventSource`, or
+  a raw `AsyncIterable`) and exposes a reactive array. A burst of pushes is folded
+  in ONE flush per cadence tick (`flush`: `"microtask"` by default, `"raf"`, or a
+  trailing debounce in ms — `makeScheduler`), not one update per message.
+  Optional `key` coalescing (upsert, last-write-wins) and `order`, a ring buffer
+  of the newest `window` items, and `backpressure` on the pending buffer
+  (`drop-oldest`, `drop-newest`, `bounded`); every drop and eviction is counted in
+  `dropped()`. Also `size()`, `lastBatch()`, `pause()`/`resume()`, `clear()` and
+  `stop()`; the source is unsubscribed when the owner is disposed, and a push
+  after `stop()` is ignored. `kafkaSource`/`kafkaFeed` take one JSON
+  `KafkaRecord` per message from a server-side gateway over SSE or WebSocket
+  (browsers do not speak the Kafka protocol), coalesce by record key (or
+  `partition:offset`) and keep the array ordered by offset, so records redelivered
+  after a reconnect collapse to the latest value.
+- **@dxjs/dom** — async control-flow helpers, built on `html` + `list` (no
+  `innerHTML`, no `eval`) and accepting a `Resource`, a `Query` or a hand-rolled
+  source structurally (`@dxjs/dom` does not depend on those packages):
+  - `asyncView` (alias `suspense`) renders the pending / error / empty / data
+    states of a source; `keepPrevious` (default `true`) keeps the last data on
+    screen during a refetch.
+  - `awaitBlock` awaits a promise, or a thunk that re-runs when a signal it reads
+    changes; a superseded promise never wins, and teardown invalidates the
+    in-flight run.
+  - `asyncList` binds the rows of an array source once, by key, so a refetch only
+    touches the keys that changed; the pending/error/empty placeholder is a
+    separate child.
+  - `streamList` binds a `streamFeed` (any `Accessor<T[]>`) by key: only new or
+    changed keys call `render()` — no re-render per message.
+- **`examples/live-feed`** — a `streamFeed` of Kafka-envelope order events,
+  keyed and windowed, rendered with `streamList`, with `size()`/`dropped()`
+  counters; its tests drive a deterministic high-cadence source.
 
 ### Fixes
 
