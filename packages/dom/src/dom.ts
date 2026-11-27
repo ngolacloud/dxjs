@@ -345,28 +345,49 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
   };
 
   // Keyed list: reuse rows by key (identity preserved), reorder by moving nodes.
+  //
+  // Each row is built inside its OWN root, which lives exactly as long as the row.
+  // Built directly inside the list effect, the row's bindings would be owned by
+  // that effect — and an effect disposes everything it owns every time it re-runs,
+  // so the first change to the list would kill the bindings of the rows it keeps.
+  // The root also runs `render` untracked: a signal read while building a row
+  // never subscribes the list itself.
   if (isList(value)) {
     const lr = value as ListResult<unknown>;
-    const rows = new Map<unknown, { nodes: ChildNode[]; dispose: Disposer }>();
+    const rows = new Map<unknown, Instance>();
+    const disposeRows = (): void => {
+      for (const [, row] of rows) {
+        row.dispose();
+        for (const n of row.nodes) if (n.parentNode) n.parentNode.removeChild(n);
+      }
+      rows.clear();
+    };
+    const buildRow = (item: unknown, i: number): Instance =>
+      createRoot((disposeRoot) => {
+        try {
+          const inst = instantiate(lr.render(item, i));
+          return {
+            nodes: inst.nodes,
+            dispose: () => {
+              inst.dispose();
+              disposeRoot();
+            },
+          };
+        } catch (err) {
+          disposeRoot(); // a row that failed to build leaves no live effects behind
+          throw err;
+        }
+      });
     ds.push(effect(() => {
       const arr = typeof lr.items === "function" ? lr.items() : lr.items;
       const seen = new Set<unknown>();
-      const ordered: Array<{ nodes: ChildNode[]; dispose: Disposer }> = [];
+      const ordered: Instance[] = [];
       arr.forEach((item, i) => {
         const k = lr.key(item, i);
         seen.add(k);
         let row = rows.get(k);
         if (!row) {
-          // Instantiate the row in its OWN detached root, NOT under this effect's
-          // owner: a row is rendered once and then REUSED across reconciles, but a
-          // re-run of this effect disposes everything it owns — which would kill the
-          // row's reactive bindings and freeze it on its first value. The root ties
-          // the row's lifetime to explicit eviction/teardown (row.dispose) instead.
-          const inst = createRoot((disposeRow) => {
-            const made = instantiate(lr.render(item, i));
-            return { nodes: made.nodes, dispose: disposeRow };
-          });
-          row = { nodes: inst.nodes, dispose: inst.dispose };
+          row = buildRow(item, i);
           rows.set(k, row);
         }
         ordered.push(row);
@@ -381,10 +402,10 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
       const host = into();
       for (const row of ordered) for (const n of row.nodes) host.insertBefore(n, anchor);
     }));
-    ds.push(() => {
-      for (const [, row] of rows) row.dispose();
-      rows.clear();
-    });
+    // Row roots are not in the owner tree, so tear them down with the list: when its
+    // instance is disposed (`ds`) and, as a backstop, with the scope that built it.
+    ds.push(disposeRows);
+    onCleanup(disposeRows);
     return;
   }
 
