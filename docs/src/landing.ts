@@ -50,7 +50,7 @@ export const LandingPage = component(() => {
           <div class="lp-cta">
             ${button({ label: () => t("landing.ctaStart"), variant: "primary", size: "md", onClick: () => go("start") })}
             ${button({ label: () => t("landing.ctaGallery"), size: "md", onClick: () => go("gallery") })}
-            ${button({ label: () => t("landing.ctaTransport"), size: "md", onClick: () => { window.location.href = "transport.html"; } })}
+            ${button({ label: () => t("landing.ctaTransport"), size: "md", onClick: () => { window.location.href = "./"; } })}
             ${button({ label: () => t("landing.ctaArch"), variant: "ghost", size: "md", onClick: () => go("overview") })}
           </div>
           <p class="lp-bilingual">${() => t("landing.bilingualNote")}</p>

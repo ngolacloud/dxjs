@@ -30,7 +30,9 @@ await build({
 console.log("built docs/dist/docs.app.js");
 
 for (const [src, name] of [
-  ["docs/index.html", "index.html"],
+  // The docs app (packages, learn, gallery, per-component pages) → /docs.html; the
+  // site root is the transport guide (written below as index.html).
+  ["docs/index.html", "docs.html"],
   ["docs/docs.css", "docs.css"],
   ["packages/ui/ui.css", "ui.css"],
   ["packages/charts/charts.css", "charts.css"],
@@ -80,6 +82,8 @@ inject("dx:ui-css", `<style>${uiCss}</style>`);
 inject("dx:project", renderProject());
 page = page.replaceAll("__DXJS_VERSION__", version);
 inject("dx:components-js", `<script>${compJs}</script>`);
+// The guide is the site's front door (/), and stays at /transport.html for old links.
+writeFileSync(join(DIST, "index.html"), page);
 writeFileSync(join(DIST, "transport.html"), page);
 console.log(`built docs/dist/transport.html (${(page.length / 1024).toFixed(0)} KB, component bundle ${(compJs.length / 1024).toFixed(0)} KB)`);
 

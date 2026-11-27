@@ -53,7 +53,7 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
       });
     });
 
-    await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: "networkidle" });
+    await page.goto(`http://127.0.0.1:${port}/docs.html`, { waitUntil: "networkidle" }); // the site root is the transport guide
     await page.waitForFunction(() => window.__dxready === true, { timeout: 5000 });
 
     // The delonix-style shell rendered with the grouped side nav.

@@ -8,6 +8,30 @@ the good ideas and discards the `eval`-based rendering.
 > surgical DOM updates, and is built to run under the strict, hash-pinned CSP of
 > the Seiva Console Admin — **no `eval`, no inline handlers, escape by default**.
 
+## Documentation
+
+**→ [ngolacloud.github.io/dxjs](https://ngolacloud.github.io/dxjs/)** — the guide: run
+dxjs in the browser with no build, connect it to a backend in any language (REST,
+gRPC, RPC, SOAP, SSE, WebSocket), a full project from backend to frontend
+([`examples/tarefas`](examples/tarefas)), and the 81 `@dxjs/ui` components with
+live previews. Bilingual (pt-AO / EN).
+
+- [Reference](https://ngolacloud.github.io/dxjs/docs.html) — packages, the learn
+  path, the component gallery and one page per component.
+- [Components guide](https://ngolacloud.github.io/dxjs/components.html) — the kit's
+  markup and classes, one page per component.
+
+## Install
+
+The `@dxjs/*` packages ship as tarballs on each
+[GitHub Release](https://github.com/ngolacloud/dxjs/releases). **They are not on
+the npm registry** — the `@dxjs` name there belongs to an unrelated project, so
+`npm install @dxjs/…` would install someone else's code. Install from the release:
+
+```sh
+npm install https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-{core,dom,component}-1.5.0.tgz
+```
+
 See **[`DESIGN.md`](DESIGN.md)** for the full technical design (reactivity model,
 rendering, component model, transport REST/gRPC/SSE, SSR/edge, security, build).
 
@@ -66,7 +90,8 @@ dxjs runs **vanilla in the browser** (open an `.html`, no bundler) and in **Node
 (core+dom+component+ui) and `cdn/dxjs-charts.js`. The **official docs site is itself
 a dxjs app** (dogfooding) — every component shown with its code beside the live
 result — in [`docs/`](docs) (`npm run docs:build`, proven under strict CSP by
-`docs/test/docs.test.mjs`). A frank **dxjs-vs-React** assessment for the
+`docs/test/docs.test.mjs`) and published at
+[ngolacloud.github.io/dxjs](https://ngolacloud.github.io/dxjs/). A frank **dxjs-vs-React** assessment for the
 delonix-console rewrite lives in [`docs/parity/react-parity.md`](docs/parity/react-parity.md).
 
 ## Develop
