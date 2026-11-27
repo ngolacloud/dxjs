@@ -39,6 +39,7 @@
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --measure: 70ch;
   --lang-py: #3b7aad; --lang-go: #00add8; --lang-rs: #e43717; --lang-node: #3f9e3f;
+  --lang-php: #6a74b3; --lang-ts: #2f74c0; --lang-java: #d9a021;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -66,6 +67,8 @@ code { font-family: var(--mono); font-size: .9em; }
 .pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; background: var(--petal); color: #fff !important; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px -2px rgba(229,72,77,.6); }
 .pill:hover { background: #d53b40; }
 .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+.langtoggle { font: inherit; font-size: 13px; font-weight: 700; font-family: var(--ui); cursor: pointer; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); border-radius: 8px; padding: 6px 11px; letter-spacing: .04em; }
+.langtoggle:hover { border-color: var(--accent); color: var(--accent); }
 
 /* --- shell --------------------------------------------------------------- */
 .shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 48px; }
@@ -127,6 +130,7 @@ pre code { font-size: 13.5px; line-height: 1.75; color: var(--code-ink); white-s
 .tablist button[aria-selected="true"] { color: var(--ink); background: var(--surface); border-bottom-color: var(--accent); }
 .tablist .ld { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .lang-py { background: var(--lang-py); } .lang-go { background: var(--lang-go); } .lang-rs { background: var(--lang-rs); } .lang-node { background: var(--lang-node); }
+.lang-php { background: var(--lang-php); } .lang-ts { background: var(--lang-ts); } .lang-java { background: var(--lang-java); }
 .tabs [role="tabpanel"] figure.code { margin: 0; border: 0; border-radius: 0; box-shadow: none; }
 .tabs [role="tabpanel"] figure.code figcaption { background: var(--surface); border-bottom: 1px solid var(--line); }
 .tabs [role="tabpanel"][hidden] { display: none; }
@@ -199,6 +203,7 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
       <a href="#backend">Backends</a>
       <a href="#adapters">Adapters</a>
       <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <button class="langtoggle" type="button" aria-label="Switch to English">EN</button>
       <a class="pill" href="#backend"><span class="dot" aria-hidden="true"></span> Connect a backend</a>
     </nav>
   </div>
@@ -214,25 +219,23 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
       <a href="#transport">The transport port</a>
     </div>
     <div class="side-group">
-      <h4>Backend → dxjs</h4>
-      <a href="#backend">REST · your language</a>
-      <a href="#backend-sse">Live (SSE) · your language</a>
+      <h4>Protocols</h4>
+      <a href="#protocols">Which protocol?</a>
+      <a href="#backend">REST</a>
+      <a href="#grpc">gRPC</a>
+      <a href="#rpc">RPC · in-process</a>
+      <a href="#soap">SOAP</a>
     </div>
     <div class="side-group">
-      <h4>Adapters</h4>
-      <a href="#adapters">restAdapter</a>
-      <a href="#connect">connectAdapter</a>
-      <a href="#sse">sseAdapter</a>
-      <a href="#ws">wsAdapter</a>
-      <a href="#inmemory">inMemoryAdapter</a>
-      <a href="#embedded">embeddedAdapter</a>
+      <h4>Streaming</h4>
+      <a href="#backend-sse">SSE · live</a>
+      <a href="#ws">WebSocket</a>
     </div>
     <div class="side-group">
       <h4>Reactive data</h4>
       <a href="#resource">resource()</a>
       <a href="#livesignal">liveSignal</a>
       <a href="#openapi">openapiClient</a>
-      <a href="#matrix">Which adapter?</a>
     </div>
   </aside>
 
@@ -355,12 +358,36 @@ export const watchPrices = method&lt;{ symbol: string }, Tick&gt;({
 });</code></pre></figure>
     </section>
 
-    <!-- ===================== BACKEND: REST, 4 languages ===================== -->
+    <!-- ===================== PROTOCOL CHOOSER ===================== -->
+    <section class="doc" id="protocols">
+      <p class="eyebrow">Protocols</p>
+      <h2>Which protocol should I use?</h2>
+      <p class="sub">dxjs speaks REST, gRPC, in-process RPC and SOAP through the same
+        <code>createRpcClient</code> — the UI calls <code>api.call(...)</code> regardless of the wire.
+        Pick one and jump to its complete example.</p>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Protocol</th><th>Adapter</th><th>Carries</th><th>Capabilities</th><th>Reach for it when…</th></tr></thead>
+          <tbody>
+            <tr><td><a href="#backend">REST</a></td><td><code>restAdapter</code></td><td>HTTP + JSON</td><td>unary</td><td>a plain REST/JSON API — the default.</td></tr>
+            <tr><td><a href="#grpc">gRPC</a></td><td><code>connectAdapter</code></td><td>Connect / gRPC-web</td><td>unary</td><td>the backend is a gRPC service with Connect.</td></tr>
+            <tr><td><a href="#rpc">RPC</a></td><td><code>inMemoryAdapter</code></td><td>function call</td><td>serverStream · in-process</td><td>tests, demos, or a monolith before it splits.</td></tr>
+            <tr><td><a href="#soap">SOAP</a></td><td><code>soapAdapter</code></td><td>XML envelope</td><td>unary</td><td>a legacy SOAP/WSDL service.</td></tr>
+            <tr><td><a href="#backend-sse">SSE</a></td><td><code>sseAdapter</code></td><td>text/event-stream</td><td>serverStream</td><td>server→client live updates over plain HTTP.</td></tr>
+            <tr><td><a href="#ws">WebSocket</a></td><td><code>wsAdapter</code></td><td>WebSocket</td><td>serverStream · bidi</td><td>low-latency or two-way streams (chat, presence).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><span class="ci">⚑</span><p>Need unary over one transport and streams over another? <code>composeTransport(unary, stream)</code>
+        stitches them into one client — exactly what the SSE example does with REST&nbsp;+&nbsp;SSE.</p></div>
+    </section>
+
+    <!-- ===================== PROTOCOL: REST (7 languages) ===================== -->
     <section class="doc" id="backend">
       <p class="eyebrow">Backend → dxjs</p>
       <h2>Your backend, your language</h2>
       <p class="sub">The same two endpoints — <code>GET /v1/users/:id</code> and <code>POST /v1/users</code> — in
-        Python, Go, Rust and Node.js, each with permissive CORS so the browser can reach it. Then connect from dxjs.</p>
+        Python, Go, Rust, Node.js, PHP, TypeScript and Java, each with permissive CORS so the browser can reach it. Then connect from dxjs.</p>
 
       <div class="pair-label be"><span class="n">BE</span> Backend · pick a language</div>
       <div class="tabs" data-tabs>
@@ -369,6 +396,9 @@ export const watchPrices = method&lt;{ symbol: string }, Tick&gt;({
           <button role="tab" aria-selected="false" tabindex="-1" id="r-go" aria-controls="rp-go"><span class="ld lang-go"></span> Go</button>
           <button role="tab" aria-selected="false" tabindex="-1" id="r-rs" aria-controls="rp-rs"><span class="ld lang-rs"></span> Rust</button>
           <button role="tab" aria-selected="false" tabindex="-1" id="r-node" aria-controls="rp-node"><span class="ld lang-node"></span> Node.js</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-php" aria-controls="rp-php"><span class="ld lang-php"></span> PHP</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-ts" aria-controls="rp-ts"><span class="ld lang-ts"></span> TypeScript</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="r-java" aria-controls="rp-java"><span class="ld lang-java"></span> Java</button>
         </div>
         <div role="tabpanel" id="rp-py" aria-labelledby="r-py">
           <figure class="code"><figcaption><span class="fname">app.py</span><span class="run">pip install fastapi uvicorn · uvicorn app:api --port 8000</span><button class="copy">Copy</button></figcaption>
@@ -482,6 +512,82 @@ createServer((req, res) =&gt; {
   res.writeHead(404, CORS).end("{}");
 }).listen(8000);</code></pre></figure>
         </div>
+        <div role="tabpanel" id="rp-php" aria-labelledby="r-php" hidden>
+          <figure class="code"><figcaption><span class="fname">app.php</span><span class="run">php -S 127.0.0.1:8000 app.php</span><button class="copy">Copy</button></figcaption>
+<pre><code>&lt;?php
+# the built-in server routes every request through this one file
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: authorization, content-type");
+header("Content-Type: application/json");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
+
+$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+if (preg_match('#^/v1/users/(.+)$#', $path, $m)) {
+    echo json_encode(["id" =&gt; $m[1], "name" =&gt; "Ana"]);
+} elseif ($path === "/v1/users" &amp;&amp; $_SERVER["REQUEST_METHOD"] === "POST") {
+    $body = json_decode(file_get_contents("php://input"), true) ?: [];
+    echo json_encode(["id" =&gt; "2", "name" =&gt; $body["name"] ?? null]);
+} else {
+    http_response_code(404);
+    echo "{}";
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="rp-ts" aria-labelledby="r-ts" hidden>
+          <figure class="code"><figcaption><span class="fname">server.ts</span><span class="run">deno run --allow-net server.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>// Deno: native TypeScript, built-in HTTP server, no deps
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, content-type",
+};
+
+type User = { id: string; name: string };
+
+Deno.serve({ port: 8000 }, async (req: Request): Promise&lt;Response&gt; =&gt; {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  const { pathname } = new URL(req.url);
+  const m = pathname.match(/^\/v1\/users\/(.+)$/);
+  if (req.method === "GET" &amp;&amp; m) {
+    return Response.json({ id: m[1], name: "Ana" } satisfies User, { headers: CORS });
+  }
+  if (req.method === "POST" &amp;&amp; pathname === "/v1/users") {
+    const { name } = (await req.json()) as { name: string };
+    return Response.json({ id: "2", name } satisfies User, { headers: CORS });
+  }
+  return new Response("{}", { status: 404, headers: CORS });
+});</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="rp-java" aria-labelledby="r-java" hidden>
+          <figure class="code"><figcaption><span class="fname">Server.java</span><span class="run">java Server.java · JDK 11+</span><button class="copy">Copy</button></figcaption>
+<pre><code>// JDK's built-in HttpServer — no framework, no dependencies
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.util.regex.*;
+
+public class Server {
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        server.createContext("/v1/users", ex -&gt; {
+            ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            String path = ex.getRequestURI().getPath();
+            String json;
+            if (path.length() &gt; "/v1/users/".length()) {
+                json = "{\"id\":\"" + path.substring("/v1/users/".length()) + "\",\"name\":\"Ana\"}";
+            } else {
+                String body = new String(ex.getRequestBody().readAllBytes());
+                Matcher mm = Pattern.compile("\"name\"\\s*:\\s*\"([^\"]*)\"").matcher(body);
+                String name = mm.find() ? mm.group(1) : "";
+                json = "{\"id\":\"2\",\"name\":\"" + name + "\"}";
+            }
+            byte[] out = json.getBytes();
+            ex.sendResponseHeaders(200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+        server.start();
+    }
+}</code></pre></figure>
+        </div>
       </div>
 
       <div class="pair-label"><span class="n">FE</span> Frontend · dxjs, identical for every backend above</div>
@@ -496,12 +602,369 @@ const created = await api.call(createUser, { name: "Ngola" });</code></pre></fig
       <div class="wire"><span class="arrow">→</span><span>dxjs calls <b>GET</b> <code>http://127.0.0.1:8000/v1/users/42</code> and <b>POST</b> <code>/v1/users</code>. Swap the backend language and this frontend file never changes — only <code>baseUrl</code> matters.</span></div>
     </section>
 
-    <!-- ===================== BACKEND: SSE, 4 languages ===================== -->
+    <!-- ===================== PROTOCOL: gRPC (Connect) ===================== -->
+    <section class="doc" id="grpc">
+      <p class="eyebrow">Protocol · gRPC</p>
+      <h2>gRPC, straight from the browser</h2>
+      <p class="sub">A browser can't speak native gRPC (no HTTP/2 trailers), so dxjs speaks the
+        <b>Connect</b> protocol — a plain <code>POST /{service}/{method}</code> with a JSON body that
+        connect-go, connect-es and tonic all understand, no proxy. Same <code>api.call</code>.</p>
+
+      <div class="pair-label be"><span class="n">IDL</span> The service, described once</div>
+      <figure class="code"><figcaption><span class="fname">user.proto</span><button class="copy">Copy</button></figcaption>
+<pre><code>syntax = "proto3";
+package user.v1;
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (User);
+}
+message GetUserRequest { string id = 1; }
+message User { string id = 1; string name = 2; }</code></pre></figure>
+
+      <div class="pair-label be"><span class="n">BE</span> Backend · pick a language</div>
+      <p class="sub" style="font-size:14px;margin:4px 0 0">Connect unary is a plain <code>POST /{service}/{method}</code> with a JSON body:
+        <b>connect-go</b> and <b>connect-es</b> generate it from the <code>.proto</code>; the others answer the same
+        call directly (native gRPC via tonic/grpc-java needs a Connect or gRPC-web proxy).</p>
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="gRPC backend language">
+          <button role="tab" aria-selected="true" id="g-go" aria-controls="gp-go"><span class="ld lang-go"></span> Go</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="g-ts" aria-controls="gp-ts"><span class="ld lang-ts"></span> TypeScript</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="g-node" aria-controls="gp-node"><span class="ld lang-node"></span> Node.js</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="g-py" aria-controls="gp-py"><span class="ld lang-py"></span> Python</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="g-rs" aria-controls="gp-rs"><span class="ld lang-rs"></span> Rust</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="g-java" aria-controls="gp-java"><span class="ld lang-java"></span> Java</button>
+        </div>
+        <div role="tabpanel" id="gp-go" aria-labelledby="g-go">
+          <figure class="code"><figcaption><span class="fname">main.go</span><span class="run">connectrpc.com/connect · listens on :8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>package main
+
+import (
+	"context"
+	"net/http"
+
+	"connectrpc.com/connect"
+	"github.com/rs/cors"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
+	userv1 "example/gen/user/v1"
+	"example/gen/user/v1/userv1connect"
+)
+
+type server struct{}
+
+func (s *server) GetUser(
+	ctx context.Context, req *connect.Request[userv1.GetUserRequest],
+) (*connect.Response[userv1.User], error) {
+	return connect.NewResponse(&amp;userv1.User{Id: req.Msg.Id, Name: "Ana"}), nil
+}
+
+func main() {
+	mux := http.NewServeMux()
+	mux.Handle(userv1connect.NewUserServiceHandler(&amp;server{}))
+	// cors.AllowAll lets the browser send Connect-Protocol-Version &amp; Content-Type.
+	handler := cors.AllowAll().Handler(h2c.NewHandler(mux, &amp;http2.Server{}))
+	http.ListenAndServe(":8000", handler)
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="gp-ts" aria-labelledby="g-ts" hidden>
+          <figure class="code"><figcaption><span class="fname">server.ts</span><span class="run">@connectrpc/connect-node · listens on :8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { createServer } from "node:http";
+import { connectNodeAdapter } from "@connectrpc/connect-node";
+import { UserService } from "./gen/user/v1/user_connect";
+
+const connect = connectNodeAdapter({
+  routes: (r) =&gt; r.service(UserService, {
+    getUser: (req) =&gt; ({ id: req.id, name: "Ana" }),
+  }),
+});
+
+createServer((req, res) =&gt; {
+  res.setHeader("access-control-allow-origin", "*");
+  res.setHeader("access-control-allow-headers", "content-type, connect-protocol-version");
+  if (req.method === "OPTIONS") return res.writeHead(204).end();
+  connect(req, res);
+}).listen(8000);</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="gp-node" aria-labelledby="g-node" hidden>
+          <figure class="code"><figcaption><span class="fname">server.js</span><span class="run">node server.js · zero deps · :8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { createServer } from "node:http";
+
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "content-type, connect-protocol-version",
+  "content-type": "application/json",
+};
+
+createServer((req, res) =&gt; {
+  if (req.method === "OPTIONS") return res.writeHead(204, CORS).end();
+  // Connect unary is a plain POST /{service}/{method} with a JSON body
+  if (req.url === "/user.v1.UserService/GetUser") {
+    let body = "";
+    req.on("data", (c) =&gt; (body += c));
+    return req.on("end", () =&gt; {
+      const { id } = JSON.parse(body || "{}");
+      res.writeHead(200, CORS).end(JSON.stringify({ id, name: "Ana" }));
+    });
+  }
+  res.writeHead(404, CORS).end("{}");
+}).listen(8000);</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="gp-py" aria-labelledby="g-py" hidden>
+          <figure class="code"><figcaption><span class="fname">app.py</span><span class="run">uvicorn app:api --port 8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+api = FastAPI()
+api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+class GetUser(BaseModel):
+    id: str
+
+# Connect unary is a plain POST /{service}/{method} with a JSON body
+@api.post("/user.v1.UserService/GetUser")
+def get_user(req: GetUser):
+    return {"id": req.id, "name": "Ana"}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="gp-rs" aria-labelledby="g-rs" hidden>
+          <figure class="code"><figcaption><span class="fname">main.rs</span><span class="run">cargo add axum tokio --features tokio/full · + tower-http/cors</span><button class="copy">Copy</button></figcaption>
+<pre><code>use axum::{routing::post, Json, Router};
+use serde_json::{json, Value};
+use tower_http::cors::CorsLayer;
+
+// Connect unary is a plain POST /{service}/{method} with a JSON body
+async fn get_user(Json(req): Json&lt;Value&gt;) -&gt; Json&lt;Value&gt; {
+    Json(json!({ "id": req["id"], "name": "Ana" }))
+}
+
+#[tokio::main]
+async fn main() {
+    let app = Router::new()
+        .route("/user.v1.UserService/GetUser", post(get_user))
+        .layer(CorsLayer::permissive());
+    let l = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    axum::serve(l, app).await.unwrap();
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="gp-java" aria-labelledby="g-java" hidden>
+          <figure class="code"><figcaption><span class="fname">Server.java</span><span class="run">java Server.java · JDK 11+</span><button class="copy">Copy</button></figcaption>
+<pre><code>import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.util.regex.*;
+
+public class Server {
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        // Connect unary is a plain POST /{service}/{method} with a JSON body
+        server.createContext("/user.v1.UserService/GetUser", ex -&gt; {
+            ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            ex.getResponseHeaders().set("Content-Type", "application/json");
+            String body = new String(ex.getRequestBody().readAllBytes());
+            Matcher m = Pattern.compile("\"id\"\\s*:\\s*\"([^\"]*)\"").matcher(body);
+            String id = m.find() ? m.group(1) : "";
+            byte[] out = ("{\"id\":\"" + id + "\",\"name\":\"Ana\"}").getBytes();
+            ex.sendResponseHeaders(200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+        server.start();
+    }
+}</code></pre></figure>
+        </div>
+      </div>
+
+      <div class="pair-label"><span class="n">FE</span> Frontend · dxjs connectAdapter</div>
+      <figure class="code"><figcaption><span class="fname">users.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { connectAdapter, createRpcClient, method } from "@dxjs/transport";
+
+// the id is the fully-qualified protobuf service + method
+const getUser = method&lt;{ id: string }, User&gt;({ id: "user.v1.UserService.GetUser" });
+
+const api = createRpcClient(connectAdapter({ baseUrl: "http://127.0.0.1:8000" }));
+
+const user = await api.call(getUser, { id: "42" });
+// → POST /user.v1.UserService/GetUser  (Connect unary, JSON)</code></pre></figure>
+      <div class="wire"><span class="arrow">→</span><span>Have a <code>.proto</code>? <code>@dxjs/proto</code>'s <code>protoServices(...)</code> turns the service into typed
+        descriptors — no hand-written <code>method()</code> calls.</span></div>
+    </section>
+
+    <!-- ===================== PROTOCOL: RPC (in-process) ===================== -->
+    <section class="doc" id="rpc">
+      <p class="eyebrow">Protocol · RPC</p>
+      <h2>In-process RPC — no network at all</h2>
+      <p class="sub">The same <code>api.call</code> / <code>api.live</code> call sites, served by a local handler map
+        instead of a socket. Ideal for tests, demos and a monolith before it splits into services —
+        swap the adapter later and the call sites never change.</p>
+
+      <div class="pair-label"><span class="n">FE</span> One client, handlers in-process</div>
+      <figure class="code"><figcaption><span class="fname">rpc.ts</span><span class="run">no server · no HTTP</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { inMemoryAdapter, createRpcClient, method } from "@dxjs/transport";
+
+const getUser = method&lt;{ id: string }, User&gt;({ id: "users.get" });
+const watchPrices = method&lt;{ symbol: string }, Tick&gt;({ id: "prices.watch", kind: "serverStream" });
+
+const api = createRpcClient(inMemoryAdapter({
+  handlers: {
+    "users.get": async ({ id }) =&gt; db.users.find(id),            // unary
+    "prices.watch": async function* ({ symbol }) {               // server-stream
+      for await (const t of ticker(symbol)) yield t;
+    },
+  },
+}));
+
+const user = await api.call(getUser, { id: "42" });
+for await (const tick of api.live(watchPrices, { symbol: "KZ" })) render(tick);</code></pre></figure>
+      <div class="wire"><span class="arrow">→</span><span>Running dxjs <b>inside</b> the backend binary (SSR, co-located)? <code>embeddedAdapter</code>
+        hands every call to the host's dispatcher — same idea, backed by your real services.</span></div>
+      <figure class="code"><figcaption><span class="fname">embedded.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { embeddedAdapter, createRpcClient } from "@dxjs/transport";
+
+// a Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip
+const api = createRpcClient(embeddedAdapter({
+  invoke: (m, req, ctx) =&gt; host.dispatch(m.id, req, ctx),
+}));</code></pre></figure>
+    </section>
+
+    <!-- ===================== PROTOCOL: SOAP ===================== -->
+    <section class="doc" id="soap">
+      <p class="eyebrow">Protocol · SOAP</p>
+      <h2>SOAP, without the ceremony</h2>
+      <p class="sub">Point <code>@dxjs/soap</code> at a SOAP/WSDL endpoint. The adapter writes the XML
+        envelope and a codec parses the reply <code>Body</code> back into an object — the UI still
+        just calls <code>api.call</code>.</p>
+
+      <div class="pair-label be"><span class="n">BE</span> Backend · pick a language</div>
+      <p class="sub" style="font-size:14px;margin:4px 0 0">Each returns the same flat
+        <code>GetUserResponse</code> envelope the bundled <code>flatXmlCodec</code> reads. A minimal endpoint;
+        production uses a WSDL stack (PHP SoapServer, JAX-WS, spyne).</p>
+      <div class="tabs" data-tabs>
+        <div class="tablist" role="tablist" aria-label="SOAP backend language">
+          <button role="tab" aria-selected="true" id="x-php" aria-controls="xp-php"><span class="ld lang-php"></span> PHP</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="x-java" aria-controls="xp-java"><span class="ld lang-java"></span> Java</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="x-py" aria-controls="xp-py"><span class="ld lang-py"></span> Python</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="x-node" aria-controls="xp-node"><span class="ld lang-node"></span> Node.js</button>
+        </div>
+        <div role="tabpanel" id="xp-php" aria-labelledby="x-php">
+          <figure class="code"><figcaption><span class="fname">soap.php</span><span class="run">php -S 127.0.0.1:8000 soap.php</span><button class="copy">Copy</button></figcaption>
+<pre><code>&lt;?php
+# a minimal SOAP endpoint (production: PHP's built-in SoapServer + WSDL)
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: content-type, soapaction");
+header("Content-Type: text/xml; charset=utf-8");
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") exit;
+
+preg_match('#&lt;id&gt;([^&lt;]*)&lt;/id&gt;#', file_get_contents("php://input"), $m);
+$id = $m[1] ?? "";
+echo '&lt;?xml version="1.0"?&gt;' .
+     '&lt;soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"&gt;' .
+     "&lt;soap:Body&gt;&lt;GetUserResponse&gt;&lt;id&gt;$id&lt;/id&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;/GetUserResponse&gt;" .
+     '&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;';</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="xp-java" aria-labelledby="x-java" hidden>
+          <figure class="code"><figcaption><span class="fname">SoapServer.java</span><span class="run">java SoapServer.java · JDK 11+</span><button class="copy">Copy</button></figcaption>
+<pre><code>import com.sun.net.httpserver.HttpServer;
+import java.net.InetSocketAddress;
+import java.util.regex.*;
+
+public class SoapServer {
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        // a minimal SOAP endpoint (production: JAX-WS / a WSDL stack)
+        server.createContext("/", ex -&gt; {
+            ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            ex.getResponseHeaders().set("Content-Type", "text/xml; charset=utf-8");
+            if (ex.getRequestMethod().equals("OPTIONS")) { ex.sendResponseHeaders(204, -1); return; }
+            String body = new String(ex.getRequestBody().readAllBytes());
+            Matcher m = Pattern.compile("&lt;id&gt;([^&lt;]*)&lt;/id&gt;").matcher(body);
+            String id = m.find() ? m.group(1) : "";
+            String xml = "&lt;?xml version=\"1.0\"?&gt;"
+                + "&lt;soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\"&gt;"
+                + "&lt;soap:Body&gt;&lt;GetUserResponse&gt;&lt;id&gt;" + id + "&lt;/id&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;/GetUserResponse&gt;"
+                + "&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;";
+            byte[] out = xml.getBytes();
+            ex.sendResponseHeaders(200, out.length);
+            ex.getResponseBody().write(out);
+            ex.close();
+        });
+        server.start();
+    }
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="xp-py" aria-labelledby="x-py" hidden>
+          <figure class="code"><figcaption><span class="fname">app.py</span><span class="run">uvicorn app:api --port 8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>import re
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+
+api = FastAPI()
+api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+# a minimal SOAP endpoint (production: spyne / a WSDL stack)
+@api.post("/")
+async def soap(req: Request):
+    body = (await req.body()).decode()
+    m = re.search(r"&lt;id&gt;([^&lt;]*)&lt;/id&gt;", body)
+    uid = m.group(1) if m else ""
+    xml = ('&lt;?xml version="1.0"?&gt;'
+           '&lt;soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"&gt;'
+           f'&lt;soap:Body&gt;&lt;GetUserResponse&gt;&lt;id&gt;{uid}&lt;/id&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;/GetUserResponse&gt;'
+           '&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;')
+    return Response(content=xml, media_type="text/xml")</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="xp-node" aria-labelledby="x-node" hidden>
+          <figure class="code"><figcaption><span class="fname">soap-server.js</span><span class="run">node soap-server.js · zero deps · :8000</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { createServer } from "node:http";
+
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "content-type, soapaction",
+  "content-type": "text/xml; charset=utf-8",
+};
+
+createServer((req, res) =&gt; {
+  if (req.method === "OPTIONS") return res.writeHead(204, CORS).end();
+  let body = "";
+  req.on("data", (c) =&gt; (body += c));
+  req.on("end", () =&gt; {
+    const id = (body.match(/&lt;id&gt;([^&lt;]*)&lt;\/id&gt;/) || [])[1] || "";
+    res.writeHead(200, CORS).end(
+      `&lt;?xml version="1.0"?&gt;` +
+      `&lt;soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"&gt;` +
+      `&lt;soap:Body&gt;&lt;GetUserResponse&gt;&lt;id&gt;${id}&lt;/id&gt;&lt;name&gt;Ana&lt;/name&gt;&lt;/GetUserResponse&gt;` +
+      `&lt;/soap:Body&gt;&lt;/soap:Envelope&gt;`,
+    );
+  });
+}).listen(8000);</code></pre></figure>
+        </div>
+      </div>
+
+      <div class="pair-label"><span class="n">FE</span> Frontend · dxjs soapAdapter</div>
+      <figure class="code"><figcaption><span class="fname">users.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { soapAdapter } from "@dxjs/soap";
+import { createRpcClient, method } from "@dxjs/transport";
+
+const getUser = method&lt;{ id: string }, User&gt;({
+  id: "users.get",
+  wire: { soap: { operation: "GetUser" } },   // the operation (Body child) element name
+});
+
+const api = createRpcClient(soapAdapter({
+  endpoint: "http://127.0.0.1:8000",
+  targetNamespace: "urn:users",
+}));
+
+const user = await api.call(getUser, { id: "42" });   // → { id: "42", name: "Ana" }
+// the default flatXmlCodec reads GetUserResponse's leaf children into an object</code></pre></figure>
+      <div class="wire"><span class="arrow">→</span><span>Real WSDL? <code>wsdlOperations(...)</code> reads the operations from the document; a richer
+        response shape needs a custom <code>SoapCodec</code> instead of the bundled flat one.</span></div>
+    </section>
+
+    <!-- ===================== STREAMING: SSE (7 languages) ===================== -->
     <section class="doc" id="backend-sse">
       <p class="eyebrow">Backend → dxjs · streaming</p>
       <h2>Live updates, your language</h2>
       <p class="sub">A <code>text/event-stream</code> at <code>GET /v1/prices/:symbol/stream</code> pushing one JSON
-        frame per second — in all four languages — consumed by dxjs with auto-reconnect.</p>
+        frame per second — in all seven languages — consumed by dxjs with auto-reconnect.</p>
 
       <div class="pair-label be"><span class="n">BE</span> Streaming backend · pick a language</div>
       <div class="tabs" data-tabs>
@@ -510,6 +973,9 @@ const created = await api.call(createUser, { name: "Ngola" });</code></pre></fig
           <button role="tab" aria-selected="false" tabindex="-1" id="s-go" aria-controls="sp-go"><span class="ld lang-go"></span> Go</button>
           <button role="tab" aria-selected="false" tabindex="-1" id="s-rs" aria-controls="sp-rs"><span class="ld lang-rs"></span> Rust</button>
           <button role="tab" aria-selected="false" tabindex="-1" id="s-node" aria-controls="sp-node"><span class="ld lang-node"></span> Node.js</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-php" aria-controls="sp-php"><span class="ld lang-php"></span> PHP</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-ts" aria-controls="sp-ts"><span class="ld lang-ts"></span> TypeScript</button>
+          <button role="tab" aria-selected="false" tabindex="-1" id="s-java" aria-controls="sp-java"><span class="ld lang-java"></span> Java</button>
         </div>
         <div role="tabpanel" id="sp-py" aria-labelledby="s-py">
           <figure class="code"><figcaption><span class="fname">stream.py</span><span class="run">FastAPI StreamingResponse</span><button class="copy">Copy</button></figcaption>
@@ -586,6 +1052,84 @@ createServer((req, res) =&gt; {
   req.on("close", () =&gt; clearInterval(timer));
 }).listen(8000);</code></pre></figure>
         </div>
+        <div role="tabpanel" id="sp-php" aria-labelledby="s-php" hidden>
+          <figure class="code"><figcaption><span class="fname">stream.php</span><span class="run">php -S 127.0.0.1:8000 stream.php</span><button class="copy">Copy</button></figcaption>
+<pre><code>&lt;?php
+# unbuffered: flush each frame as it is produced
+header("Content-Type: text/event-stream");
+header("Access-Control-Allow-Origin: *");
+header("Cache-Control: no-cache");
+
+$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+preg_match('#^/v1/prices/(.+)/stream$#', $path, $m);
+$symbol = $m[1] ?? "KZ";
+$last = 100.0;
+while (true) {
+    $last += 0.5;
+    echo "data: " . json_encode(["symbol" =&gt; $symbol, "last" =&gt; $last]) . "\n\n";
+    @ob_flush();
+    flush();
+    sleep(1);
+}</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="sp-ts" aria-labelledby="s-ts" hidden>
+          <figure class="code"><figcaption><span class="fname">stream.ts</span><span class="run">deno run --allow-net stream.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>// push one SSE frame per second over a ReadableStream
+Deno.serve({ port: 8000 }, (req: Request): Response =&gt; {
+  const m = new URL(req.url).pathname.match(/^\/v1\/prices\/(.+)\/stream$/);
+  if (!m) return new Response(null, { status: 404 });
+  const symbol = m[1];
+  let last = 100;
+  const enc = new TextEncoder();
+  const body = new ReadableStream({
+    start(controller) {
+      const timer = setInterval(() =&gt; {
+        last += 0.5;
+        controller.enqueue(enc.encode(`data: ${JSON.stringify({ symbol, last })}\n\n`));
+      }, 1000);
+      req.signal.addEventListener("abort", () =&gt; clearInterval(timer));
+    },
+  });
+  return new Response(body, {
+    headers: {
+      "content-type": "text/event-stream",
+      "access-control-allow-origin": "*",
+    },
+  });
+});</code></pre></figure>
+        </div>
+        <div role="tabpanel" id="sp-java" aria-labelledby="s-java" hidden>
+          <figure class="code"><figcaption><span class="fname">Stream.java</span><span class="run">java Stream.java · JDK 11+</span><button class="copy">Copy</button></figcaption>
+<pre><code>// keep the response open and flush a frame each second
+import com.sun.net.httpserver.HttpServer;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+
+public class Stream {
+    public static void main(String[] args) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(8000), 0);
+        server.createContext("/v1/prices", ex -&gt; {
+            ex.getResponseHeaders().set("Content-Type", "text/event-stream");
+            ex.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            String symbol = ex.getRequestURI().getPath().split("/")[3];  // /v1/prices/KZ/stream
+            ex.sendResponseHeaders(200, 0);
+            OutputStream os = ex.getResponseBody();
+            double last = 100.0;
+            try {
+                while (true) {
+                    last += 0.5;
+                    os.write(("data: {\"symbol\":\"" + symbol + "\",\"last\":" + last + "}\n\n").getBytes());
+                    os.flush();
+                    Thread.sleep(1000);
+                }
+            } catch (Exception e) {
+                ex.close();
+            }
+        });
+        server.start();
+    }
+}</code></pre></figure>
+        </div>
       </div>
 
       <div class="pair-label"><span class="n">FE</span> Frontend · dxjs consumes the stream</div>
@@ -605,84 +1149,22 @@ for await (const tick of api.live(watchPrices, { symbol: "KZ" })) {
       <div class="wire"><span class="arrow">→</span><span>dxjs opens <code>text/event-stream</code> at <code>/v1/prices/KZ/stream</code> via plain <code>fetch</code> (so custom headers &amp; auth work — no <code>EventSource</code>). Each language above emits the same <code>data: {…}\n\n</code> frames.</span></div>
     </section>
 
-    <!-- ===================== ADAPTER REFERENCE ===================== -->
-    <section class="doc" id="adapters">
-      <p class="eyebrow">Reference · adapters</p>
-      <h2>Every adapter, one client API</h2>
-      <p class="sub">All of these feed <code>createRpcClient</code>. Capability chips are the adapter's real
-        runtime <code>caps</code>.</p>
+    <!-- ===================== STREAMING: WebSocket ===================== -->
+    <section class="doc" id="ws">
+      <p class="eyebrow">Streaming · WebSocket</p>
+      <h2>WebSocket — two-way, low latency</h2>
+      <p class="sub">Bidirectional streams (chat, presence, live cursors) over a single socket, with the
+        auth credential sent as the first frame.</p>
+      <figure class="code"><figcaption><span class="fname">ws.ts</span><button class="copy">Copy</button></figcaption>
+<pre><code>import { wsAdapter, createRpcClient, method } from "@dxjs/transport";
 
-      <article class="adapter">
-        <div class="adapter-head"><h3>restAdapter</h3><span class="what">Typed JSON over HTTP — the everyday default.</span></div>
-        <div class="chips"><span class="chip cap">unary</span><span class="chip">Bearer auth</span><span class="chip">per-request headers</span><span class="chip">retry · timeout</span></div>
-        <figure class="code"><figcaption><span class="fname">rest.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>const api = createRpcClient(restAdapter({
-  baseUrl: "https://api.ngolacloud.ao",
-  auth: () =&gt; localStorage.getItem("token"),   // → Authorization: Bearer …
-  headers: () =&gt; ({ "x-tenant": currentTenant() }),
-}));</code></pre></figure>
-      </article>
-
-      <article class="adapter" id="connect">
-        <div class="adapter-head"><h3>connectAdapter</h3><span class="what">Connect / gRPC-web unary (JSON).</span></div>
-        <div class="chips"><span class="chip cap">unary</span><span class="chip">Connect protocol</span><span class="chip">Bearer auth</span></div>
-        <figure class="code"><figcaption><span class="fname">connect.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>const api = createRpcClient(
-  connectAdapter({ baseUrl: "https://rpc.ngolacloud.ao", auth: () =&gt; token() }),
-);
-// id carries the fully-qualified service + method:
-const getUser = method&lt;Req, User&gt;({ id: "user.v1.UserService.GetUser" });
-// → POST /user.v1.UserService/GetUser  (Connect unary, JSON)</code></pre></figure>
-      </article>
-
-      <article class="adapter" id="sse">
-        <div class="adapter-head"><h3>sseAdapter</h3><span class="what">Server-Sent Events — live server→client streams.</span></div>
-        <div class="chips"><span class="chip live">serverStream</span><span class="chip">auto-reconnect</span><span class="chip">Last-Event-ID resume</span><span class="chip">bounded buffer</span></div>
-        <figure class="code"><figcaption><span class="fname">sse.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>// stream-only → compose with a unary transport (see "Live updates" above)
-const api = createRpcClient(composeTransport(
-  restAdapter({ baseUrl }),
-  sseAdapter({ baseUrl, reconnect: true }),
-));</code></pre></figure>
-      </article>
-
-      <article class="adapter" id="ws">
-        <div class="adapter-head"><h3>wsAdapter</h3><span class="what">WebSocket — bidirectional, low-latency streams.</span></div>
-        <div class="chips"><span class="chip live">serverStream</span><span class="chip live">bidi</span><span class="chip">auth frame first</span></div>
-        <figure class="code"><figcaption><span class="fname">ws.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>const api = createRpcClient(wsAdapter({
+const api = createRpcClient(wsAdapter({
   url: "wss://live.ngolacloud.ao/ws",
   auth: () =&gt; sessionToken(),   // FIRST frame {type:"authorization",…}, before the request
 }));
 const chat = method&lt;{ room: string }, Message&gt;({ id: "chat.subscribe", kind: "serverStream" });
 for await (const msg of api.live(chat, { room: "angola" })) appendMessage(msg);</code></pre></figure>
-        <div class="wire"><span class="arrow">→</span><span>Browsers can't set an <code>Authorization</code> header on the WS handshake, so the credential is the first frame. <b>Your server must authenticate it and emit nothing until it validates.</b></span></div>
-      </article>
-
-      <article class="adapter" id="inmemory">
-        <div class="adapter-head"><h3>inMemoryAdapter</h3><span class="what">In-process handlers — tests, demos, a monolith.</span></div>
-        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">no network</span></div>
-        <figure class="code"><figcaption><span class="fname">memory.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>const api = createRpcClient(inMemoryAdapter({
-  handlers: {
-    "users.get": async ({ id }) =&gt; db.users.find(id),           // unary
-    "prices.watch": async function* ({ symbol }) {              // stream
-      for await (const t of ticker(symbol)) yield t;
-    },
-  },
-}));
-// Same api.call / api.live call sites — no HTTP. Split into services later by swapping the adapter.</code></pre></figure>
-      </article>
-
-      <article class="adapter" id="embedded">
-        <div class="adapter-head"><h3>embeddedAdapter</h3><span class="what">dxjs running inside/next to the backend binary.</span></div>
-        <div class="chips"><span class="chip proc">in-process</span><span class="chip cap">unary</span><span class="chip live">serverStream</span><span class="chip">host dispatcher</span></div>
-        <figure class="code"><figcaption><span class="fname">embedded.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>// A Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip.
-const api = createRpcClient(embeddedAdapter({
-  invoke: (m, req, ctx) =&gt; host.dispatch(m.id, req, ctx),
-}));</code></pre></figure>
-      </article>
+      <div class="wire"><span class="arrow">→</span><span>Browsers can't set an <code>Authorization</code> header on the WS handshake, so the credential is the first frame. <b>Your server must authenticate it and emit nothing until it validates.</b></span></div>
     </section>
 
     <section class="doc" id="resource">
@@ -738,26 +1220,6 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
         keeps calling <code>api.call(...)</code> regardless of what the server speaks.</p></div>
     </section>
 
-    <section class="doc" id="matrix">
-      <p class="eyebrow">Reference</p>
-      <h2>Which adapter should I use?</h2>
-      <p class="sub">Capabilities are each adapter's real <code>caps</code> — what the port guarantees at runtime.</p>
-      <div class="tablewrap">
-        <table>
-          <thead><tr><th>Adapter</th><th>Carries</th><th>Capabilities</th><th>Reach for it when…</th></tr></thead>
-          <tbody>
-            <tr><td><code>restAdapter</code></td><td>HTTP + JSON</td><td>unary</td><td>a plain REST/JSON API — the default.</td></tr>
-            <tr><td><code>connectAdapter</code></td><td>Connect / gRPC-web</td><td>unary</td><td>the backend is a gRPC service with Connect.</td></tr>
-            <tr><td><code>sseAdapter</code></td><td>text/event-stream</td><td>serverStream</td><td>server→client live updates over plain HTTP.</td></tr>
-            <tr><td><code>wsAdapter</code></td><td>WebSocket</td><td>serverStream · bidi</td><td>low-latency or two-way streams (chat, presence).</td></tr>
-            <tr><td><code>inMemoryAdapter</code></td><td>function call</td><td>serverStream · in-process</td><td>tests, demos, or a monolith before it splits.</td></tr>
-            <tr><td><code>embeddedAdapter</code></td><td>host dispatcher</td><td>serverStream · in-process</td><td>dxjs runs inside/next to the backend (SSR).</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="callout"><span class="ci">⚑</span><p>Need unary over one transport and streams over another? <code>composeTransport(unary, stream)</code>
-        stitches them into one client — exactly what the SSE example does with REST&nbsp;+&nbsp;SSE.</p></div>
-    </section>
   </main>
 </div>
 
@@ -795,9 +1257,236 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
     out += esc(src.slice(last));
     return out;
   }
-  document.querySelectorAll("pre code").forEach(function (code) {
-    code.innerHTML = highlight(code.textContent);
-  });
+  // ---- bilingual pt-AO / en (default pt-AO) ------------------------------
+  // Keyed by the English source text. Prose is swapped as innerHTML; code stays
+  // identical and only its // and # COMMENTS are translated (string replace).
+  var PROSE = {
+    // top nav + sidebar
+    "Quickstart": "Arranque",
+    "Adapters": "Adaptadores",
+    "Connect a backend": '<span class="dot" aria-hidden="true"></span> Ligar um backend',
+    "Get started": "Começar",
+    "Overview": "Visão geral",
+    "Run it in the browser": "Correr no browser",
+    "Reactivity": "Reactividade",
+    "The transport port": "O porto de transporte",
+    "REST · your language": "REST · na tua linguagem",
+    "Live (SSE) · your language": "Ao vivo (SSE) · na tua linguagem",
+    "Reactive data": "Dados reactivos",
+    "Which adapter?": "Que adaptador?",
+    // protocols restructure — sidebar + sections
+    "Protocols": "Protocolos",
+    "Which protocol?": "Que protocolo?",
+    "RPC · in-process": "RPC · em processo",
+    "SSE · live": "SSE · ao vivo",
+    "Protocol · gRPC": "Protocolo · gRPC",
+    "Protocol · RPC": "Protocolo · RPC",
+    "Protocol · SOAP": "Protocolo · SOAP",
+    "Streaming · WebSocket": "Streaming · WebSocket",
+    "Which protocol should I use?": "Que protocolo devo usar?",
+    "dxjs speaks REST, gRPC, in-process RPC and SOAP through the same createRpcClient — the UI calls api.call(...) regardless of the wire. Pick one and jump to its complete example.":
+      "O dxjs fala REST, gRPC, RPC em processo e SOAP através do mesmo <code>createRpcClient</code> — a UI chama <code>api.call(...)</code> seja qual for o fio. Escolhe um e salta para o seu exemplo completo.",
+    "Protocol": "Protocolo",
+    "a legacy SOAP/WSDL service.": "um serviço SOAP/WSDL legado.",
+    "gRPC, straight from the browser": "gRPC, directo do browser",
+    "A browser can't speak native gRPC (no HTTP/2 trailers), so dxjs speaks the Connect protocol — a plain POST /{service}/{method} with a JSON body that connect-go, connect-es and tonic all understand, no proxy. Same api.call.":
+      "Um browser não fala gRPC nativo (sem trailers HTTP/2), por isso o dxjs fala o protocolo <b>Connect</b> — um simples <code>POST /{service}/{method}</code> com corpo JSON que connect-go, connect-es e tonic entendem, sem proxy. O mesmo <code>api.call</code>.",
+    "IDL The service, described once": '<span class="n">IDL</span> O serviço, descrito uma vez',
+    "BE Backend · connect-go (permissive CORS)": '<span class="n">BE</span> Backend · connect-go (CORS permissivo)',
+    "FE Frontend · dxjs connectAdapter": '<span class="n">FE</span> Frontend · dxjs connectAdapter',
+    "connectrpc.com/connect · listens on :8000": "connectrpc.com/connect · escuta em :8000",
+    "@connectrpc/connect-node · listens on :8000": "@connectrpc/connect-node · escuta em :8000",
+    "node server.js · zero deps · :8000": "node server.js · 0 deps · :8000",
+    "node soap-server.js · zero deps · :8000": "node soap-server.js · 0 deps · :8000",
+    "Connect unary is a plain POST /{service}/{method} with a JSON body: connect-go and connect-es generate it from the .proto; the others answer the same call directly (native gRPC via tonic/grpc-java needs a Connect or gRPC-web proxy).":
+      "O Connect unário é um simples <code>POST /{service}/{method}</code> com corpo JSON: o <b>connect-go</b> e o <b>connect-es</b> geram-no a partir do <code>.proto</code>; os outros respondem à mesma chamada directamente (gRPC nativo via tonic/grpc-java precisa de um proxy Connect ou gRPC-web).",
+    "Each returns the same flat GetUserResponse envelope the bundled flatXmlCodec reads. A minimal endpoint; production uses a WSDL stack (PHP SoapServer, JAX-WS, spyne).":
+      "Cada um devolve o mesmo envelope flat <code>GetUserResponse</code> que o <code>flatXmlCodec</code> incluído lê. Um endpoint mínimo; em produção usa-se uma stack WSDL (PHP SoapServer, JAX-WS, spyne).",
+    "In-process RPC — no network at all": "RPC em processo — sem rede nenhuma",
+    "The same api.call / api.live call sites, served by a local handler map instead of a socket. Ideal for tests, demos and a monolith before it splits into services — swap the adapter later and the call sites never change.":
+      "Os mesmos <code>api.call</code> / <code>api.live</code>, servidos por um mapa de handlers local em vez de um socket. Ideal para testes, demos e um monólito antes de se dividir em serviços — troca o adaptador depois e os locais de chamada nunca mudam.",
+    "FE One client, handlers in-process": '<span class="n">FE</span> Um cliente, handlers em processo',
+    "no server · no HTTP": "sem servidor · sem HTTP",
+    "SOAP, without the ceremony": "SOAP, sem cerimónia",
+    "Point @dxjs/soap at a SOAP/WSDL endpoint. The adapter writes the XML envelope and a codec parses the reply Body back into an object — the UI still just calls api.call.":
+      "Aponta o <code>@dxjs/soap</code> a um endpoint SOAP/WSDL. O adaptador escreve o envelope XML e um codec converte o <code>Body</code> da resposta de volta num objecto — a UI continua só a chamar <code>api.call</code>.",
+    "BE Backend · a SOAP endpoint (zero deps)": '<span class="n">BE</span> Backend · um endpoint SOAP (0 deps)',
+    "FE Frontend · dxjs soapAdapter": '<span class="n">FE</span> Frontend · dxjs soapAdapter',
+    "node soap-server.js · listens on :8000": "node soap-server.js · escuta em :8000",
+    "WebSocket — two-way, low latency": "WebSocket — dois sentidos, baixa latência",
+    "Bidirectional streams (chat, presence, live cursors) over a single socket, with the auth credential sent as the first frame.":
+      "Streams bidireccionais (chat, presença, cursores ao vivo) sobre um único socket, com a credencial de autenticação enviada no primeiro frame.",
+    "→Have a .proto? @dxjs/proto's protoServices(...) turns the service into typed descriptors — no hand-written method() calls.":
+      '<span class="arrow">→</span><span>Tens um <code>.proto</code>? O <code>protoServices(...)</code> do <code>@dxjs/proto</code> transforma o serviço em descritores tipados — sem chamadas <code>method()</code> escritas à mão.</span>',
+    "→Running dxjs inside the backend binary (SSR, co-located)? embeddedAdapter hands every call to the host's dispatcher — same idea, backed by your real services.":
+      '<span class="arrow">→</span><span>A correr o dxjs <b>dentro</b> do binário do backend (SSR, co-localizado)? O <code>embeddedAdapter</code> entrega cada chamada ao dispatcher do host — mesma ideia, suportada pelos teus serviços reais.</span>',
+    "→Real WSDL? wsdlOperations(...) reads the operations from the document; a richer response shape needs a custom SoapCodec instead of the bundled flat one.":
+      '<span class="arrow">→</span><span>WSDL a sério? O <code>wsdlOperations(...)</code> lê as operações do documento; uma resposta mais rica precisa de um <code>SoapCodec</code> próprio em vez do codec plano incluído.</span>',
+    // eyebrows
+    "NgolaCloud · open source · 0 runtime deps": "NgolaCloud · código aberto · 0 dependências em runtime",
+    "Quickstart · CLI": "Arranque · CLI",
+    "Transport · ADR 0001": "Transporte · ADR 0001",
+    "Backend → dxjs": "Backend → dxjs",
+    "Backend → dxjs · streaming": "Backend → dxjs · streaming",
+    "Reference · adapters": "Referência · adaptadores",
+    "Reference": "Referência",
+    // hero
+    "One app.Any backend.": 'Uma app.<br /><span class="accent">Qualquer backend.</span>',
+    "dxjs is a tiny reactive framework with a protocol-neutral transport port. Bring a backend in Python, Go, Rust or Node — describe the operation once and connect from the frontend in three lines.":
+      "O dxjs é um framework reactivo minúsculo com um porto de transporte neutro quanto ao protocolo. Traz um backend em Python, Go, Rust ou Node — descreve a operação uma vez e liga-te a partir do frontend em três linhas.",
+    "Connect a real backend →": "Ligar um backend real →",
+    // overview
+    "Small, reactive, honest about the network": "Pequeno, reactivo, honesto quanto à rede",
+    "A fine-grained signal graph renders the DOM, a string renderer does CSP-safe SSR, and the transport layer keeps your data-fetching code identical no matter what language the server is written in.":
+      "Um grafo de sinais fino renderiza o DOM, um renderizador de strings faz SSR seguro para CSP, e a camada de transporte mantém o teu código de obtenção de dados idêntico, seja qual for a linguagem do servidor.",
+    "Fine-grained reactive": "Reactividade fina",
+    "Signals, computeds and effects — no virtual DOM, no re-render pass. ~1.5 KB gzipped core.":
+      "Sinais, computeds e efeitos — sem DOM virtual, sem passagem de re-render. Núcleo ~1,5 KB gzipped.",
+    "Protocol-neutral": "Neutro quanto ao protocolo",
+    "One method() descriptor; adapters map it to REST, Connect, SSE, WebSocket or in-process.":
+      "Um descritor <code>method()</code>; os adaptadores mapeiam-no para REST, Connect, SSE, WebSocket ou em processo.",
+    "Strict-CSP SSR": "SSR com CSP estrita",
+    "String + streaming renderers escape every sink; no eval, no inline handlers, edge-ready.":
+      "Renderizadores de string + streaming escapam cada sink; sem <code>eval</code>, sem handlers inline, prontos para edge.",
+    // CLI
+    "dxjs ships dxdev — a dev server with CSP-safe hot-module reload. Point it at an entry module and open the printed URL.":
+      "O dxjs traz o <code>dxdev</code> — um servidor de desenvolvimento com hot-module reload seguro para CSP. Aponta-o a um módulo de entrada e abre o URL impresso.",
+    "Write a tiny app": "Escreve uma app pequena",
+    "An entry module that renders reactive markup.": "Um módulo de entrada que renderiza markup reactivo.",
+    "Start the dev server": "Arranca o servidor de desenvolvimento",
+    "Flags: --port, --host, --root, --css a.css,b.css, --title. In this repo, npm run dev is the shortcut.":
+      "Flags: <code>--port</code>, <code>--host</code>, <code>--root</code>, <code>--css a.css,b.css</code>, <code>--title</code>. Neste repositório, <code>npm&nbsp;run&nbsp;dev</code> é o atalho.",
+    "Open the printed URL": "Abre o URL impresso",
+    "Edit src/app.ts and the browser hot-reloads — no full refresh, signals survive.":
+      "Edita <code>src/app.ts</code> e o browser faz hot-reload — sem refresh total, os sinais sobrevivem.",
+    // reactivity
+    "The whole model, in twenty lines": "O modelo inteiro, em vinte linhas",
+    "A signal holds state, a computed derives from it, an effect runs when its reads change, and html / render bind the DOM to those reads — surgically.":
+      "Um <code>signal</code> guarda estado, um <code>computed</code> deriva dele, um <code>effect</code> corre quando as suas leituras mudam, e <code>html</code>&#8202;/&#8202;<code>render</code> ligam o DOM a essas leituras — cirurgicamente.",
+    // transport
+    "Describe the operation once": "Descreve a operação uma vez",
+    "A method() is a protocol-neutral descriptor. A Transport adapter knows how to put it on a wire. createRpcClient gives you a typed call (unary) and live (server-stream) over whichever adapter you bootstrap with.":
+      "Um <code>method()</code> é um descritor neutro quanto ao protocolo. Um adaptador <em>Transport</em> sabe como o pôr no fio. O <code>createRpcClient</code> dá-te um <code>call</code> tipado (unário) e <code>live</code> (server-stream) sobre o adaptador que escolheres no arranque.",
+    // backend REST
+    "Your backend, your language": "O teu backend, a tua linguagem",
+    "The same two endpoints — GET /v1/users/:id and POST /v1/users — in Python, Go, Rust, Node.js, PHP, TypeScript and Java, each with permissive CORS so the browser can reach it. Then connect from dxjs.":
+      "Os mesmos dois endpoints — <code>GET /v1/users/:id</code> e <code>POST /v1/users</code> — em Python, Go, Rust, Node.js, PHP, TypeScript e Java, cada um com CORS permissivo para o browser lá chegar. Depois liga-te a partir do dxjs.",
+    "BE Backend · pick a language": '<span class="n">BE</span> Backend · escolhe uma linguagem',
+    "FE Frontend · dxjs, identical for every backend above": '<span class="n">FE</span> Frontend · dxjs, igual para qualquer backend acima',
+    "→dxjs calls GET http://127.0.0.1:8000/v1/users/42 and POST /v1/users. Swap the backend language and this frontend file never changes — only baseUrl matters.":
+      '<span class="arrow">→</span><span>O dxjs chama <b>GET</b> <code>http://127.0.0.1:8000/v1/users/42</code> e <b>POST</b> <code>/v1/users</code>. Troca a linguagem do backend e este ficheiro de frontend nunca muda — só o <code>baseUrl</code> importa.</span>',
+    // backend SSE
+    "Live updates, your language": "Actualizações ao vivo, na tua linguagem",
+    "A text/event-stream at GET /v1/prices/:symbol/stream pushing one JSON frame per second — in all seven languages — consumed by dxjs with auto-reconnect.":
+      "Um <code>text/event-stream</code> em <code>GET /v1/prices/:symbol/stream</code> a empurrar um frame JSON por segundo — nas sete linguagens — consumido pelo dxjs com reconexão automática.",
+    "BE Streaming backend · pick a language": '<span class="n">BE</span> Backend de streaming · escolhe uma linguagem',
+    "FE Frontend · dxjs consumes the stream": '<span class="n">FE</span> Frontend · dxjs consome a stream',
+    "→dxjs opens text/event-stream at /v1/prices/KZ/stream via plain fetch (so custom headers & auth work — no EventSource). Each language above emits the same data: {…}\\n\\n frames.":
+      '<span class="arrow">→</span><span>O dxjs abre <code>text/event-stream</code> em <code>/v1/prices/KZ/stream</code> via <code>fetch</code> simples (por isso headers e autenticação próprios funcionam — sem <code>EventSource</code>). Cada linguagem acima emite os mesmos frames <code>data: {…}\\n\\n</code>.</span>',
+    // adapters
+    "Every adapter, one client API": "Cada adaptador, uma só API de cliente",
+    "All of these feed createRpcClient. Capability chips are the adapter's real runtime caps.":
+      "Todos estes alimentam o <code>createRpcClient</code>. Os chips de capacidade são os <code>caps</code> reais do adaptador em runtime.",
+    "Typed JSON over HTTP — the everyday default.": "JSON tipado sobre HTTP — o padrão do dia-a-dia.",
+    "Connect / gRPC-web unary (JSON).": "Connect / gRPC-web unário (JSON).",
+    "Server-Sent Events — live server→client streams.": "Server-Sent Events — streams ao vivo servidor→cliente.",
+    "WebSocket — bidirectional, low-latency streams.": "WebSocket — streams bidireccionais de baixa latência.",
+    "In-process handlers — tests, demos, a monolith.": "Handlers em processo — testes, demos, um monólito.",
+    "dxjs running inside/next to the backend binary.": "dxjs a correr dentro/ao lado do binário do backend.",
+    "→Browsers can't set an Authorization header on the WS handshake, so the credential is the first frame. Your server must authenticate it and emit nothing until it validates.":
+      '<span class="arrow">→</span><span>Os browsers não conseguem pôr um header <code>Authorization</code> no handshake WS, por isso a credencial é o primeiro frame. <b>O teu servidor tem de a autenticar e não emitir nada até a validar.</b></span>',
+    // reactive data
+    "resource() — a fetch that reacts": "resource() — um fetch que reage",
+    "Wrap any transport call in a resource for a reactive accessor with loading/error, cancellation and idempotency-gated retries.":
+      "Embrulha qualquer chamada de transporte num <code>resource</code> para um accessor reactivo com <code>loading</code>/<code>error</code>, cancelamento e retries condicionados por idempotência.",
+    "liveSignal — a value that stays live": "liveSignal — um valor que se mantém vivo",
+    "Fed by the transport's native stream when it has one (SSE, WebSocket), and polling when it doesn't — the call site is the same either way.":
+      "Alimentado pela stream nativa do transporte quando há uma (SSE, WebSocket), e por polling quando não há — o local de chamada é o mesmo em qualquer caso.",
+    "openapiClient — typed from your spec": "openapiClient — tipado a partir da tua spec",
+    "Point @dxjs/openapi at an openapi.json and get a client whose calls are validated against the request schema — over any adapter.":
+      "Aponta o <code>@dxjs/openapi</code> a um <code>openapi.json</code> e recebe um cliente cujas chamadas são validadas contra o schema do pedido — sobre qualquer adaptador.",
+    "Siblings @dxjs/soap and @dxjs/proto add SOAP and protobuf over the same port — the UI keeps calling api.call(...) regardless of what the server speaks.":
+      "Os irmãos <b>@dxjs/soap</b> e <b>@dxjs/proto</b> adicionam SOAP e protobuf sobre o mesmo porto — a UI continua a chamar <code>api.call(...)</code> seja o que for que o servidor fala.",
+    // matrix
+    "Which adapter should I use?": "Que adaptador devo usar?",
+    "Capabilities are each adapter's real caps — what the port guarantees at runtime.":
+      "As capacidades são os <code>caps</code> reais de cada adaptador — o que o porto garante em runtime.",
+    "Adapter": "Adaptador", "Carries": "Transporta", "Capabilities": "Capacidades", "Reach for it when…": "Usa quando…",
+    "a plain REST/JSON API — the default.": "uma API REST/JSON simples — o padrão.",
+    "the backend is a gRPC service with Connect.": "o backend é um serviço gRPC com Connect.",
+    "server→client live updates over plain HTTP.": "actualizações ao vivo servidor→cliente sobre HTTP simples.",
+    "low-latency or two-way streams (chat, presence).": "streams de baixa latência ou bidireccionais (chat, presença).",
+    "tests, demos, or a monolith before it splits.": "testes, demos, ou um monólito antes de se dividir.",
+    "dxjs runs inside/next to the backend (SSR).": "dxjs corre dentro/ao lado do backend (SSR).",
+    "Need unary over one transport and streams over another? composeTransport(unary, stream) stitches them into one client — exactly what the SSE example does with REST + SSE.":
+      "Precisas de unário num transporte e streams noutro? <code>composeTransport(unary, stream)</code> cose-os num só cliente — exactamente o que o exemplo SSE faz com REST + SSE.",
+    // run-notes + footer
+    "go run . · listens on :8000": "go run . · escuta em :8000",
+    "node server.js · listens on :8000 · zero deps": "node server.js · escuta em :8000 · 0 deps",
+    "node:http · zero deps": "node:http · 0 deps",
+    "A NgolaCloud open-source project.": "Um projecto de código aberto da NgolaCloud.",
+    "Top ↑": "Topo ↑",
+  };
+  var COMMENTS = [
+    ["// re-runs when count changes", "// volta a correr quando count muda"],
+    ["// Compose: unary over REST, streams over SSE — one client.", "// Compõe: unário por REST, streams por SSE — um só cliente."],
+    ["// one object per SSE frame; resumes from the last id on drop", "// um objecto por frame SSE; retoma do último id em caso de queda"],
+    ["// id carries the fully-qualified service + method:", "// o id carrega o serviço + método totalmente qualificados:"],
+    ["// → POST /user.v1.UserService/GetUser  (Connect unary, JSON)", "// → POST /user.v1.UserService/GetUser  (Connect unário, JSON)"],
+    ['// stream-only → compose with a unary transport (see "Live updates" above)', '// só stream → compõe com um transporte unário (ver "Actualizações ao vivo" acima)'],
+    ['// FIRST frame {type:"authorization",…}, before the request', '// PRIMEIRO frame {type:"authorization",…}, antes do pedido'],
+    ["// Same api.call / api.live call sites — no HTTP. Split into services later by swapping the adapter.", "// Mesmos api.call / api.live — sem HTTP. Divide em serviços depois, trocando o adaptador."],
+    ["// A Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip.", "// Um host Rust/Seiva a renderizar SSR entrega ao dxjs o seu dispatcher — sem ida-e-volta HTTP."],
+    ["// Pass an accessor for the request → re-fetches when userId() changes.", "// Passa um accessor para o pedido → refaz o fetch quando userId() muda."],
+    ["// used only if the transport has no native stream", "// usado só se o transporte não tiver stream nativa"],
+    ["// validated before it leaves the browser", "// validado antes de sair do browser"],
+    ["// unary", "// unário"],
+    ["# the built-in server routes every request through this one file", "# o servidor embutido encaminha cada pedido por este único ficheiro"],
+    ["// Deno: native TypeScript, built-in HTTP server, no deps", "// Deno: TypeScript nativo, servidor HTTP embutido, sem dependências"],
+    ["// JDK's built-in HttpServer — no framework, no dependencies", "// o HttpServer embutido do JDK — sem framework, sem dependências"],
+    ["# unbuffered: flush each frame as it is produced", "# sem buffer: descarrega cada frame à medida que é produzido"],
+    ["// push one SSE frame per second over a ReadableStream", "// empurra um frame SSE por segundo sobre um ReadableStream"],
+    ["// keep the response open and flush a frame each second", "// mantém a resposta aberta e descarrega um frame a cada segundo"],
+    ["// the id is the fully-qualified protobuf service + method", "// o id é o serviço + método protobuf totalmente qualificados"],
+    ["// cors.AllowAll lets the browser send Connect-Protocol-Version & Content-Type.", "// cors.AllowAll deixa o browser enviar Connect-Protocol-Version & Content-Type."],
+    ["// server-stream", "// stream-servidor"],
+    ["// a Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip", "// um host Rust/Seiva a renderizar SSR entrega ao dxjs o seu dispatcher — sem ida-e-volta HTTP"],
+    ["// the operation (Body child) element name", "// o nome do elemento da operação (filho de Body)"],
+    ["// the default flatXmlCodec reads GetUserResponse's leaf children into an object", "// o flatXmlCodec por omissão lê os filhos-folha de GetUserResponse para um objecto"],
+    ["// Connect unary is a plain POST /{service}/{method} with a JSON body", "// o Connect unário é um simples POST /{service}/{method} com corpo JSON"],
+    ["# Connect unary is a plain POST /{service}/{method} with a JSON body", "# o Connect unário é um simples POST /{service}/{method} com corpo JSON"],
+    ["# a minimal SOAP endpoint (production: PHP's built-in SoapServer + WSDL)", "# um endpoint SOAP mínimo (produção: o SoapServer nativo do PHP + WSDL)"],
+    ["// a minimal SOAP endpoint (production: JAX-WS / a WSDL stack)", "// um endpoint SOAP mínimo (produção: JAX-WS / uma stack WSDL)"],
+    ["# a minimal SOAP endpoint (production: spyne / a WSDL stack)", "# um endpoint SOAP mínimo (produção: spyne / uma stack WSDL)"],
+  ];
+  function norm(s) { return s.replace(/\s+/g, " ").trim(); }
+  // Normalise the dictionary keys too, so authoring whitespace (nbsp, wraps) can't
+  // break a lookup — both sides are compared after the same collapse.
+  var PN = {}; Object.keys(PROSE).forEach(function (k) { PN[norm(k)] = PROSE[k]; });
+  var proseEls = Array.prototype.slice.call(document.querySelectorAll(
+    ".topnav a, .side-group h4, .side-group a, .eyebrow, .hero h1, .hero .lead, .cta-row a, " +
+    "section.doc > h2, section.doc > .sub, .vcard h3, .vcard p, .step h3, .step p, .pair-label, " +
+    ".wire, .adapter-head .what, figure.code figcaption .run, .callout p, thead th, tbody td:last-child, " +
+    ".footer-in > span, .footer-in nav a"));
+  proseEls.forEach(function (el) { el.__en = el.innerHTML; el.__k = norm(el.textContent); });
+  var codeEls = Array.prototype.slice.call(document.querySelectorAll("pre code"));
+  codeEls.forEach(function (c) { c.__en = c.textContent; });
+  function trComments(src) { for (var i = 0; i < COMMENTS.length; i++) src = src.split(COMMENTS[i][0]).join(COMMENTS[i][1]); return src; }
+  function applyLang(lang) {
+    document.documentElement.setAttribute("lang", lang === "pt" ? "pt-AO" : "en");
+    proseEls.forEach(function (el) {
+      el.innerHTML = lang === "pt" && PN[el.__k] != null ? PN[el.__k] : el.__en;
+    });
+    codeEls.forEach(function (c) { c.innerHTML = highlight(lang === "pt" ? trComments(c.__en) : c.__en); });
+    var btn = document.querySelector(".langtoggle");
+    if (btn) { btn.textContent = lang === "pt" ? "EN" : "PT"; btn.setAttribute("aria-label", lang === "pt" ? "Switch to English" : "Mudar para português"); }
+    try { localStorage.setItem("dxlang", lang); } catch (e) {}
+  }
+  var saved; try { saved = localStorage.getItem("dxlang"); } catch (e) {}
+  var lang = saved === "en" || saved === "pt" ? saved : "pt";
+  applyLang(lang);
+  var langBtn = document.querySelector(".langtoggle");
+  if (langBtn) langBtn.addEventListener("click", function () { lang = lang === "pt" ? "en" : "pt"; applyLang(lang); });
 
   // Copy buttons.
   document.querySelectorAll(".copy").forEach(function (btn) {

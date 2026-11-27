@@ -1,0 +1,1510 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>dxjs — components</title>
+<!-- The real @dxjs/ui stylesheet (copied same-origin by docs/build.mjs) styles the
+     STATIC previews below with the kit's own classes. Owner decision: previews show
+     rendered markup, the kit is NOT run live here (CSP + build cost). -->
+<link rel="stylesheet" href="ui.css" />
+<style>
+/* ============================================================================
+   dxjs components guide — self-contained light doc page (mirrors transport.html).
+   NgolaCloud identity: accent blue #3d7be0, brand petal #e5484d, core gold #f2b03d.
+   Committed LIGHT theme; system type scale; no webfont CDN (CSP-safe). Page chrome
+   tokens are `--accent`/`--ink`/…; the previews use @dxjs/ui's own `--dx-*` tokens.
+   ========================================================================== */
+:root {
+  color-scheme: light;
+  --ground: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --ink: #101726;
+  --ink-soft: #2b3545;
+  --muted: #5a6678;
+  --faint: #8a94a3;
+  --line: #e7eaf1;
+  --line-strong: #d7dce7;
+  --accent: #3d7be0;
+  --accent-hover: #2f6ad0;
+  --accent-weak: #eaf1fc;
+  --petal: #e5484d;
+  --petal-weak: #fdecec;
+  --gold: #f2b03d;
+  --gold-soft: #fff3da;
+  --ok: #1f9d6b;
+  --code-bg: #f6f8fc;
+  --code-ink: #243049;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(16,23,38,.04), 0 8px 24px -12px rgba(16,23,38,.12);
+  --shadow-lift: 0 2px 4px rgba(16,23,38,.05), 0 16px 40px -16px rgba(61,123,224,.22);
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --measure: 72ch;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--ground); color: var(--ink); font-family: var(--ui);
+  font-size: 16px; line-height: 1.7; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; margin: 0; }
+code { font-family: var(--mono); font-size: .9em; }
+.eyebrow { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--accent); margin: 0 0 10px; }
+
+/* --- top bar -------------------------------------------------------------- */
+.topbar { position: sticky; top: 0; z-index: 50; background: color-mix(in srgb, var(--ground) 88%, transparent); backdrop-filter: saturate(1.4) blur(10px); border-bottom: 1px solid var(--line); }
+.topbar-in { max-width: 1240px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 20px; }
+.wordmark { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -.03em; color: var(--ink); }
+.mark { width: 28px; height: 28px; border-radius: 9px; flex: none; background: radial-gradient(circle at 50% 36%, var(--gold) 0 26%, var(--petal) 27% 100%); box-shadow: inset 0 0 0 1px rgba(16,23,38,.06), 0 2px 6px -2px rgba(229,72,77,.5); }
+.wordmark small { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0; }
+.topnav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.topnav a { padding: 7px 12px; border-radius: 8px; color: var(--ink-soft); font-size: 14px; font-weight: 500; }
+.topnav a:hover { background: var(--surface-2); color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; background: var(--petal); color: #fff !important; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px -2px rgba(229,72,77,.6); }
+.pill:hover { background: #d53b40; }
+.pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+.langtoggle { font: inherit; font-size: 13px; font-weight: 700; font-family: var(--ui); cursor: pointer; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); border-radius: 8px; padding: 6px 11px; letter-spacing: .04em; }
+.langtoggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* --- shell --------------------------------------------------------------- */
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 48px; }
+.sidebar { position: sticky; top: 61px; align-self: start; height: calc(100vh - 61px); overflow-y: auto; padding: 32px 0; }
+.side-group { margin-bottom: 22px; }
+.side-group h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); margin: 0 0 8px; font-weight: 700; }
+.side-group a { display: block; padding: 5px 12px; border-radius: 7px; color: var(--muted); font-size: 14px; border-left: 2px solid transparent; }
+.side-group a:hover { color: var(--ink); background: var(--surface-2); }
+.side-group a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-weak); font-weight: 600; }
+.side-group a code { font-size: 12.5px; color: inherit; }
+main { min-width: 0; padding: 0 0 96px; }
+
+/* --- hero ---------------------------------------------------------------- */
+.hero { padding: 64px 0 24px; }
+.hero h1 { font-size: clamp(32px, 5vw, 52px); font-weight: 800; }
+.hero h1 .accent { color: var(--accent); }
+.hero .lead { font-size: 19px; color: var(--muted); max-width: 48ch; margin: 18px 0 28px; line-height: 1.6; }
+.cmd { display: inline-flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 14.5px; color: var(--ink-soft); box-shadow: var(--shadow); }
+.cmd .prompt { color: var(--petal); font-weight: 700; }
+
+/* --- sections / routes --------------------------------------------------- */
+section.doc { padding-top: 48px; }
+section.doc > h2 { font-size: 28px; font-weight: 800; }
+section.doc > .sub { color: var(--muted); font-size: 17px; margin: 10px 0 0; max-width: var(--measure); }
+.prose { max-width: var(--measure); }
+.prose p { color: var(--ink-soft); margin: 18px 0; }
+.prose p code, li code { background: var(--accent-weak); color: var(--accent); padding: 1.5px 6px; border-radius: 6px; font-size: .88em; }
+.cardgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin: 24px 0; }
+.ccard { display: block; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); color: var(--ink); }
+.ccard:hover { border-color: var(--accent); box-shadow: var(--shadow-lift); color: var(--ink); }
+.ccard .cn { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--accent); }
+.ccard p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+/* --- preview panel ------------------------------------------------------- */
+.preview { margin: 22px 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.preview-head { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--faint); }
+.preview-stage { padding: 28px; background:
+  linear-gradient(45deg, var(--surface-2) 25%, transparent 25%) -8px 0/16px 16px,
+  linear-gradient(-45deg, var(--surface-2) 25%, transparent 25%) -8px 0/16px 16px,
+  var(--surface);
+  display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.preview-stage.block { display: block; }
+.preview-stage .dx-modal { position: static; max-width: 420px; }
+
+/* --- code ---------------------------------------------------------------- */
+figure.code { margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+figure.code figcaption { display: flex; align-items: center; gap: 10px; padding: 9px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+figure.code figcaption .fname { color: var(--ink-soft); font-weight: 600; }
+figure.code figcaption .copy { margin-left: auto; }
+.copy { font: inherit; font-size: 12px; font-family: var(--ui); font-weight: 600; cursor: pointer; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); border-radius: 7px; padding: 4px 10px; }
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy.done { color: var(--ok); border-color: var(--ok); }
+pre { margin: 0; padding: 16px 18px; overflow-x: auto; background: var(--code-bg); }
+pre code { font-size: 13.5px; line-height: 1.75; color: var(--code-ink); white-space: pre; }
+.k { color: #2f6ad0; font-weight: 600; } .s { color: #1f8a5b; } .c { color: #99a1b0; font-style: italic; } .n { color: #b2541a; } .f { color: #8a3ffc; }
+
+/* --- API table ----------------------------------------------------------- */
+.tablewrap { overflow-x: auto; margin: 20px 0; border: 1px solid var(--line); border-radius: var(--radius); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+thead th { background: var(--surface-2); color: var(--ink); font-weight: 700; font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em; }
+tbody tr:last-child td { border-bottom: 0; }
+td code { font-family: var(--mono); font-size: 12.5px; color: var(--accent); }
+td .ty { color: var(--petal); }
+
+/* --- steps (guide) ------------------------------------------------------- */
+.steps { display: grid; gap: 14px; margin: 22px 0; }
+.step { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+.step .sn { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: var(--accent-weak); color: var(--accent); font-variant-numeric: tabular-nums; }
+.step h3 { font-size: 16px; margin: 4px 0 2px; }
+.step p { margin: 0 0 8px; color: var(--muted); font-size: 14.5px; }
+.step figure.code { margin: 6px 0 0; }
+
+/* --- callout ------------------------------------------------------------- */
+.callout { display: flex; gap: 12px; padding: 16px 18px; border-radius: var(--radius); background: var(--accent-weak); border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); margin: 22px 0; max-width: var(--measure); }
+.callout .ci { flex: none; font-weight: 800; color: var(--accent); }
+.callout p { margin: 0; color: var(--ink-soft); font-size: 14.5px; } .callout b { color: var(--ink); }
+
+/* --- footer -------------------------------------------------------------- */
+footer { border-top: 1px solid var(--line); margin-top: 40px; }
+.footer-in { max-width: 1240px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; color: var(--muted); font-size: 14px; }
+.footer-in .wordmark { font-size: 15px; } .footer-in nav { margin-left: auto; display: flex; gap: 18px; }
+
+/* --- responsive ---------------------------------------------------------- */
+@media (max-width: 920px) {
+  .shell { grid-template-columns: 1fr; gap: 0; }
+  .sidebar { display: none; }
+  .topnav a:not(.pill) { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs <small>· components</small></span>
+    <nav class="topnav" aria-label="Primary">
+      <a href="#/overview">Overview</a>
+      <a href="#/guide">From scratch</a>
+      <a href="transport.html">Transport</a>
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <button class="langtoggle" type="button" aria-label="Switch to English">EN</button>
+      <a class="pill" href="#/button"><span class="dot" aria-hidden="true"></span> Browse the kit</a>
+    </nav>
+  </div>
+</header>
+
+<div class="shell">
+  <aside class="sidebar" aria-label="Component navigation">
+    <div class="side-group">
+      <h4>Get started</h4>
+      <a href="#/overview">Overview</a>
+      <a href="#/guide">Build one from scratch</a>
+    </div>
+    <div class="side-group">
+      <h4>Controls</h4>
+      <a href="#/button"><code>button</code></a>
+      <a href="#/select"><code>select</code></a>
+      <a href="#/input"><code>input</code></a>
+      <a href="#/switch"><code>switch</code></a>
+      <a href="#/radio"><code>radio</code></a>
+      <a href="#/badge"><code>badge</code></a>
+    </div>
+    <div class="side-group">
+      <h4>Structure</h4>
+      <a href="#/card"><code>card</code></a>
+      <a href="#/tabs"><code>tabs</code></a>
+      <a href="#/appShell"><code>appShell</code></a>
+    </div>
+    <div class="side-group">
+      <h4>Overlay</h4>
+      <a href="#/modal"><code>modal</code></a>
+      <a href="#/tooltip"><code>tooltip</code></a>
+    </div>
+    <div class="side-group">
+      <h4>Feedback</h4>
+      <a href="#/alert"><code>alert</code></a>
+      <a href="#/progress"><code>progress</code></a>
+      <a href="#/skeleton"><code>skeleton</code></a>
+      <a href="#/spinner"><code>spinner</code></a>
+      <a href="#/emptyState"><code>emptyState</code></a>
+    </div>
+    <div class="side-group">
+      <h4>Data</h4>
+      <a href="#/dataTable"><code>dataTable</code></a>
+      <a href="#/statCard"><code>statCard</code></a>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ============================ OVERVIEW ============================ -->
+    <section class="doc" data-route="overview">
+      <div class="hero">
+        <p class="eyebrow">NgolaCloud · @dxjs/ui · CSP-safe</p>
+        <h1>Components, <span class="accent">class-only.</span></h1>
+        <p class="lead">A styled, CSP-safe component kit for the NgolaCloud / Seiva console.
+          Every component only toggles CSS classes — the look lives in a served stylesheet —
+          so the whole kit runs under a strict CSP: no eval, no inline styles, escaped output.</p>
+        <div class="cmd">
+          <span class="prompt">$</span><span>npm install @dxjs/ui @dxjs/dom @dxjs/core</span>
+          <button class="copy" data-copy="npm install @dxjs/ui @dxjs/dom @dxjs/core">Copy</button>
+        </div>
+      </div>
+      <p class="eyebrow">Browse</p>
+      <h2>Pick a component</h2>
+      <p class="sub">Eighteen representative components below; the full kit has around forty-five, added in later slices. Each page shows a live-styled static preview and the real call.</p>
+      <div class="cardgrid">
+        <a class="ccard" href="#/button"><span class="cn">button</span><p>Primary, ghost, danger, loading, block, icon and five sizes.</p></a>
+        <a class="ccard" href="#/select"><span class="cn">select</span><p>A styled native select — keyboard and a11y for free.</p></a>
+        <a class="ccard" href="#/input"><span class="cn">input</span><p>Text input, textarea and a labelled field with hint/error.</p></a>
+        <a class="ccard" href="#/switch"><span class="cn">switch</span><p>Toggle switch, checkbox and radio group — all reactive.</p></a>
+        <a class="ccard" href="#/badge"><span class="cn">badge</span><p>A squared status label and its rounded pill sibling.</p></a>
+        <a class="ccard" href="#/card"><span class="cn">card</span><p>A titled surface that wraps any reactive body.</p></a>
+        <a class="ccard" href="#/tabs"><span class="cn">tabs</span><p>An underline tab bar with an optional count badge.</p></a>
+        <a class="ccard" href="#/modal"><span class="cn">modal</span><p>A centred dialog over a backdrop; Esc and backdrop close it.</p></a>
+        <a class="ccard" href="#/tooltip"><span class="cn">tooltip</span><p>A hover/focus tip — CSS-revealed, no JS positioning.</p></a>
+        <a class="ccard" href="#/alert"><span class="cn">alert</span><p>An inline status banner; five tones, optional dismiss.</p></a>
+        <a class="ccard" href="#/progress"><span class="cn">progress</span><p>Determinate bar plus a thin CSP-safe usage meter.</p></a>
+        <a class="ccard" href="#/dataTable"><span class="cn">dataTable</span><p>Sortable, searchable, paginated, exportable keyed rows.</p></a>
+        <a class="ccard" href="#/radio"><span class="cn">radio</span><p>A single-choice radio group, reactive and keyboard-wired.</p></a>
+        <a class="ccard" href="#/appShell"><span class="cn">appShell</span><p>Dashboard shell: sidebar nav, top bar and a responsive drawer.</p></a>
+        <a class="ccard" href="#/statCard"><span class="cn">statCard</span><p>A KPI tile and a responsive grid of them.</p></a>
+        <a class="ccard" href="#/skeleton"><span class="cn">skeleton</span><p>Shimmering line, block and circle loading placeholders.</p></a>
+        <a class="ccard" href="#/spinner"><span class="cn">spinner</span><p>A tiny CSS-only busy indicator with an accessible name.</p></a>
+        <a class="ccard" href="#/emptyState"><span class="cn">emptyState</span><p>A centred empty placeholder with an optional action.</p></a>
+      </div>
+      <div class="callout">
+        <span class="ci" aria-hidden="true">i</span>
+        <p><b>Static preview.</b> The previews render the markup the kit emits, styled by the served <code>ui.css</code>. They are not interactive here — follow the code to wire them in a real app.</p>
+      </div>
+    </section>
+
+    <!-- ============================ GUIDE ============================== -->
+    <section class="doc" data-route="guide">
+      <p class="eyebrow">Guide</p>
+      <h2>Build a component from scratch</h2>
+      <p class="sub">A dxjs component is a plain function: it takes an options object and returns a <code>TemplateResult</code>. Four rules keep it on-palette and CSP-safe.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="sn">1</div>
+          <div>
+            <h3>Toggle classes, never inline styles</h3>
+            <p>The look lives in a served stylesheet. A component sets class names with <code>cx(...)</code>; it never writes a <code>style</code> attribute, so it satisfies <code>style-src 'self'</code>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">2</div>
+          <div>
+            <h3>Take an options object with reactive accessors</h3>
+            <p>Each prop is a plain value or an accessor. The <code>Maybe</code> type plus <code>read()</code> accept both, so a caller can pass a signal and the component stays live.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">3</div>
+          <div>
+            <h3>Bind through the safe sinks</h3>
+            <p>Use <code>@dxjs/dom</code>'s <code>html</code>: <code>.value</code> / <code>.checked</code> bind as live properties, <code>@event</code> is an <code>addEventListener</code>, <code>?attr</code> toggles a boolean attribute — output is escaped, no eval.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="sn">4</div>
+          <div>
+            <h3>Return a TemplateResult</h3>
+            <p>Compose the markup and return it. Here is a dismissible tag chip, end to end.</p>
+            <figure class="code">
+              <figcaption><span class="fname">tag.ts</span><button class="copy">Copy</button></figcaption>
+              <pre><code>import { html, type TemplateResult } from "@dxjs/dom";
+import { read, cx, type Maybe } from "@dxjs/ui";
+
+export interface TagOptions {
+  label: Maybe&lt;string&gt;;
+  tone?: "accent" | "mut";
+  onRemove?: () =&gt; void;
+}
+
+/** A dismissible tag chip. Class-only ⇒ CSP-safe. */
+export function tag(o: TagOptions): TemplateResult {
+  return html`&lt;span class=${cx("dx-tag", o.tone &amp;&amp; `is-${o.tone}`)}&gt;
+    ${() =&gt; read(o.label)}
+    ${o.onRemove
+      ? html`&lt;button class="dx-tag-x" aria-label="Remove"
+          @click=${() =&gt; o.onRemove!()}&gt;×&lt;/button&gt;`
+      : ""}
+  &lt;/span&gt;`;
+}</code></pre>
+            </figure>
+          </div>
+        </div>
+      </div>
+      <div class="callout">
+        <span class="ci" aria-hidden="true">→</span>
+        <p>Add the matching <code>.dx-tag</code> rules to the kit's stylesheet. Because styling is a served file, the same component renders identically in the browser and in CSP-safe string SSR.</p>
+      </div>
+    </section>
+
+    <!-- ============================ BUTTON ============================= -->
+    <section class="doc" data-route="button">
+      <p class="eyebrow">Controls</p>
+      <h2>button</h2>
+      <p class="sub">A button. Five variants (primary · default · ghost · subtle · danger), five sizes, a loading spinner, block and icon-only forms.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage">
+          <button type="button" class="dx-btn is-primary">Save</button>
+          <button type="button" class="dx-btn">Default</button>
+          <button type="button" class="dx-btn is-ghost">Ghost</button>
+          <button type="button" class="dx-btn is-subtle">Subtle</button>
+          <button type="button" class="dx-btn is-danger">Delete</button>
+          <button type="button" class="dx-btn is-primary" aria-busy="true"><span class="dx-spinner dx-btn-spin" aria-hidden="true"></span>Saving</button>
+          <button type="button" class="dx-btn" disabled>Disabled</button>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">button.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { button } from "@dxjs/ui";
+
+// A primary action
+button({
+  label: "Save",
+  variant: "primary",
+  onClick: () =&gt; save(),
+});
+
+// Loading + block, then an icon-only button with an accessible name
+button({ label: "Saving", variant: "primary", loading: isSaving, block: true });
+button({ icon: "＋", ariaLabel: "Add item", variant: "ghost" });</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>label</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Text content; omit for an icon-only button.</td></tr>
+            <tr><td><code>onClick</code></td><td><span class="ty">(e) =&gt; void</span></td><td>Click handler.</td></tr>
+            <tr><td><code>variant</code></td><td><span class="ty">primary · default · ghost · subtle · danger</span></td><td>Visual weight.</td></tr>
+            <tr><td><code>size</code></td><td><span class="ty">Size</span></td><td>xs · sm · md · lg · xl (default md).</td></tr>
+            <tr><td><code>loading</code></td><td><span class="ty">Maybe&lt;boolean&gt;</span></td><td>Shows a spinner; sets <code>aria-busy</code> and disables.</td></tr>
+            <tr><td><code>block</code></td><td><span class="ty">boolean</span></td><td>Full-width button.</td></tr>
+            <tr><td><code>icon</code> / <code>ariaLabel</code></td><td><span class="ty">Maybe&lt;…&gt; · string</span></td><td>Leading icon; a name for icon-only buttons.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ SELECT ============================= -->
+    <section class="doc" data-route="select">
+      <p class="eyebrow">Controls</p>
+      <h2>select</h2>
+      <p class="sub">A styled native <code>select</code> — keyboard navigation and accessibility come for free. Bind a value accessor and an <code>onChange</code>.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage">
+          <select class="dx-select" aria-label="Province">
+            <option value="luanda">Luanda</option>
+            <option value="benguela">Benguela</option>
+            <option value="huila">Huíla</option>
+            <option value="namibe">Namibe</option>
+          </select>
+          <select class="dx-select dx-sm" aria-label="Plan (small)">
+            <option value="" disabled selected>Pick a plan…</option>
+            <option value="free">Free</option>
+            <option value="pro">Pro</option>
+          </select>
+          <select class="dx-select" aria-label="Disabled" disabled>
+            <option>Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">select.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { select } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const province = signal("luanda");
+
+select({
+  value: province,
+  onChange: (v) =&gt; province.set(v),
+  options: [
+    { value: "luanda", label: "Luanda" },
+    { value: "benguela", label: "Benguela" },
+    { value: "huila", label: "Huíla" },
+  ],
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>options</code></td><td><span class="ty">Maybe&lt;SelectOption[]&gt;</span></td><td><code>{ value, label, disabled? }</code>.</td></tr>
+            <tr><td><code>value</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Selected value (reactive).</td></tr>
+            <tr><td><code>onChange</code></td><td><span class="ty">(value) =&gt; void</span></td><td>Fires on change.</td></tr>
+            <tr><td><code>placeholder</code></td><td><span class="ty">string</span></td><td>Disabled leading option.</td></tr>
+            <tr><td><code>size</code> / <code>disabled</code></td><td><span class="ty">Size · Maybe&lt;boolean&gt;</span></td><td>Density and disabled state.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ INPUT ============================== -->
+    <section class="doc" data-route="input">
+      <p class="eyebrow">Controls</p>
+      <h2>input</h2>
+      <p class="sub">A bare styled text input, a multi-line <code>textarea</code>, and a labelled <code>field</code> that wires a hint or reactive error to the control for accessibility.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-field" style="max-width:420px">
+            <label class="dx-field-label" for="pv-email">Work email<span class="dx-req" aria-hidden="true">*</span></label>
+            <input class="dx-input" id="pv-email" type="email" placeholder="you@company.ao" aria-describedby="pv-email-h" />
+            <p class="dx-field-msg" id="pv-email-h">We only use it for billing receipts.</p>
+          </div>
+          <div class="dx-field" style="max-width:420px;margin-top:14px">
+            <label class="dx-field-label" for="pv-nif">NIF</label>
+            <input class="dx-input" id="pv-nif" value="5000" aria-invalid="true" aria-describedby="pv-nif-h" />
+            <p class="dx-field-msg is-error" id="pv-nif-h" role="alert">A NIF has 10 digits.</p>
+          </div>
+          <textarea class="dx-input dx-textarea" rows="2" placeholder="Notes…" aria-label="Notes" style="max-width:420px;margin-top:14px"></textarea>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">input.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { field, input, textarea } from "@dxjs/ui";
+import { signal, computed } from "@dxjs/core";
+
+const nif = signal("5000");
+const nifError = computed(() =&gt;
+  nif().length === 10 ? "" : "A NIF has 10 digits.");
+
+// A labelled field: hint + reactive error wired via aria-describedby
+field({
+  label: "NIF",
+  required: true,
+  value: nif,
+  onInput: (v) =&gt; nif.set(v),
+  error: nifError,
+});
+
+// The bare controls are available too
+input({ type: "email", placeholder: "you@company.ao" });
+textarea({ rows: 3, placeholder: "Notes…" });</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>label</code></td><td><span class="ty">string</span></td><td><code>field</code> only — the control's label.</td></tr>
+            <tr><td><code>value</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Bound value (reactive).</td></tr>
+            <tr><td><code>onInput</code></td><td><span class="ty">(value, e) =&gt; void</span></td><td>Fires on every keystroke.</td></tr>
+            <tr><td><code>type</code></td><td><span class="ty">text · email · password · search · number · tel · url</span></td><td>Input type (default text).</td></tr>
+            <tr><td><code>hint</code> / <code>error</code></td><td><span class="ty">string · Maybe&lt;string&gt;</span></td><td><code>field</code> message; a truthy error sets <code>aria-invalid</code>.</td></tr>
+            <tr><td><code>required</code> / <code>disabled</code> / <code>size</code></td><td><span class="ty">boolean · Maybe&lt;boolean&gt; · Size</span></td><td>Marker, disabled state, density.</td></tr>
+            <tr><td><code>control</code></td><td><span class="ty">(bind) =&gt; TemplateResult</span></td><td>Supply a custom control (e.g. a select) instead of an input.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ SWITCH ============================= -->
+    <section class="doc" data-route="switch">
+      <p class="eyebrow">Controls</p>
+      <h2>switch</h2>
+      <p class="sub">A toggle <code>switch</code> (<code>role="switch"</code>), plus its siblings <code>checkbox</code> and <code>radioGroup</code>. All read their checked state reactively and call back with the new value.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <button class="dx-switch" role="switch" type="button" aria-checked="true"><span class="dx-switch-track" aria-hidden="true"><span class="dx-switch-thumb"></span></span><span class="dx-switch-label">Email notifications</span></button>
+          <div style="height:12px"></div>
+          <label class="dx-check"><input type="checkbox" class="dx-check-input" checked /><span class="dx-check-box" aria-hidden="true"></span><span class="dx-check-label">I accept the terms</span></label>
+          <div style="height:12px"></div>
+          <div class="dx-radios" role="radiogroup" aria-label="Plan">
+            <label class="dx-radio"><input type="radio" name="pv-plan" class="dx-radio-input" checked /><span class="dx-radio-dot" aria-hidden="true"></span><span class="dx-radio-label">Monthly</span></label>
+            <label class="dx-radio"><input type="radio" name="pv-plan" class="dx-radio-input" /><span class="dx-radio-dot" aria-hidden="true"></span><span class="dx-radio-label">Yearly</span></label>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">switch.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { switchToggle, checkbox, radioGroup } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const notify = signal(true);
+
+switchToggle({
+  checked: notify,
+  label: "Email notifications",
+  onChange: (on) =&gt; notify.set(on),
+});
+
+const accepted = signal(false);
+checkbox({ checked: accepted, label: "I accept the terms",
+  onChange: (v) =&gt; accepted.set(v) });
+
+const plan = signal("monthly");
+radioGroup({
+  value: plan,
+  onChange: (v) =&gt; plan.set(v),
+  options: [
+    { value: "monthly", label: "Monthly" },
+    { value: "yearly", label: "Yearly" },
+  ],
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>checked</code></td><td><span class="ty">Maybe&lt;boolean&gt;</span></td><td><code>switch</code> / <code>checkbox</code> state (reactive).</td></tr>
+            <tr><td><code>onChange</code></td><td><span class="ty">(checked) =&gt; void</span></td><td>Fires with the new boolean.</td></tr>
+            <tr><td><code>label</code></td><td><span class="ty">string?</span></td><td>Inline label text.</td></tr>
+            <tr><td><code>options</code> / <code>value</code></td><td><span class="ty">Maybe&lt;RadioOption[]&gt; · Maybe&lt;string&gt;</span></td><td><code>radioGroup</code> only — <code>{ value, label, disabled? }</code> and the selected value.</td></tr>
+            <tr><td><code>disabled</code></td><td><span class="ty">Maybe&lt;boolean&gt;</span></td><td>Disabled state.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ BADGE ============================== -->
+    <section class="doc" data-route="badge">
+      <p class="eyebrow">Controls</p>
+      <h2>badge</h2>
+      <p class="sub">A compact, squared status label — and its rounded sibling <code>pill</code>. Both take a tone (<code>pos · neg · warn · info · mut</code>) that maps to a colour.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage">
+          <span class="dx-badge is-pos">Active</span>
+          <span class="dx-badge is-warn">Pending</span>
+          <span class="dx-badge is-neg">Overdue</span>
+          <span class="dx-badge is-info">Beta</span>
+          <span class="dx-badge is-mut">Draft</span>
+          <span class="dx-pill is-pos">Paid</span>
+          <span class="dx-pill is-mut">Archived</span>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">badge.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { badge, pill } from "@dxjs/ui";
+
+badge("Active", "pos");
+badge("Pending", "warn");
+badge("Overdue", "neg");
+
+// pill is the rounded variant
+pill("Paid", "pos");
+pill("Archived", "mut");</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Arg</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>label</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Text content (reactive for <code>badge</code>).</td></tr>
+            <tr><td><code>tone</code></td><td><span class="ty">pos · neg · warn · info · mut</span></td><td>Colour; default <code>mut</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ CARD =============================== -->
+    <section class="doc" data-route="card">
+      <p class="eyebrow">Structure</p>
+      <h2>card</h2>
+      <p class="sub">A titled surface that wraps any reactive body. The title is wired to the section via <code>aria-labelledby</code>.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <section class="dx-card" style="max-width:420px">
+            <div class="dx-card-head"><h2 class="dx-card-title">Account summary</h2></div>
+            <div class="dx-card-body">
+              <p style="margin:0">Pro plan · renews 30 Nov · 3 seats in use.</p>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">card.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { card } from "@dxjs/ui";
+import { html } from "@dxjs/dom";
+
+card({
+  title: "Account summary",
+  body: html`&lt;p&gt;Pro plan · renews 30 Nov · 3 seats in use.&lt;/p&gt;`,
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>title</code></td><td><span class="ty">string?</span></td><td>Optional heading; omit for a bare surface.</td></tr>
+            <tr><td><code>body</code></td><td><span class="ty">Maybe&lt;TemplateResult&gt;</span></td><td>Any reactive content.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ TABS =============================== -->
+    <section class="doc" data-route="tabs">
+      <p class="eyebrow">Structure</p>
+      <h2>tabs</h2>
+      <p class="sub">An underline tab bar (<code>role="tablist"</code>). The active tab reads reactively; each tab can carry a count badge.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-tabs" role="tablist" aria-label="Sections">
+            <button class="dx-tab is-active" role="tab" type="button" aria-selected="true">Overview</button>
+            <button class="dx-tab" role="tab" type="button" aria-selected="false">Usage<span class="dx-tab-count">3</span></button>
+            <button class="dx-tab" role="tab" type="button" aria-selected="false">Billing</button>
+            <button class="dx-tab" role="tab" type="button" aria-selected="false" disabled>Archived</button>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">tabs.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { tabs } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const active = signal("overview");
+
+tabs({
+  active,
+  onSelect: (id) =&gt; active.set(id),
+  tabs: [
+    { id: "overview", label: "Overview" },
+    { id: "usage", label: "Usage", count: 3 },
+    { id: "billing", label: "Billing" },
+  ],
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>tabs</code></td><td><span class="ty">Maybe&lt;TabItem[]&gt;</span></td><td><code>{ id, label, count?, disabled? }</code>.</td></tr>
+            <tr><td><code>active</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Active tab id (reactive).</td></tr>
+            <tr><td><code>onSelect</code></td><td><span class="ty">(id) =&gt; void</span></td><td>Fires when a tab is chosen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ MODAL ============================== -->
+    <section class="doc" data-route="modal">
+      <p class="eyebrow">Overlay</p>
+      <h2>modal</h2>
+      <p class="sub">A centred dialog over a backdrop. Hidden when <code>open</code> is false; Esc and a backdrop click call <code>onClose</code>. It is an <code>aria-modal</code> dialog with a labelled title.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-modal" role="dialog" aria-modal="true" aria-label="Delete project">
+            <div class="dx-modal-head"><h2 class="dx-modal-title">Delete project</h2><button class="dx-modal-x" aria-label="Close">×</button></div>
+            <div class="dx-modal-body">This action cannot be undone. The project and its data are removed permanently.</div>
+            <div class="dx-modal-foot">
+              <button type="button" class="dx-btn is-subtle">Cancel</button>
+              <button type="button" class="dx-btn is-danger">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">modal.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { modal, button } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+import { html } from "@dxjs/dom";
+
+const open = signal(false);
+
+modal({
+  open,
+  title: "Delete project",
+  body: "This action cannot be undone.",
+  footer: html`
+    ${button({ label: "Cancel", variant: "subtle", onClick: () =&gt; open.set(false) })}
+    ${button({ label: "Delete", variant: "danger", onClick: remove })}`,
+  onClose: () =&gt; open.set(false),
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>open</code></td><td><span class="ty">Maybe&lt;boolean&gt;</span></td><td>Visibility (reactive).</td></tr>
+            <tr><td><code>title</code></td><td><span class="ty">string?</span></td><td>Labels the dialog.</td></tr>
+            <tr><td><code>body</code></td><td><span class="ty">Maybe&lt;TemplateResult · string&gt;</span></td><td>Dialog content.</td></tr>
+            <tr><td><code>footer</code></td><td><span class="ty">Maybe&lt;TemplateResult&gt;</span></td><td>Actions row.</td></tr>
+            <tr><td><code>onClose</code></td><td><span class="ty">() =&gt; void</span></td><td>Esc + backdrop + close button.</td></tr>
+            <tr><td><code>size</code></td><td><span class="ty">sm · md · lg</span></td><td>Dialog width.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ TOOLTIP =========================== -->
+    <section class="doc" data-route="tooltip">
+      <p class="eyebrow">Overlay</p>
+      <h2>tooltip</h2>
+      <p class="sub">A hover/focus tooltip. The tip is a sibling element revealed by CSS — no JS positioning, no inline styles — and wired to its trigger via <code>aria-describedby</code>.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage">
+          <span class="dx-tip-wrap is-top" tabindex="0" aria-describedby="pv-tip">
+            <button type="button" class="dx-btn">Hover me</button><span class="dx-tip" role="tooltip" id="pv-tip">Saved 2 minutes ago</span>
+          </span>
+          <span class="dx-tip-wrap is-right" tabindex="0" aria-describedby="pv-tip2">
+            <span class="dx-badge is-info">Beta</span><span class="dx-tip" role="tooltip" id="pv-tip2">Preview feature — may change</span>
+          </span>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">tooltip.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { tooltip, button } from "@dxjs/ui";
+
+tooltip({
+  tip: "Saved 2 minutes ago",
+  placement: "top",
+  children: button({ label: "Hover me" }),
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>tip</code></td><td><span class="ty">string</span></td><td>The tooltip text.</td></tr>
+            <tr><td><code>children</code></td><td><span class="ty">TemplateResult · string</span></td><td>The element the tooltip describes.</td></tr>
+            <tr><td><code>placement</code></td><td><span class="ty">top · bottom · left · right</span></td><td>Side the tip appears on (default top).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ ALERT ============================= -->
+    <section class="doc" data-route="alert">
+      <p class="eyebrow">Feedback</p>
+      <h2>alert</h2>
+      <p class="sub">An inline banner for status or explanation. Five tones map to colour; a negative tone gets <code>role="alert"</code>, the rest <code>role="status"</code>. Opt into a leading icon and a dismiss button.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-alert is-pos" role="status">
+            <span class="dx-alert-ico" aria-hidden="true">✓</span>
+            <div class="dx-alert-body"><div class="dx-alert-title">Saved</div><div class="dx-alert-text">Your changes are live.</div></div>
+          </div>
+          <div class="dx-alert is-warn" role="status" style="margin-top:12px">
+            <div class="dx-alert-body"><div class="dx-alert-text">Your trial ends in 3 days.</div></div>
+            <button class="dx-alert-x" aria-label="Dismiss">×</button>
+          </div>
+          <div class="dx-alert is-neg" role="alert" style="margin-top:12px">
+            <span class="dx-alert-ico" aria-hidden="true">!</span>
+            <div class="dx-alert-body"><div class="dx-alert-title">Payment failed</div><div class="dx-alert-text">We could not charge your card.</div></div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">alert.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { alert } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const show = signal(true);
+
+alert({
+  tone: "warn",
+  body: "Your trial ends in 3 days.",
+  onDismiss: () =&gt; show.set(false),
+});
+
+alert({ tone: "pos", title: "Saved", body: "Your changes are live.", icon: "✓" });</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>tone</code></td><td><span class="ty">pos · neg · warn · info · mut</span></td><td>Colour; default <code>info</code>. <code>neg</code> ⇒ <code>role="alert"</code>.</td></tr>
+            <tr><td><code>title</code></td><td><span class="ty">string?</span></td><td>Optional bold heading.</td></tr>
+            <tr><td><code>body</code></td><td><span class="ty">Maybe&lt;TemplateResult · string&gt;</span></td><td>The message (reactive).</td></tr>
+            <tr><td><code>icon</code></td><td><span class="ty">TemplateResult · string</span></td><td>Optional leading glyph.</td></tr>
+            <tr><td><code>onDismiss</code></td><td><span class="ty">() =&gt; void</span></td><td>Shows a dismiss button; called on click.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ PROGRESS ========================== -->
+    <section class="doc" data-route="progress">
+      <p class="eyebrow">Feedback</p>
+      <h2>progress</h2>
+      <p class="sub">A determinate <code>progress</code> bar on the native element, plus a thin <code>meter</code> for inline usage. The meter's fill width is an SVG rect <em>attribute</em>, never an inline style, so it survives <code>style-src 'self'</code>.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-progress-row">
+            <progress class="dx-progress" max="100" value="64"></progress>
+            <span class="dx-progress-val">64%</span>
+          </div>
+          <div class="dx-progress-row" style="margin-top:12px">
+            <progress class="dx-progress is-pos" max="100" value="100"></progress>
+            <span class="dx-progress-val">100%</span>
+          </div>
+          <div style="max-width:220px;margin-top:16px">
+            <div class="dx-meter is-warn" role="progressbar" aria-label="Disk usage">
+              <svg class="dx-meter-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+                <rect class="dx-meter-bg" x="0" y="0" width="100" height="6" rx="3"></rect>
+                <rect class="dx-meter-fill" x="0" y="0" width="82" height="6" rx="3"></rect>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">progress.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { progress, meter } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const done = signal(64);
+
+progress({ value: done, max: 100, showValue: true });
+
+// A thin usage meter — value is a 0..1 fraction
+meter({ value: 0.82, tone: "warn", label: "Disk usage" });</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>value</code></td><td><span class="ty">Maybe&lt;number&gt;</span></td><td><code>progress</code>: 0..max. <code>meter</code>: a 0..1 fraction.</td></tr>
+            <tr><td><code>max</code></td><td><span class="ty">number</span></td><td><code>progress</code> only; default 100.</td></tr>
+            <tr><td><code>showValue</code></td><td><span class="ty">boolean</span></td><td><code>progress</code> only — append the percentage.</td></tr>
+            <tr><td><code>tone</code></td><td><span class="ty">pos · neg · warn · info · mut</span></td><td>Fill colour.</td></tr>
+            <tr><td><code>label</code></td><td><span class="ty">string?</span></td><td><code>meter</code> accessible name.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ DATATABLE ========================== -->
+    <section class="doc" data-route="dataTable">
+      <p class="eyebrow">Data</p>
+      <h2>dataTable</h2>
+      <p class="sub">A sortable, searchable, paginated data table of keyed rows. Opt into selection, row clicks, an export menu (CSV / XLS / XLSX), sticky header, striping and compact density.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <section class="dx-card">
+            <div class="dx-card-head"><h2 class="dx-card-title">Accounts</h2></div>
+            <div class="dx-tbl-toolbar">
+              <div class="dx-tbl-search"><input type="search" placeholder="Search…" aria-label="Search accounts" /></div>
+              <div class="dx-spacer"></div>
+              <button type="button" class="dx-btn dx-export-btn">Export</button>
+            </div>
+            <div class="dx-tbl-wrap">
+              <table class="dx-tbl is-striped" aria-label="Accounts">
+                <thead><tr>
+                  <th class="is-sortable" aria-sort="ascending" tabindex="0">Name<span class="dx-arrow" aria-hidden="true">▲</span></th>
+                  <th class="is-sortable dx-ta-right" tabindex="0">MRR<span class="dx-arrow" aria-hidden="true"></span></th>
+                  <th>Plan</th>
+                </tr></thead>
+                <tbody>
+                  <tr><td>Banco Sol</td><td class="dx-num dx-ta-right">12 400</td><td>Enterprise</td></tr>
+                  <tr><td>Refriango</td><td class="dx-num dx-ta-right">8 900</td><td>Pro</td></tr>
+                  <tr><td>Unitel</td><td class="dx-num dx-ta-right">30 100</td><td>Enterprise</td></tr>
+                  <tr><td>ENDE</td><td class="dx-num dx-ta-right">4 250</td><td>Pro</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="dx-tbl-foot">
+              <span>Showing 1 – 4 of 4</span>
+              <div class="dx-spacer"></div>
+              <button type="button" class="dx-btn" disabled>‹ Prev</button>
+              <span>Page 1 / 1</span>
+              <button type="button" class="dx-btn" disabled>Next ›</button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">dataTable.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { dataTable } from "@dxjs/ui";
+
+dataTable({
+  title: "Accounts",
+  rows: accounts,          // T[] or an accessor
+  rowKey: (r) =&gt; r.id,
+  search: true,
+  exportable: true,        // CSV / XLS / XLSX of the filtered+sorted view
+  striped: true,
+  columns: [
+    { key: "name", label: "Name", sortable: true },
+    { key: "mrr",  label: "MRR",  numeric: true, sortable: true },
+    { key: "plan", label: "Plan" },
+  ],
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>columns</code></td><td><span class="ty">Column&lt;T&gt;[]</span></td><td><code>{ key, label, sortable?, numeric?, align?, value?, render? }</code>.</td></tr>
+            <tr><td><code>rows</code></td><td><span class="ty">Maybe&lt;T[]&gt;</span></td><td>The data (reactive).</td></tr>
+            <tr><td><code>rowKey</code></td><td><span class="ty">(row) =&gt; string · number</span></td><td>Stable key per row.</td></tr>
+            <tr><td><code>search</code> / <code>debounce</code></td><td><span class="ty">boolean · number</span></td><td>Search box; filter debounce (default 150 ms).</td></tr>
+            <tr><td><code>exportable</code></td><td><span class="ty">boolean · { filename?, formats? }</span></td><td>CSV / XLS / XLSX export menu.</td></tr>
+            <tr><td><code>selectable</code> / <code>onRow</code></td><td><span class="ty">boolean · (row) =&gt; void</span></td><td>Checkbox column; row click/Enter.</td></tr>
+            <tr><td><code>loading</code> / <code>striped</code> / <code>density</code> / <code>stickyHeader</code></td><td><span class="ty">various</span></td><td>Skeleton rows, zebra, compact, pinned header.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ RADIO ============================= -->
+    <section class="doc" data-route="radio">
+      <p class="eyebrow">Controls</p>
+      <h2>radio</h2>
+      <p class="sub">A single-choice <code>radioGroup</code> (<code>role="radiogroup"</code>). Each option is a native radio wired to one reactive value; choosing one calls back with its value.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-radios" role="radiogroup" aria-label="Billing cycle">
+            <label class="dx-radio"><input type="radio" name="pv-cycle" class="dx-radio-input" checked /><span class="dx-radio-dot" aria-hidden="true"></span><span class="dx-radio-label">Monthly</span></label>
+            <label class="dx-radio"><input type="radio" name="pv-cycle" class="dx-radio-input" /><span class="dx-radio-dot" aria-hidden="true"></span><span class="dx-radio-label">Yearly — save 20%</span></label>
+            <label class="dx-radio"><input type="radio" name="pv-cycle" class="dx-radio-input" disabled /><span class="dx-radio-dot" aria-hidden="true"></span><span class="dx-radio-label">Invoice (Enterprise)</span></label>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">radio.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { radioGroup } from "@dxjs/ui";
+import { signal } from "@dxjs/core";
+
+const cycle = signal("monthly");
+
+radioGroup({
+  value: cycle,
+  onChange: (v) =&gt; cycle.set(v),
+  ariaLabel: "Billing cycle",
+  options: [
+    { value: "monthly", label: "Monthly" },
+    { value: "yearly", label: "Yearly — save 20%" },
+    { value: "invoice", label: "Invoice (Enterprise)", disabled: true },
+  ],
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>options</code></td><td><span class="ty">Maybe&lt;RadioOption[]&gt;</span></td><td><code>{ value, label, disabled? }</code>.</td></tr>
+            <tr><td><code>value</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Selected value (reactive).</td></tr>
+            <tr><td><code>onChange</code></td><td><span class="ty">(value) =&gt; void</span></td><td>Fires with the chosen value.</td></tr>
+            <tr><td><code>name</code></td><td><span class="ty">string</span></td><td>Shared input name; defaults to a generated id.</td></tr>
+            <tr><td><code>ariaLabel</code></td><td><span class="ty">string</span></td><td>Accessible name for the group.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ APPSHELL ========================== -->
+    <section class="doc" data-route="appShell">
+      <p class="eyebrow">Structure</p>
+      <h2>appShell</h2>
+      <p class="sub">A dashboard shell: a dark sidebar nav, a top bar (search or custom content plus the user) and a content region. Below ~860px the sidebar becomes a slide-in drawer toggled by the hamburger — a signal drives a class, so it stays CSP-safe.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-shell" style="min-height:0;height:272px;border:1px solid var(--line);border-radius:10px;overflow:hidden">
+            <aside class="dx-side">
+              <div class="dx-brand">NgolaCloud</div>
+              <nav class="dx-nav" aria-label="Primary">
+                <button class="dx-nav-item is-active" aria-current="page"><span class="dx-dot" aria-hidden="true"></span>Overview</button>
+                <button class="dx-nav-item"><span class="dx-dot" aria-hidden="true"></span>Projects</button>
+                <button class="dx-nav-item"><span class="dx-dot" aria-hidden="true"></span>Billing</button>
+              </nav>
+            </aside>
+            <div class="dx-main">
+              <header class="dx-top">
+                <button class="dx-burger" type="button" aria-label="Toggle navigation">☰</button>
+                <div class="dx-search"><input type="search" placeholder="Search…" aria-label="Search" /></div>
+                <div class="dx-user"><span class="dx-avatar">AW</span>Ana W.</div>
+              </header>
+              <main class="dx-content"><p style="margin:0">Dashboard content goes here.</p></main>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">appShell.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { appShell } from "@dxjs/ui";
+import { html } from "@dxjs/dom";
+
+appShell({
+  brand: "NgolaCloud",
+  user: { name: "Ana W.", initials: "AW" },
+  search: { placeholder: "Search…", onInput: (q) =&gt; query.set(q) },
+  nav: [
+    { label: "Overview", active: true, onSelect: () =&gt; go("overview") },
+    { label: "Projects", onSelect: () =&gt; go("projects") },
+    { label: "Billing", onSelect: () =&gt; go("billing") },
+  ],
+  content: html`&lt;p&gt;Dashboard content goes here.&lt;/p&gt;`,
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>brand</code></td><td><span class="ty">string</span></td><td>Wordmark at the top of the sidebar.</td></tr>
+            <tr><td><code>nav</code></td><td><span class="ty">Maybe&lt;NavItem[]&gt;</span></td><td><code>{ label, active?, onSelect? }</code> (reactive).</td></tr>
+            <tr><td><code>user</code></td><td><span class="ty">{ name, initials }</span></td><td>Top-bar user chip with an avatar.</td></tr>
+            <tr><td><code>search</code></td><td><span class="ty">{ placeholder?, onInput? }</span></td><td>Top-bar search box.</td></tr>
+            <tr><td><code>topbar</code></td><td><span class="ty">Maybe&lt;TemplateResult&gt;</span></td><td>Custom left content when no <code>search</code> is given.</td></tr>
+            <tr><td><code>content</code></td><td><span class="ty">Maybe&lt;TemplateResult&gt;</span></td><td>The main region (reactive).</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ STATCARD ========================== -->
+    <section class="doc" data-route="statCard">
+      <p class="eyebrow">Data</p>
+      <h2>statCard</h2>
+      <p class="sub">A single KPI tile — a label, a big value and an optional toned delta. <code>statGrid</code> lays a keyed set of them out in a responsive grid.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-stats">
+            <div class="dx-stat">
+              <div class="dx-stat-label">MRR</div>
+              <div class="dx-stat-value">Kz 4.2M</div>
+              <div class="dx-stat-delta is-pos">+12% MoM</div>
+            </div>
+            <div class="dx-stat">
+              <div class="dx-stat-label">Active accounts</div>
+              <div class="dx-stat-value">1 284</div>
+              <div class="dx-stat-delta is-pos">+34</div>
+            </div>
+            <div class="dx-stat">
+              <div class="dx-stat-label">Churn</div>
+              <div class="dx-stat-value">2.1%</div>
+              <div class="dx-stat-delta is-neg">+0.3 pp</div>
+            </div>
+            <div class="dx-stat">
+              <div class="dx-stat-label">Seats in use</div>
+              <div class="dx-stat-value">312</div>
+              <div class="dx-stat-delta is-mut">no change</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">statCard.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { statCard, statGrid } from "@dxjs/ui";
+
+// One tile
+statCard({ label: "MRR", value: "Kz 4.2M", delta: "+12% MoM", tone: "pos" });
+
+// A responsive grid, keyed by label
+statGrid([
+  { label: "MRR", value: "Kz 4.2M", delta: "+12% MoM", tone: "pos" },
+  { label: "Active accounts", value: "1 284", delta: "+34", tone: "pos" },
+  { label: "Churn", value: "2.1%", delta: "+0.3 pp", tone: "neg" },
+  { label: "Seats in use", value: "312", delta: "no change", tone: "mut" },
+]);</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>label</code></td><td><span class="ty">string</span></td><td>The metric's name.</td></tr>
+            <tr><td><code>value</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>The big value (reactive).</td></tr>
+            <tr><td><code>delta</code></td><td><span class="ty">Maybe&lt;string&gt;</span></td><td>Optional change text (reactive).</td></tr>
+            <tr><td><code>tone</code></td><td><span class="ty">pos · neg · warn · info · mut</span></td><td>Colours the delta; default <code>mut</code>.</td></tr>
+            <tr><td><code>statGrid(cards)</code></td><td><span class="ty">StatCardOptions[]</span></td><td>A responsive grid, keyed by <code>label</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ SKELETON ========================== -->
+    <section class="doc" data-route="skeleton">
+      <p class="eyebrow">Feedback</p>
+      <h2>skeleton</h2>
+      <p class="sub">A shimmering loading placeholder. Three kinds: <code>line</code> (a run of text lines), <code>rect</code> (a block) and <code>circle</code> (an avatar). Purely decorative — it is <code>aria-hidden</code>.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-skel-lines" aria-hidden="true" style="max-width:360px">
+            <span class="dx-skel dx-skel-line"></span>
+            <span class="dx-skel dx-skel-line"></span>
+            <span class="dx-skel dx-skel-line"></span>
+          </div>
+          <div style="display:flex;gap:16px;align-items:center;margin-top:18px;max-width:360px">
+            <span class="dx-skel dx-skel-circle" aria-hidden="true"></span>
+            <span class="dx-skel dx-skel-rect" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">skeleton.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { skeleton } from "@dxjs/ui";
+
+// Three text lines (the last is shortened by CSS)
+skeleton({ lines: 3 });
+
+// A block and an avatar placeholder
+skeleton({ kind: "rect" });
+skeleton({ kind: "circle" });</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>kind</code></td><td><span class="ty">line · rect · circle</span></td><td>Shape; default <code>line</code>.</td></tr>
+            <tr><td><code>lines</code></td><td><span class="ty">number</span></td><td><code>line</code> only — how many lines; default 3.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ SPINNER =========================== -->
+    <section class="doc" data-route="spinner">
+      <p class="eyebrow">Feedback</p>
+      <h2>spinner</h2>
+      <p class="sub">A tiny CSS-only busy indicator — a spinning ring drawn from a border, no SVG and no inline styles. It is a <code>role="status"</code> element with an accessible name, and the same <code>dx-spinner</code> the loading <code>button</code> uses.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage">
+          <span class="dx-spinner" role="status" aria-label="Loading"></span>
+          <span style="display:inline-flex;align-items:center;gap:8px;color:var(--muted)"><span class="dx-spinner" role="status" aria-label="Saving"></span>Saving…</span>
+          <button type="button" class="dx-btn is-primary" aria-busy="true"><span class="dx-spinner dx-btn-spin" aria-hidden="true"></span>Saving</button>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">spinner.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { spinner } from "@dxjs/ui";
+
+// Default accessible name "Loading"
+spinner();
+
+// A custom accessible name
+spinner("Saving");</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Arg</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>label</code></td><td><span class="ty">string</span></td><td>Accessible name (<code>aria-label</code>); default <code>"Loading"</code>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============================ EMPTYSTATE ======================== -->
+    <section class="doc" data-route="emptyState">
+      <p class="eyebrow">Feedback</p>
+      <h2>emptyState</h2>
+      <p class="sub">A centred placeholder for an empty list or a first-run screen: an optional icon, a title, an optional description and an optional primary action button.</p>
+
+      <div class="preview">
+        <div class="preview-head">Preview</div>
+        <div class="preview-stage block">
+          <div class="dx-empty">
+            <div class="dx-empty-ico" aria-hidden="true">📭</div>
+            <div class="dx-empty-title">No invoices yet</div>
+            <p class="dx-empty-desc">When you bill a customer, their invoices appear here.</p>
+            <button type="button" class="dx-btn is-primary">Create invoice</button>
+          </div>
+        </div>
+      </div>
+
+      <figure class="code">
+        <figcaption><span class="fname">emptyState.ts</span><button class="copy">Copy</button></figcaption>
+        <pre><code>import { emptyState } from "@dxjs/ui";
+
+emptyState({
+  icon: "📭",
+  title: "No invoices yet",
+  description: "When you bill a customer, their invoices appear here.",
+  action: { label: "Create invoice", onClick: () =&gt; newInvoice() },
+});</code></pre>
+      </figure>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Prop</th><th>Type</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>title</code></td><td><span class="ty">string</span></td><td>The headline.</td></tr>
+            <tr><td><code>description</code></td><td><span class="ty">string</span></td><td>Optional supporting text.</td></tr>
+            <tr><td><code>icon</code></td><td><span class="ty">TemplateResult · string</span></td><td>Optional leading glyph.</td></tr>
+            <tr><td><code>action</code></td><td><span class="ty">{ label, onClick }</span></td><td>Optional primary button.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="footer-in">
+    <span class="wordmark"><span class="mark" aria-hidden="true"></span> dxjs</span>
+    <span>A NgolaCloud open-source project.</span>
+    <nav aria-label="Footer">
+      <a href="#/overview">Overview</a>
+      <a href="transport.html">Transport</a>
+      <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+/* Progressive enhancement only — every component page is readable without JS. */
+(function () {
+  "use strict";
+  var ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
+  function esc(s) { return s.replace(/[&<>]/g, function (c) { return ESC[c]; }); }
+
+  // Lightweight TS/JS highlighter: comments, strings, numbers, keywords.
+  var RE = /(\/\/[^\n]*|#(?![\[!])[^\n]*)|(`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|\b(\d+(?:\.\d+)?)\b|\b(import|from|export|const|let|var|await|async|function|fn|def|for|of|in|return|new|if|else|while|type|interface|class|struct|pub|use|true|false|null|undefined|void)\b/g;
+  function highlight(src) {
+    var out = "", last = 0, m;
+    while ((m = RE.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += '<span class="c">' + esc(m[1]) + "</span>";
+      else if (m[2]) out += '<span class="s">' + esc(m[2]) + "</span>";
+      else if (m[3]) out += '<span class="n">' + esc(m[3]) + "</span>";
+      else if (m[4]) out += '<span class="k">' + esc(m[4]) + "</span>";
+      last = RE.lastIndex;
+    }
+    out += esc(src.slice(last));
+    return out;
+  }
+
+  // ---- bilingual pt-AO / en (default pt-AO) ------------------------------
+  // Keyed by the English source text; prose swaps as innerHTML, code stays.
+  var PROSE = {
+    // top nav + sidebar + footer
+    "Overview": "Visão geral",
+    "From scratch": "Do zero",
+    "Transport": "Transporte",
+    "Browse the kit": '<span class="dot" aria-hidden="true"></span> Explorar o kit',
+    "Get started": "Começar",
+    "Build one from scratch": "Construir um do zero",
+    "Controls": "Controlos",
+    "Structure": "Estrutura",
+    "Overlay": "Sobreposição",
+    "Data": "Dados",
+    "A NgolaCloud open-source project.": "Um projecto de código aberto da NgolaCloud.",
+    // overview
+    "NgolaCloud · @dxjs/ui · CSP-safe": "NgolaCloud · @dxjs/ui · seguro para CSP",
+    "Components, Class-only.": 'Componentes, <span class="accent">só classes.</span>',
+    "A styled, CSP-safe component kit for the NgolaCloud / Seiva console. Every component only toggles CSS classes — the look lives in a served stylesheet — so the whole kit runs under a strict CSP: no eval, no inline styles, escaped output.":
+      "Um kit de componentes estilizado e seguro para CSP, para a consola NgolaCloud / Seiva. Cada componente só alterna classes CSS — o visual vive numa folha de estilos servida — por isso o kit inteiro corre sob uma CSP estrita: sem <code>eval</code>, sem estilos inline, saída escapada.",
+    "Browse": "Explorar",
+    "Pick a component": "Escolhe um componente",
+    "Twelve representative components below; the full kit has around forty-five, added in later slices. Each page shows a live-styled static preview and the real call.":
+      "Doze componentes representativos abaixo; o kit completo tem cerca de quarenta e cinco, acrescentados em fatias seguintes. Cada página mostra um preview estático com estilo real e a chamada verdadeira.",
+    "Static preview. The previews render the markup the kit emits, styled by the served ui.css. They are not interactive here — follow the code to wire them in a real app.":
+      "<b>Preview estático.</b> Os previews renderizam o markup que o kit emite, estilizado pelo <code>ui.css</code> servido. Não são interactivos aqui — segue o código para os ligares numa app real.",
+    // guide
+    "Guide": "Guia",
+    "Build a component from scratch": "Construir um componente do zero",
+    "A dxjs component is a plain function: it takes an options object and returns a TemplateResult. Four rules keep it on-palette and CSP-safe.":
+      "Um componente dxjs é uma função simples: recebe um objecto de opções e devolve um <code>TemplateResult</code>. Quatro regras mantêm-no na paleta e seguro para CSP.",
+    "Toggle classes, never inline styles": "Alterna classes, nunca estilos inline",
+    "The look lives in a served stylesheet. A component sets class names with cx(...); it never writes a style attribute, so it satisfies style-src 'self'.":
+      "O visual vive numa folha de estilos servida. Um componente define nomes de classe com <code>cx(...)</code>; nunca escreve um atributo <code>style</code>, por isso satisfaz <code>style-src 'self'</code>.",
+    "Take an options object with reactive accessors": "Recebe um objecto de opções com accessors reactivos",
+    "Each prop is a plain value or an accessor. The Maybe type plus read() accept both, so a caller can pass a signal and the component stays live.":
+      "Cada prop é um valor simples ou um accessor. O tipo <code>Maybe</code> mais <code>read()</code> aceitam ambos, por isso quem chama pode passar um sinal e o componente mantém-se vivo.",
+    "Bind through the safe sinks": "Liga através dos sinks seguros",
+    "Use @dxjs/dom's html: .value / .checked bind as live properties, @event is an addEventListener, ?attr toggles a boolean attribute — output is escaped, no eval.":
+      "Usa o <code>html</code> do <code>@dxjs/dom</code>: <code>.value</code> / <code>.checked</code> ligam como propriedades vivas, <code>@event</code> é um <code>addEventListener</code>, <code>?attr</code> alterna um atributo booleano — a saída é escapada, sem <code>eval</code>.",
+    "Return a TemplateResult": "Devolve um TemplateResult",
+    "Compose the markup and return it. Here is a dismissible tag chip, end to end.":
+      "Compõe o markup e devolve-o. Eis um chip de etiqueta descartável, de ponta a ponta.",
+    "Add the matching .dx-tag rules to the kit's stylesheet. Because styling is a served file, the same component renders identically in the browser and in CSP-safe string SSR.":
+      "Acrescenta as regras <code>.dx-tag</code> correspondentes à folha de estilos do kit. Como o estilo é um ficheiro servido, o mesmo componente renderiza igual no browser e no SSR de string seguro para CSP.",
+    // sections — eyebrows + subs
+    "Controls ": "Controlos",
+    "A button. Five variants (primary · default · ghost · subtle · danger), five sizes, a loading spinner, block and icon-only forms.":
+      "Um botão. Cinco variantes (primary · default · ghost · subtle · danger), cinco tamanhos, um spinner de carregamento, formas em bloco e só-ícone.",
+    "A styled native select — keyboard navigation and accessibility come for free. Bind a value accessor and an onChange.":
+      "Um <code>select</code> nativo estilizado — navegação por teclado e acessibilidade vêm de graça. Liga um accessor de valor e um <code>onChange</code>.",
+    "A titled surface that wraps any reactive body. The title is wired to the section via aria-labelledby.":
+      "Uma superfície com título que envolve qualquer corpo reactivo. O título é ligado à secção via <code>aria-labelledby</code>.",
+    "An underline tab bar (role=\"tablist\"). The active tab reads reactively; each tab can carry a count badge.":
+      "Uma barra de separadores sublinhada (<code>role=\"tablist\"</code>). O separador activo lê-se reactivamente; cada separador pode levar um contador.",
+    "A centred dialog over a backdrop. Hidden when open is false; Esc and a backdrop click call onClose. It is an aria-modal dialog with a labelled title.":
+      "Um diálogo centrado sobre um fundo. Escondido quando <code>open</code> é falso; Esc e um clique no fundo chamam <code>onClose</code>. É um diálogo <code>aria-modal</code> com título rotulado.",
+    "A sortable, searchable, paginated data table of keyed rows. Opt into selection, row clicks, an export menu (CSV / XLS / XLSX), sticky header, striping and compact density.":
+      "Uma tabela de dados ordenável, pesquisável e paginada, de linhas com chave. Opta por selecção, clique de linha, menu de exportação (CSV / XLS / XLSX), cabeçalho fixo, zebra e densidade compacta.",
+    // overview cards (slice 1)
+    "Primary, ghost, danger, loading, block, icon and five sizes.":
+      "Primary, ghost, danger, loading, block, só-ícone e cinco tamanhos.",
+    "A styled native select — keyboard and a11y for free.":
+      "Um <code>select</code> nativo estilizado — teclado e acessibilidade de graça.",
+    "A titled surface that wraps any reactive body.":
+      "Uma superfície com título que envolve qualquer corpo reactivo.",
+    "An underline tab bar with an optional count badge.":
+      "Uma barra de separadores sublinhada com um contador opcional.",
+    "A centred dialog over a backdrop; Esc and backdrop close it.":
+      "Um diálogo centrado sobre um fundo; Esc e o fundo fecham-no.",
+    "Sortable, searchable, paginated, exportable keyed rows.":
+      "Linhas com chave ordenáveis, pesquisáveis, paginadas e exportáveis.",
+    // slice 2 — sidebar group + overview cards
+    "Feedback": "Retorno",
+    "Text input, textarea and a labelled field with hint/error.":
+      "Campo de texto, textarea e um field rotulado com dica/erro.",
+    "Toggle switch, checkbox and radio group — all reactive.":
+      "Interruptor, checkbox e grupo de rádio — todos reactivos.",
+    "A squared status label and its rounded pill sibling.":
+      "Uma etiqueta de estado quadrada e o seu irmão pill arredondado.",
+    "A hover/focus tip — CSS-revealed, no JS positioning.":
+      "Uma dica ao passar/focar — revelada por CSS, sem posicionamento JS.",
+    "An inline status banner; five tones, optional dismiss.":
+      "Um banner de estado em linha; cinco tons, dispensa opcional.",
+    "Determinate bar plus a thin CSP-safe usage meter.":
+      "Barra determinada mais um medidor de uso fino e seguro para CSP.",
+    // slice 2 — section subs
+    "A bare styled text input, a multi-line textarea, and a labelled field that wires a hint or reactive error to the control for accessibility.":
+      "Um campo de texto simples estilizado, um <code>textarea</code> multilinha, e um <code>field</code> rotulado que liga uma dica ou erro reactivo ao controlo para acessibilidade.",
+    "A toggle switch (role=\"switch\"), plus its siblings checkbox and radioGroup. All read their checked state reactively and call back with the new value.":
+      "Um interruptor (<code>role=\"switch\"</code>), mais os irmãos <code>checkbox</code> e <code>radioGroup</code>. Todos leem o seu estado reactivamente e devolvem o novo valor.",
+    "A compact, squared status label — and its rounded sibling pill. Both take a tone (pos · neg · warn · info · mut) that maps to a colour.":
+      "Uma etiqueta de estado compacta e quadrada — e o irmão arredondado <code>pill</code>. Ambos recebem um tom (<code>pos · neg · warn · info · mut</code>) que mapeia para uma cor.",
+    "A hover/focus tooltip. The tip is a sibling element revealed by CSS — no JS positioning, no inline styles — and wired to its trigger via aria-describedby.":
+      "Uma tooltip ao passar/focar. A dica é um elemento irmão revelado por CSS — sem posicionamento JS, sem estilos inline — e ligada ao seu gatilho via <code>aria-describedby</code>.",
+    "An inline banner for status or explanation. Five tones map to colour; a negative tone gets role=\"alert\", the rest role=\"status\". Opt into a leading icon and a dismiss button.":
+      "Um banner em linha para estado ou explicação. Cinco tons mapeiam para cor; um tom negativo recebe <code>role=\"alert\"</code>, os restantes <code>role=\"status\"</code>. Opta por um ícone à cabeça e um botão de dispensa.",
+    "A determinate progress bar on the native element, plus a thin meter for inline usage. The meter's fill width is an SVG rect attribute, never an inline style, so it survives style-src 'self'.":
+      "Uma barra de progresso determinada no elemento nativo, mais um <code>meter</code> fino para uso em linha. A largura do preenchimento do <code>meter</code> é um <em>atributo</em> de <code>rect</code> SVG, nunca um estilo inline, por isso sobrevive ao <code>style-src 'self'</code>.",
+    // slice 3 — overview cards
+    "A single-choice radio group, reactive and keyboard-wired.":
+      "Um grupo de rádio de escolha única, reactivo e ligado ao teclado.",
+    "Dashboard shell: sidebar nav, top bar and a responsive drawer.":
+      "Estrutura de painel: navegação lateral, barra de topo e uma gaveta responsiva.",
+    "A KPI tile and a responsive grid of them.":
+      "Um mosaico de KPI e uma grelha responsiva deles.",
+    "Shimmering line, block and circle loading placeholders.":
+      "Marcadores de carregamento cintilantes em linha, bloco e círculo.",
+    "A tiny CSS-only busy indicator with an accessible name.":
+      "Um indicador de ocupado minúsculo, só em CSS, com nome acessível.",
+    "A centred empty placeholder with an optional action.":
+      "Um marcador vazio centrado com uma acção opcional.",
+    // slice 3 — section subs
+    "A single-choice radioGroup (role=\"radiogroup\"). Each option is a native radio wired to one reactive value; choosing one calls back with its value.":
+      "Um <code>radioGroup</code> de escolha única (<code>role=\"radiogroup\"</code>). Cada opção é um rádio nativo ligado a um valor reactivo; escolher uma devolve o seu valor.",
+    "A dashboard shell: a dark sidebar nav, a top bar (search or custom content plus the user) and a content region. Below ~860px the sidebar becomes a slide-in drawer toggled by the hamburger — a signal drives a class, so it stays CSP-safe.":
+      "Uma estrutura de painel: uma navegação lateral escura, uma barra de topo (pesquisa ou conteúdo próprio mais o utilizador) e uma região de conteúdo. Abaixo de ~860px a barra lateral vira uma gaveta deslizante alternada pelo hambúrguer — um sinal conduz uma classe, por isso mantém-se seguro para CSP.",
+    "A single KPI tile — a label, a big value and an optional toned delta. statGrid lays a keyed set of them out in a responsive grid.":
+      "Um único mosaico de KPI — um rótulo, um valor grande e um delta opcional com tom. O <code>statGrid</code> dispõe um conjunto com chave numa grelha responsiva.",
+    "A shimmering loading placeholder. Three kinds: line (a run of text lines), rect (a block) and circle (an avatar). Purely decorative — it is aria-hidden.":
+      "Um marcador de carregamento cintilante. Três tipos: <code>line</code> (uma série de linhas de texto), <code>rect</code> (um bloco) e <code>circle</code> (um avatar). Puramente decorativo — é <code>aria-hidden</code>.",
+    "A tiny CSS-only busy indicator — a spinning ring drawn from a border, no SVG and no inline styles. It is a role=\"status\" element with an accessible name, and the same dx-spinner the loading button uses.":
+      "Um indicador de ocupado minúsculo, só em CSS — um anel a girar desenhado a partir de uma borda, sem SVG e sem estilos inline. É um elemento <code>role=\"status\"</code> com nome acessível, e o mesmo <code>dx-spinner</code> que o <code>button</code> de carregamento usa.",
+    "A centred placeholder for an empty list or a first-run screen: an optional icon, a title, an optional description and an optional primary action button.":
+      "Um marcador centrado para uma lista vazia ou um ecrã de primeira utilização: um ícone opcional, um título, uma descrição opcional e um botão de acção primária opcional.",
+    // table headers
+    "Prop": "Prop", "Type": "Tipo", "Notes": "Notas", "Preview": "Pré-visualização", "Arg": "Arg",
+  };
+  function norm(s) { return s.replace(/\s+/g, " ").trim(); }
+  var PN = {}; Object.keys(PROSE).forEach(function (k) { PN[norm(k)] = PROSE[k]; });
+  var proseEls = Array.prototype.slice.call(document.querySelectorAll(
+    ".topnav a, .side-group h4, .eyebrow, .hero h1, .hero .lead, " +
+    "section.doc > h2, section.doc > .sub, .ccard p, .callout p, .step h3, .step p, " +
+    ".preview-head, thead th, .footer-in > span, .footer-in nav a"));
+  proseEls.forEach(function (el) { el.__en = el.innerHTML; el.__k = norm(el.textContent); });
+  var codeEls = Array.prototype.slice.call(document.querySelectorAll("pre code"));
+  codeEls.forEach(function (c) { c.__en = c.textContent; c.innerHTML = highlight(c.__en); });
+  function applyLang(lang) {
+    document.documentElement.setAttribute("lang", lang === "pt" ? "pt-AO" : "en");
+    proseEls.forEach(function (el) {
+      el.innerHTML = lang === "pt" && PN[el.__k] != null ? PN[el.__k] : el.__en;
+    });
+    var btn = document.querySelector(".langtoggle");
+    if (btn) { btn.textContent = lang === "pt" ? "EN" : "PT"; btn.setAttribute("aria-label", lang === "pt" ? "Switch to English" : "Mudar para português"); }
+    try { localStorage.setItem("dxlang", lang); } catch (e) {}
+  }
+  var saved; try { saved = localStorage.getItem("dxlang"); } catch (e) {}
+  var lang = saved === "en" || saved === "pt" ? saved : "pt";
+  applyLang(lang);
+  var langBtn = document.querySelector(".langtoggle");
+  if (langBtn) langBtn.addEventListener("click", function () { lang = lang === "pt" ? "en" : "pt"; applyLang(lang); });
+
+  // Copy buttons (explicit data-copy, else the sibling code block).
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      if (!text) {
+        var fig = btn.closest("figure");
+        var code = fig && fig.querySelector("code");
+        text = code ? code.textContent : "";
+      }
+      navigator.clipboard && navigator.clipboard.writeText(text).then(function () {
+        var label = btn.textContent;
+        btn.textContent = "Copied"; btn.classList.add("done");
+        setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 1400);
+      });
+    });
+  });
+
+  // ---- hash router: one route per component (#/button, #/card, …) --------
+  var routes = {};
+  document.querySelectorAll("[data-route]").forEach(function (s) { routes[s.getAttribute("data-route")] = s; });
+  var navLinks = {};
+  document.querySelectorAll('.side-group a[href^="#/"]').forEach(function (a) {
+    navLinks[a.getAttribute("href").slice(2)] = a;
+  });
+  function current() { var h = location.hash.replace(/^#\//, ""); return routes[h] ? h : "overview"; }
+  function show(route) {
+    Object.keys(routes).forEach(function (k) { routes[k].hidden = k !== route; });
+    Object.keys(navLinks).forEach(function (k) { navLinks[k].classList.toggle("active", k === route); });
+    try { window.scrollTo(0, 0); } catch (e) {}
+  }
+  window.addEventListener("hashchange", function () { show(current()); });
+  show(current());
+
+  // Expose a tiny probe for happy-dom verification (routes + orphan anchors).
+  window.__dxComponents = {
+    routes: Object.keys(routes),
+    orphans: Array.prototype.slice
+      .call(document.querySelectorAll('a[href^="#/"]'))
+      .map(function (a) { return a.getAttribute("href").slice(2); })
+      .filter(function (r) { return !routes[r]; }),
+  };
+})();
+</script>
+</body>
+</html>
