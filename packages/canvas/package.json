@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/canvas",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "dxjs node-graph canvas: reactive graph model, geometry, Canvas-2D renderer, and a pointer controller (drag/connect/pan/zoom) for data pipelines and architecture diagrams.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.4.0"
+    "@dxjs/core": "1.5.0"
   },
   "keywords": [
     "dxjs",

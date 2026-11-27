@@ -4,7 +4,12 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
-## Unreleased
+## 1.5.0 — 2026-11-27
+
+Fixes and documentation on top of 1.4.0; every 1.4.0 program keeps compiling and
+behaving. Distribution is unchanged: the packages are **not on npm** (the `@dxjs`
+name there belongs to an unrelated project) — each one is attached to the GitHub
+Release as an `npm pack` tarball, and the docs now say so everywhere.
 
 ### Fixes
 
@@ -15,6 +20,35 @@ all `@dxjs/*` packages share one version line.
   `pagination`'s chevrons included — rendered empty in 1.4.0. Children of
   `<foreignObject>` stay HTML. The `@dxjs/dom` size budget goes from 3072 to
   3200 B gzip for it.
+- **@dxjs/ui** — type errors in `fab`, `popover`, `popconfirm`, `pagination`,
+  `pickerWheel` and the touch helpers that only `tsc` caught (the `.d.ts`
+  build); no behaviour change.
+
+### Docs
+
+- **The site opens on the guide.** [ngolacloud.github.io/dxjs](https://ngolacloud.github.io/dxjs/)
+  is now the transport guide (also kept at `/transport.html`); the docs app —
+  packages, learn path, gallery, per-component pages — moves to `/docs.html`,
+  linked as "Reference". The README links both and explains how to install.
+- **Install from the GitHub Release everywhere.** The site, the components
+  guide and the `@dxjs/soap` README no longer say `npm install @dxjs/…` (that
+  would install the unrelated npm package) nor import from esm.sh (which
+  resolves through the npm registry). The no-build browser examples use an
+  import map over the installed packages; the build injects the version being
+  released into every install line.
+- **Transport guide** (`docs/transport.html`, also a single self-contained
+  file): the 81 `@dxjs/ui` components with live Desktop/Mobile previews and
+  Usage / Populate / Props tabs; a full project, backend to frontend
+  (`examples/tarefas`: a Node server with REST + SSE serving a dxjs + `@dxjs/ui`
+  app on one origin under a strict CSP); a no-build quickstart.
+- **Previews** are no longer cut in half on the docs site: the live result
+  sits under the code at full width and scrolls instead of clipping; in the
+  guide, a preview grows while a modal, sheet, palette or menu is open.
+
+### Examples
+
+- **`examples/tarefas`** — a shared task list, two tabs kept in sync over SSE;
+  installs `@dxjs/*` from the release tarballs.
 
 ## 1.4.0 — 2026-11-27
 

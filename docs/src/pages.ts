@@ -31,7 +31,7 @@ const head = (title: string, lead: string): TemplateResult =>
 // the npm registry belongs to an unrelated project). docs/build.mjs defines the
 // version being built.
 declare const __DXJS_VERSION__: string;
-const DXJS_VERSION = typeof __DXJS_VERSION__ === "string" ? __DXJS_VERSION__ : "1.4.0";
+const DXJS_VERSION = typeof __DXJS_VERSION__ === "string" ? __DXJS_VERSION__ : "1.5.0";
 const RELEASE = `https://github.com/ngolacloud/dxjs/releases/download/v${DXJS_VERSION}`;
 /** `npm install` of some @dxjs packages from the release (bash/zsh brace form). */
 const installLine = (pkgs: string[]) => `npm install ${RELEASE}/dxjs-{${pkgs.join(",")}}-${DXJS_VERSION}.tgz`;
