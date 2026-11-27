@@ -2443,3 +2443,31 @@ table.dx-tbl { width: 100%; border-collapse: collapse; font-size: var(--dx-text-
 @media (prefers-reduced-motion: reduce) {
   .dx-wheel-track { transition: none; }
 }
+
+/* ===========================================================================
+   Adaptive layer — the kit works on desktop AND touch without the dev tuning
+   anything. Coarse pointers (phones/tablets) get ≥44px hit targets; small
+   viewports let overlays use the screen. Additive only; desktop is untouched. */
+
+@media (pointer: coarse) {
+  .dx-btn, .dx-dd-trigger, .dx-s2-face, .dx-dp-face, .dx-dr-face, .dx-tmp-face,
+  .dx-pop-trigger, .dx-num-btn, .dx-pg-btn, .dx-pg-page, .dx-pg-prev, .dx-pg-next,
+  .dx-kb-move, .dx-tp-action, .dx-ptr-btn, .dx-up-x, .dx-fab-action {
+    min-height: 44px;
+  }
+  .dx-btn.is-icon, .dx-num-btn, .dx-pg-page, .dx-kb-move { min-width: 44px; }
+  .dx-menu-item, .dx-cmd-item, .dx-cm-item, .dx-as-item, .dx-as-cancel,
+  .dx-tmp-opt, .dx-wheel-opt, .dx-swipe-action, .dx-tabbar-item, .dx-tree-row,
+  .dx-acc-trigger, .dx-tab, .dx-seg-item, .dx-s2-opt, .dx-dp-cell {
+    min-height: 44px;
+  }
+  .dx-input, .dx-select, .dx-tags { min-height: 44px; }
+  .dx-check, .dx-radio { min-height: 40px; align-items: center; }
+}
+
+@media (max-width: 560px) {
+  .dx-modal { width: 94vw; max-width: 94vw; }
+  .dx-drawer.is-md, .dx-drawer.is-lg { width: 100vw; }
+  .dx-toaster { max-width: 100vw; left: 0; right: 0; transform: none; align-items: stretch; }
+  .dx-tbl-toolbar { flex-wrap: wrap; }
+}
