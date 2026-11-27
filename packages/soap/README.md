@@ -14,7 +14,7 @@ The `@dxjs/*` packages ship as tarballs on each
 on the npm registry belongs to an unrelated project, so install from the release:
 
 ```sh
-npm install https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-{core,transport,soap}-1.4.0.tgz
+npm install https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-{core,transport,soap}-1.5.0.tgz
 ```
 
 ## Usage

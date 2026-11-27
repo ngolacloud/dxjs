@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/openapi",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Runtime OpenAPI 3 profile for the dxjs transport port: turns an openapi.json into typed MethodDescriptors + @dxjs/forms validators (no build, no eval, strict-CSP safe).",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,7 +24,7 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/transport": "1.4.0"
+    "@dxjs/transport": "1.5.0"
   },
   "keywords": [
     "dxjs",

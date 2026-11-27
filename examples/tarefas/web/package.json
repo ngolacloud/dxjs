@@ -7,11 +7,11 @@
     "watch": "node build.mjs --watch"
   },
   "dependencies": {
-    "@dxjs/core": "https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-core-1.4.0.tgz",
-    "@dxjs/dom": "https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-dom-1.4.0.tgz",
-    "@dxjs/component": "https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-component-1.4.0.tgz",
-    "@dxjs/transport": "https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-transport-1.4.0.tgz",
-    "@dxjs/ui": "https://github.com/ngolacloud/dxjs/releases/download/v1.4.0/dxjs-ui-1.4.0.tgz"
+    "@dxjs/core": "https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-core-1.5.0.tgz",
+    "@dxjs/dom": "https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-dom-1.5.0.tgz",
+    "@dxjs/component": "https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-component-1.5.0.tgz",
+    "@dxjs/transport": "https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-transport-1.5.0.tgz",
+    "@dxjs/ui": "https://github.com/ngolacloud/dxjs/releases/download/v1.5.0/dxjs-ui-1.5.0.tgz"
   },
   "devDependencies": {
     "esbuild": "0.28.2"

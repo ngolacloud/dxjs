@@ -1,6 +1,6 @@
 {
   "name": "@dxjs/component",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "dxjs component + lifecycle layer: function components, mount, onMount. Over @dxjs/dom and @dxjs/core.",
   "license": "MIT OR Apache-2.0",
   "type": "module",
@@ -24,8 +24,8 @@
   ],
   "sideEffects": false,
   "dependencies": {
-    "@dxjs/core": "1.4.0",
-    "@dxjs/dom": "1.4.0"
+    "@dxjs/core": "1.5.0",
+    "@dxjs/dom": "1.5.0"
   },
   "keywords": [
     "dxjs",
