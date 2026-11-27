@@ -45,6 +45,18 @@ export * from "./kanban.ts";
 export * from "./icons.ts";
 export * from "./upload.ts";
 export * from "./taskpanel.ts";
+// Component fleet (desktop + mobile).
+export * from "./command.ts";
+export * from "./tree.ts";
+export * from "./pagination.ts";
+export * from "./popover.ts";
+export * from "./numinputs.ts";
+export * from "./timepicker.ts";
+export * from "./desclist.ts";
+export * from "./layout.ts";
+export * from "./sheet.ts";
+export * from "./mobilenav.ts";
+export * from "./touch.ts";
 
 // --- App shell ------------------------------------------------------------
 export interface NavItem {
