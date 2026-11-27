@@ -104,9 +104,11 @@ body { background: var(--dx-bg); }
 .tok-punct { color: #c9d1d9; }
 
 /* --- Example (code | live preview) ------------------------------------- */
-.ex { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin: 4px 0; }
-.ex-solo { grid-template-columns: 1fr; }
-@media (max-width: 1100px) { .ex { grid-template-columns: 1fr; } }
+/* Code above, live result below at full width. Side by side never fits: the
+   content column tops out near 790px and a desktop preview needs 680px, so a
+   two-column split hid half of every preview. */
+.ex { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; margin: 4px 0; }
+.ex-solo { grid-template-columns: minmax(0, 1fr); }
 .ex-view { min-width: 0; }
 .ex-note { margin: 10px 2px 2px; color: var(--dx-mut); font-size: 13px; line-height: 1.55; }
 
@@ -126,7 +128,11 @@ body { background: var(--dx-bg); }
 .pv-seg { display: inline-flex; align-items: center; gap: 4px; border: 0; background: transparent; padding: 3px 9px; border-radius: 6px; font: inherit; font-size: 12px; font-weight: 500; color: var(--dx-mut); cursor: pointer; }
 .pv-seg.is-active { background: var(--dx-panel); color: var(--dx-ink); box-shadow: var(--dx-shadow-sm); font-weight: 600; }
 .pv-stage { border-radius: var(--dx-radius-lg); background: var(--dx-gray-200); padding: 16px; display: flex; justify-content: center; }
-.pv-stage.is-desktop { padding: 0; background: transparent; overflow-x: auto; }
+/* Desktop: the device grows to the preview (min-content ≥ the 680px frame) and
+   the stage scrolls when the column is narrower — never clipped. Start-aligned so
+   the scroll reaches the left edge. */
+.pv-stage.is-desktop { padding: 0; background: transparent; overflow-x: auto; justify-content: flex-start; }
+.pv-stage.is-desktop .pv-device { min-width: min-content; }
 .pv-device { background: var(--dx-panel); border: 1px solid var(--dx-line); border-radius: 12px; overflow: hidden; width: 100%; box-shadow: var(--dx-shadow); }
 .pv-chrome { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid var(--dx-line); background: var(--dx-panel-2); }
 .pv-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dx-gray-300); }
