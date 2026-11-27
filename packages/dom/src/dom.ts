@@ -66,6 +66,14 @@ function isElement(v: unknown): v is ElementResult {
 
 // --- compile (once per call-site) ----------------------------------------
 const cache = new WeakMap<TemplateStringsArray, HTMLTemplateElement>();
+/** The same call-sites compiled for an SVG parent (see `compile`). */
+const svgCache = new WeakMap<TemplateStringsArray, HTMLTemplateElement>();
+
+/** Whether children inserted into `parent` belong to the SVG namespace: inside an
+ *  SVG element, except <foreignObject>, whose children are HTML again. */
+const inSvg = (parent: Node | null): boolean =>
+  // SVG is ".../2000/svg"; XHTML (".../xhtml") and MathML do not end in "svg".
+  !!(parent as Element | null)?.namespaceURI?.endsWith("svg") && parent!.nodeName !== "foreignObject";
 
 /** Decide, for each interpolation gap, whether it sits in a tag (attribute) or in text. */
 function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child"> {
@@ -90,8 +98,16 @@ function scanContexts(strings: ReadonlyArray<string>): Array<"attr" | "child"> {
   return ctx;
 }
 
-function compile(strings: TemplateStringsArray): HTMLTemplateElement {
-  const hit = cache.get(strings);
+/**
+ * Compile a call-site once. A template is parsed out of context, so a nested
+ * `html\`<path …/>\`` would yield an HTML element that draws nothing: when it is
+ * inserted under an SVG parent (`svg`), it is parsed inside an <svg> wrapper and
+ * the wrapper's children (now in the SVG namespace) become the content. Same
+ * static literals, never data — still CSP-safe.
+ */
+function compile(strings: TemplateStringsArray, svg = false): HTMLTemplateElement {
+  const c = svg ? svgCache : cache;
+  const hit = c.get(strings);
   if (hit) return hit;
   const ctx = scanContexts(strings);
   let markup = "";
@@ -102,8 +118,9 @@ function compile(strings: TemplateStringsArray): HTMLTemplateElement {
     }
   }
   const tpl = document.createElement("template");
-  tpl.innerHTML = markup; // dx-allow-innerHTML: static template literal, never data
-  cache.set(strings, tpl);
+  tpl.innerHTML = svg ? `<svg>${markup}</svg>` : markup; // dx-allow-innerHTML: static template literal, never data
+  if (svg) tpl.content.replaceChildren(...tpl.content.firstChild!.childNodes);
+  c.set(strings, tpl);
   return tpl;
 }
 
@@ -174,11 +191,11 @@ function bindAttr(el: Element, name: string, value: unknown, ds: Disposer[]): vo
   }));
 }
 
-function renderOne(v: unknown): Instance {
+function renderOne(v: unknown, svg = false): Instance {
   if (v == null || v === false || v === true || v === "") {
     return { nodes: [], dispose: () => {} };
   }
-  if (isTemplate(v)) return instantiate(v);
+  if (isTemplate(v)) return instantiate(v, svg);
   if (isElement(v)) return realize(v);
   const text = document.createTextNode(String(v)); // textContent sink: auto-escaped
   return { nodes: [text], dispose: () => {} };
@@ -336,8 +353,9 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
   const place = (v: unknown): void => {
     const items = Array.isArray(v) ? v : [v];
     const host = into();
+    const svg = inSvg(host);
     for (const item of items) {
-      const inst = renderOne(item);
+      const inst = renderOne(item, svg);
       for (const n of inst.nodes) host.insertBefore(n, anchor);
       current.push(...inst.nodes);
       currentDisposers.push(inst.dispose);
@@ -365,7 +383,7 @@ function bindChild(comment: ChildNode, value: unknown, ds: Disposer[]): void {
     const buildRow = (item: unknown, i: number): Instance =>
       createRoot((disposeRoot) => {
         try {
-          const inst = instantiate(lr.render(item, i));
+          const inst = instantiate(lr.render(item, i), inSvg(into()));
           return {
             nodes: inst.nodes,
             dispose: () => {
@@ -437,9 +455,8 @@ function walk(node: Node, values: unknown[], idx: { v: number }, ds: Disposer[])
   }
 }
 
-function instantiate(view: TemplateResult): Instance {
-  const tpl = compile(view.strings);
-  const frag = tpl.content.cloneNode(true) as DocumentFragment;
+function instantiate(view: TemplateResult, svg = false): Instance {
+  const frag = compile(view.strings, svg).content.cloneNode(true) as DocumentFragment;
   const ds: Disposer[] = [];
   walk(frag, view.values, { v: 0 }, ds);
   const nodes = [...frag.childNodes];

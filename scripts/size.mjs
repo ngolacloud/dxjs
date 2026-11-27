@@ -11,7 +11,9 @@ const ROOT = new URL("..", import.meta.url).pathname;
 
 const BUDGETS = [
   { name: "@dxjs/core", entry: "packages/core/src/index.ts", budget: 2048 },
-  { name: "@dxjs/dom", entry: "packages/dom/src/index.ts", budget: 3072 },
+  // 3200 (was 3072): nested templates under an <svg> are parsed in the SVG
+  // namespace (+~130 B), without which @dxjs/ui's icon() draws nothing.
+  { name: "@dxjs/dom", entry: "packages/dom/src/index.ts", budget: 3200 },
   { name: "@dxjs/jsx", entry: "packages/jsx/src/index.ts", budget: 1024 },
   { name: "@dxjs/component", entry: "packages/component/src/index.ts", budget: 2560 },
   // 3200 (was 3072): the security-audit hardening added per-sink guards to the SSR

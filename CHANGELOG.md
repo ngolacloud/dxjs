@@ -4,6 +4,18 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
+## Unreleased
+
+### Fixes
+
+- **@dxjs/dom** — a template interpolated inside an `<svg>` (e.g.
+  ``html`<svg>${html`<path d="…"/>`}</svg>` ``, a reactive child or a keyed
+  `list()` row there) now creates SVG elements. It used to be parsed out of
+  context into HTML elements that draw nothing, so every `@dxjs/ui` `icon()` —
+  `pagination`'s chevrons included — rendered empty in 1.4.0. Children of
+  `<foreignObject>` stay HTML. The `@dxjs/dom` size budget goes from 3072 to
+  3200 B gzip for it.
+
 ## 1.4.0 — 2026-11-27
 
 Additive release — a large `@dxjs/ui` component fleet and documentation, on top
