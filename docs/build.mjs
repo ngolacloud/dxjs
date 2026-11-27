@@ -9,7 +9,11 @@ const ROOT = new URL("..", import.meta.url).pathname;
 const DIST = join(ROOT, "docs/dist");
 mkdirSync(DIST, { recursive: true });
 
+// The version being built: the install lines point at its GitHub Release.
+const version = JSON.parse(readFileSync(join(ROOT, "packages/core/package.json"), "utf8")).version;
+
 await build({
+  define: { __DXJS_VERSION__: JSON.stringify(version) },
   entryPoints: [join(ROOT, "docs/src/app.ts")],
   outfile: join(DIST, "docs.app.js"),
   bundle: true,
@@ -27,8 +31,6 @@ console.log("built docs/dist/docs.app.js");
 
 for (const [src, name] of [
   ["docs/index.html", "index.html"],
-  // Self-contained components guide (static previews, hash router) → /components.html.
-  ["docs/components.html", "components.html"],
   ["docs/docs.css", "docs.css"],
   ["packages/ui/ui.css", "ui.css"],
   ["packages/charts/charts.css", "charts.css"],
@@ -36,6 +38,13 @@ for (const [src, name] of [
   copyFileSync(join(ROOT, src), join(DIST, name));
 }
 console.log("copied index.html + stylesheets → docs/dist/");
+
+// Self-contained components guide (static previews, hash router) → /components.html,
+// with its install line pointed at the release being built.
+writeFileSync(
+  join(DIST, "components.html"),
+  readFileSync(join(ROOT, "docs/components.html"), "utf8").replaceAll("__DXJS_VERSION__", version),
+);
 
 // Self-contained light-theme transport guide → /transport.html. It carries its own
 // inline styles and script, plus the live component reference: the @dxjs/ui
@@ -69,8 +78,6 @@ const inject = (marker, content) => {
 };
 inject("dx:ui-css", `<style>${uiCss}</style>`);
 inject("dx:project", renderProject());
-// The install line points at the GitHub Release of the version being built.
-const version = JSON.parse(readFileSync(join(ROOT, "packages/core/package.json"), "utf8")).version;
 page = page.replaceAll("__DXJS_VERSION__", version);
 inject("dx:components-js", `<script>${compJs}</script>`);
 writeFileSync(join(DIST, "transport.html"), page);

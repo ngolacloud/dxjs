@@ -28,7 +28,7 @@ const messages = {
       start: "Começar",
     },
     ex: {
-      browser: "Browser · CDN (sem build)",
+      browser: "Browser · import map (sem build)",
       node: "Node (instalar)",
       result: "Resultado ao vivo",
       file: "ficheiro",
@@ -106,7 +106,7 @@ const messages = {
       start: "Getting started",
     },
     ex: {
-      browser: "Browser · CDN (no build)",
+      browser: "Browser · import map (no build)",
       node: "Node (install)",
       result: "Live result",
       file: "file",

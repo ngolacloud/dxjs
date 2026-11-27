@@ -91,6 +91,8 @@ main { min-width: 0; padding: 0 0 96px; }
 .hero .lead { font-size: 19px; color: var(--muted); max-width: 48ch; margin: 18px 0 28px; line-height: 1.6; }
 .cmd { display: inline-flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; font-family: var(--mono); font-size: 14.5px; color: var(--ink-soft); box-shadow: var(--shadow); }
 .cmd .prompt { color: var(--petal); font-weight: 700; }
+.cmd { max-width: 100%; } .cmd .cmd-text { min-width: 0; overflow-wrap: anywhere; }
+.cmd-note { color: var(--muted); font-size: 13.5px; max-width: 64ch; margin: 10px 0 0; line-height: 1.6; }
 
 /* --- sections / routes --------------------------------------------------- */
 section.doc { padding-top: 48px; }
@@ -232,9 +234,10 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
           Every component only toggles CSS classes — the look lives in a served stylesheet —
           so the whole kit runs under a strict CSP: no eval, no inline styles, escaped output.</p>
         <div class="cmd">
-          <span class="prompt">$</span><span>npm install @dxjs/ui @dxjs/dom @dxjs/core</span>
-          <button class="copy" data-copy="npm install @dxjs/ui @dxjs/dom @dxjs/core">Copy</button>
+          <span class="prompt">$</span><span class="cmd-text">npm install https://github.com/ngolacloud/dxjs/releases/download/v__DXJS_VERSION__/dxjs-{core,dom,component,ui}-__DXJS_VERSION__.tgz</span>
+          <button class="copy" data-copy="npm install https://github.com/ngolacloud/dxjs/releases/download/v__DXJS_VERSION__/dxjs-{core,dom,component,ui}-__DXJS_VERSION__.tgz">Copy</button>
         </div>
+        <p class="cmd-note">The @dxjs/* packages ship as tarballs on each GitHub Release; the @dxjs name on the npm registry belongs to an unrelated project.</p>
       </div>
       <p class="eyebrow">Browse</p>
       <h2>Pick a component</h2>
@@ -1332,6 +1335,8 @@ emptyState({
     "A styled, CSP-safe component kit for the NgolaCloud / Seiva console. Every component only toggles CSS classes — the look lives in a served stylesheet — so the whole kit runs under a strict CSP: no eval, no inline styles, escaped output.":
       "Um kit de componentes estilizado e seguro para CSP, para a consola NgolaCloud / Seiva. Cada componente só alterna classes CSS — o visual vive numa folha de estilos servida — por isso o kit inteiro corre sob uma CSP estrita: sem <code>eval</code>, sem estilos inline, saída escapada.",
     "Browse": "Explorar",
+    "The @dxjs/* packages ship as tarballs on each GitHub Release; the @dxjs name on the npm registry belongs to an unrelated project.":
+      "Os pacotes @dxjs/* são publicados como tarballs em cada GitHub Release; o nome @dxjs no registo npm pertence a outro projecto.",
     "Pick a component": "Escolhe um componente",
     "Twelve representative components below; the full kit has around forty-five, added in later slices. Each page shows a live-styled static preview and the real call.":
       "Doze componentes representativos abaixo; o kit completo tem cerca de quarenta e cinco, acrescentados em fatias seguintes. Cada página mostra um preview estático com estilo real e a chamada verdadeira.",
@@ -1444,7 +1449,7 @@ emptyState({
   var proseEls = Array.prototype.slice.call(document.querySelectorAll(
     ".topnav a, .side-group h4, .eyebrow, .hero h1, .hero .lead, " +
     "section.doc > h2, section.doc > .sub, .ccard p, .callout p, .step h3, .step p, " +
-    ".preview-head, thead th, .footer-in > span, .footer-in nav a"));
+    ".preview-head, thead th, .footer-in > span, .footer-in nav a, .cmd-note"));
   proseEls.forEach(function (el) { el.__en = el.innerHTML; el.__k = norm(el.textContent); });
   var codeEls = Array.prototype.slice.call(document.querySelectorAll("pre code"));
   codeEls.forEach(function (c) { c.__en = c.textContent; c.innerHTML = highlight(c.__en); });

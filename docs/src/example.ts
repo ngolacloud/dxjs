@@ -1,6 +1,6 @@
 // The docs are DOGFOODED: this site is a dxjs app. `example()` shows authored CODE
 // (highlighted, escaped, never eval'd) beside the LIVE result rendered by the same
-// dxjs primitives. `runnable()` shows the SAME feature two ways — a CDN, no-build
+// dxjs primitives. `runnable()` shows the SAME feature two ways — an import-map, no-build
 // browser file and a Node file (install + run). Code blocks get react.dev-style
 // chrome: a filename header, a copy button, and CSP-safe syntax highlighting. Live
 // results carry a Desktop/Mobile preview toggle.
@@ -108,7 +108,7 @@ export interface RunnableVariant {
 }
 export interface RunnableSpec {
   title: string;
-  /** The CDN, no-build browser file (loads dxjs from esm.sh). */
+  /** The no-build browser file (an import map over the installed packages). */
   browser: RunnableVariant;
   /** The Node file (npm install + import + run). */
   node: RunnableVariant;
@@ -117,7 +117,7 @@ export interface RunnableSpec {
   note?: string;
 }
 
-/** An example with TWO complete, full-path variants in tabs: Browser (CDN, no
+/** An example with TWO complete, full-path variants in tabs: Browser (import map, no
  *  build) and Node (install + run). Each tab is a full codeBlock; the live result
  *  (if any) stays beside both with a device toggle. */
 export function runnable(ex: RunnableSpec): TemplateResult {
