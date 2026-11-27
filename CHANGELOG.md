@@ -19,7 +19,10 @@ all `@dxjs/*` packages share one version line.
   and lists inside a reactive slot follow the same rule; the non-keyed path (an
   array returned from an accessor) re-renders every row and was not affected, and
   hydration (`@dxjs/server`) already gave each row its own root.
-  Disposing a top-level `list()` also removes rows added after mount.
+  Disposing a top-level `list()` also removes rows added after mount. A row's
+  disposal now also tears down what its template owns (listeners, nested lists),
+  so the rows of a nested list die with their outer row. `streamList`,
+  `asyncList` and an `awaitBlock` inside a row ride on the same rule.
 
 ## 1.2.0 — 2026-11-26
 

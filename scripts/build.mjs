@@ -38,6 +38,7 @@ const PKGS = [
   { name: "edge", platform: "node" }, // node:http2 / node:http — server/edge runtimes only
   { name: "dev", platform: "node", external: ["esbuild"] }, // node tool: node:* + esbuild peer
   { name: "query" },
+  { name: "stream" }, // deps: core
   { name: "forms" },
   { name: "openapi" }, // deps: transport — after transport (its .d.ts is needed)
   { name: "soap" }, // deps: transport

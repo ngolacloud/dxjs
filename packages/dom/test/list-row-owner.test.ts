@@ -6,7 +6,7 @@ import { body, fire } from "./setup.ts";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { signal, type Signal } from "@dxjs/core";
-import { html, list, render, jsxElement } from "../src/index.ts";
+import { html, list, render, jsxElement, asyncList, streamList, awaitBlock } from "../src/index.ts";
 
 interface Row {
   id: string;
@@ -300,5 +300,65 @@ test("JSX path: a keyed list's kept rows stay live", () => {
   items.set([a, row("b")]);
   a.label.set("A2");
   assert.equal(text(host, "a"), "A2");
+  dispose();
+});
+
+// --- the async/stream helpers render rows through the same keyed list() --------
+
+const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+test("streamList: a kept row stays live as the feed delivers new batches", () => {
+  const host = body();
+  const a = row("a");
+  const feed = signal<Row[]>([a]);
+  const dispose = render(
+    streamList(feed, { key: (r) => r.id, render: (r) => html`<li data-k=${r.id}>${() => r.label()}</li>` }),
+    host,
+  );
+  feed.set([a, row("b")]);
+  feed.set([row("c"), a, row("b")]);
+  a.label.set("A2");
+  assert.equal(text(host, "a"), "A2");
+  dispose();
+});
+
+test("asyncList: a kept row stays live across a refetch", () => {
+  const host = body();
+  const a = row("a");
+  const src = { data: signal<Row[] | undefined>([a]), error: signal<unknown>(undefined), pending: signal(false) };
+  const dispose = render(
+    asyncList(src, { key: (r) => r.id, render: (r) => html`<li data-k=${r.id}>${() => r.label()}</li>` }),
+    host,
+  );
+  src.data.set([a, row("b")]); // refetch: same key "a" kept
+  a.label.set("A2");
+  assert.equal(text(host, "a"), "A2");
+  dispose();
+});
+
+test("awaitBlock inside a kept row still resolves after the list changes", async () => {
+  const host = body();
+  let resolveA!: (v: string) => void;
+  let resolveB!: (v: string) => void;
+  const pa = new Promise<string>((r) => (resolveA = r));
+  const pb = new Promise<string>((r) => (resolveB = r));
+  const items = signal(["a", "b"]);
+  const dispose = render(
+    html`<ul>${list(
+      () => items(),
+      (k) => k,
+      (k) => html`<li data-k=${k}>${awaitBlock(k === "a" ? pa : pb, {
+        then: (v) => v,
+        pending: () => "…",
+      })}</li>`,
+    )}</ul>`,
+    host,
+  );
+  items.set(["a"]); // a kept, b removed — both still in flight
+  resolveA("A!");
+  resolveB("B!");
+  await tick();
+  assert.equal(text(host, "a"), "A!", "the kept row's pending block resolved");
+  assert.equal(text(host, "b"), null, "the removed row is gone");
   dispose();
 });
