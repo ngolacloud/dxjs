@@ -46,3 +46,27 @@ test("hydrate reconciles a keyed list() with stable node identity", () => {
   items.set([{ id: "a", n: "A" }]);
   assert.deepEqual(kseq(host), ["a"]);
 });
+
+test("hydrate: a kept row's reactive binding stays live after the list changes", () => {
+  const labelA = signal("A");
+  const a = { id: "a", n: "A" };
+  const items = signal<Row[]>([a]);
+  const view = html`<ul>${list(
+    () => items(),
+    (r) => r.id,
+    (r) => html`<li data-k=${r.id}>${() => (r.id === "a" ? labelA() : r.n)}</li>`,
+  )}</ul>`;
+
+  const host = body();
+  host.innerHTML = renderToString(view, { hydratable: true });
+  const dispose = hydrate(view, host);
+
+  items.set([a, { id: "b", n: "B" }]); // the list changes; row "a" is kept
+  labelA.set("A2");
+  assert.equal(host.querySelector('[data-k="a"]')!.textContent, "A2");
+
+  items.set([{ id: "b", n: "B" }]); // row "a" removed: its binding is disposed
+  labelA.set("A3");
+  assert.equal(host.querySelector('[data-k="a"]'), null);
+  dispose();
+});

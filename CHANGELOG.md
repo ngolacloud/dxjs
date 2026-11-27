@@ -4,6 +4,23 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
+## Unreleased
+
+### Fixes
+
+- `@dxjs/dom`: in a keyed `list()`, the reactive bindings (text, attributes,
+  `.prop`, `?attr`, nested slots) of the rows the list **keeps** no longer go dead
+  after the list first changes. Each row was built inside the list's effect, so it
+  was owned by it and disposed on every re-run of the list — even when the row
+  stayed on screen (event handlers kept working, which hid it). Every row now has
+  its own root that lives exactly as long as the row: disposed when its key leaves
+  the list, or when the list itself is disposed. Rows are built untracked, so a
+  signal read while rendering a row no longer re-runs the whole list. Nested lists
+  and lists inside a reactive slot follow the same rule; the non-keyed path (an
+  array returned from an accessor) re-renders every row and was not affected, and
+  hydration (`@dxjs/server`) already gave each row its own root.
+  Disposing a top-level `list()` also removes rows added after mount.
+
 ## 1.2.0 — 2026-11-26
 
 Additive release — new packages, exports and options; every 1.1.0 program keeps
