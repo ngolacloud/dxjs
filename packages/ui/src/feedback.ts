@@ -145,6 +145,37 @@ export function meter(o: MeterOptions): TemplateResult {
   </div>`;
 }
 
+// --- Top progress bar (nprogress-style) ------------------------------------
+export interface TopProgressOptions {
+  /** 0..1 fraction. Omit (or pass undefined) for an indeterminate bar. */
+  value?: Maybe<number | undefined>;
+  tone?: Tone;
+  /** Hide the bar when true (e.g. navigation finished). */
+  done?: Maybe<boolean>;
+}
+
+/** A thin page-top progress bar (like a route-change indicator). Determinate
+ *  when `value` is a 0..1 number — the fill is an SVG rect width ATTRIBUTE, not
+ *  an inline style, so it passes `style-src 'self'`. With no `value` it shows an
+ *  indeterminate shimmer (CSS animation). */
+export function topProgress(o: TopProgressOptions = {}): TemplateResult {
+  const frac = (): number | undefined => {
+    const v = read(o.value);
+    return typeof v === "number" ? Math.max(0, Math.min(1, v)) : undefined;
+  };
+  const indeterminate = (): boolean => frac() === undefined;
+  const pct = (): number => (frac() ?? 0) * 100;
+  return html`<div
+    class=${() => cx("dx-topbar", o.tone && `is-${o.tone}`, indeterminate() && "is-indeterminate", read(o.done ?? false) && "is-done")}
+    role="progressbar"
+    aria-hidden=${() => (read(o.done ?? false) ? "true" : "false")}
+  >
+    <svg class="dx-topbar-svg" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true">
+      <rect class="dx-topbar-fill" x="0" y="0" width=${() => (indeterminate() ? 100 : pct())} height="2"></rect>
+    </svg>
+  </div>`;
+}
+
 // --- Empty state -----------------------------------------------------------
 export interface EmptyStateOptions {
   title: string;

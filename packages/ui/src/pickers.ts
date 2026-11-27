@@ -223,6 +223,128 @@ export function datePicker(o: DatePickerOptions): TemplateResult {
   </div>`;
 }
 
+// --- Date range picker (Odoo-style) ----------------------------------------
+export interface DateRangePickerOptions {
+  /** ISO start (YYYY-MM-DD) or empty. */
+  start?: Maybe<string>;
+  /** ISO end (YYYY-MM-DD) or empty. */
+  end?: Maybe<string>;
+  onChange?: (start: string, end: string) => void;
+  size?: Size;
+  weekStart?: 0 | 1;
+  monthNames?: string[];
+  weekdayNames?: string[];
+  placeholder?: string;
+  ariaLabel?: string;
+}
+
+/** A calendar range picker: click a start day, then an end day. Clicking again
+ *  (or clicking before the start) begins a new range. The span between the ends
+ *  is highlighted. ISO strings compare chronologically, so no Date math for the
+ *  in-range test. Controlled via `start`/`end` + `onChange`. */
+export function dateRangePicker(o: DateRangePickerOptions): TemplateResult {
+  const months = o.monthNames ?? EN_MONTHS;
+  const weekdaysBase = o.weekdayNames ?? EN_WEEKDAYS;
+  const weekStart = o.weekStart ?? 0;
+  const weekdays = weekdaysBase.slice(weekStart).concat(weekdaysBase.slice(0, weekStart));
+
+  const open = signal(false);
+  const now = new Date();
+  const startOf = (): string => read(o.start ?? "");
+  const endOf = (): string => read(o.end ?? "");
+
+  const seed = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startOf());
+  const viewY = signal(seed ? +seed[1]! : now.getFullYear());
+  const viewM = signal(seed ? +seed[2]! - 1 : now.getMonth());
+
+  const move = (delta: number): void => {
+    let m = viewM() + delta;
+    let y = viewY();
+    if (m < 0) { m = 11; y--; } else if (m > 11) { m = 0; y++; }
+    viewM.set(m);
+    viewY.set(y);
+  };
+
+  const grid = (): Array<number | null> => {
+    const y = viewY();
+    const m = viewM();
+    const firstDow = (new Date(y, m, 1).getDay() - weekStart + 7) % 7;
+    const days = new Date(y, m + 1, 0).getDate();
+    const cells: Array<number | null> = [];
+    for (let i = 0; i < firstDow; i++) cells.push(null);
+    for (let d = 1; d <= days; d++) cells.push(d);
+    return cells;
+  };
+
+  const dayIso = (d: number): string => toIso(viewY(), viewM(), d);
+  const isStart = (d: number): boolean => dayIso(d) === startOf();
+  const isEnd = (d: number): boolean => dayIso(d) === endOf();
+  const inRange = (d: number): boolean => {
+    const s = startOf();
+    const e = endOf();
+    const iso = dayIso(d);
+    return !!s && !!e && iso > s && iso < e;
+  };
+
+  const select = (d: number): void => {
+    const s = startOf();
+    const e = endOf();
+    const iso = dayIso(d);
+    if (!s || (s && e)) {
+      o.onChange?.(iso, "");
+    } else if (iso >= s) {
+      o.onChange?.(s, iso);
+      open.set(false);
+    } else {
+      o.onChange?.(iso, "");
+    }
+  };
+
+  const faceLabel = (): string => {
+    const s = startOf();
+    const e = endOf();
+    if (!s) return o.placeholder ?? "Pick a range";
+    return e ? `${s} → ${e}` : `${s} → …`;
+  };
+
+  return html`<div
+    class=${cx("dx-dr", sizeClass(o.size))}
+    @focusout=${(e: FocusEvent) => {
+      const root = e.currentTarget as HTMLElement;
+      const next = e.relatedTarget as Node | null;
+      if (!next || !root.contains(next)) open.set(false);
+    }}
+  >
+    <button
+      class=${() => cx("dx-dr-face", !startOf() && "is-empty")}
+      type="button"
+      aria-haspopup="dialog"
+      aria-expanded=${() => (open() ? "true" : "false")}
+      aria-label=${o.ariaLabel ?? false}
+      @click=${() => open.set(!open())}
+    ><span class="dx-dr-ico" aria-hidden="true">📅</span>${() => faceLabel()}</button>
+    <div class="dx-dr-pop" role="dialog" ?hidden=${() => !open()}>
+      <div class="dx-dr-head">
+        <button class="dx-btn is-icon" type="button" aria-label="Previous month" @click=${() => move(-1)}>‹</button>
+        <span class="dx-dr-title">${() => `${months[viewM()]} ${viewY()}`}</span>
+        <button class="dx-btn is-icon" type="button" aria-label="Next month" @click=${() => move(1)}>›</button>
+      </div>
+      <div class="dx-dp-grid dx-dp-dow">${weekdays.map((w) => html`<span class="dx-dp-wd">${w}</span>`)}</div>
+      <div class="dx-dp-grid">${() =>
+        grid().map((d) =>
+          d === null
+            ? html`<span class="dx-dp-cell is-empty"></span>`
+            : html`<button
+                class=${cx("dx-dp-cell", (isStart(d) || isEnd(d)) && "is-selected", inRange(d) && "is-in-range")}
+                type="button"
+                aria-pressed=${isStart(d) || isEnd(d) ? "true" : "false"}
+                @click=${() => select(d)}
+              >${d}</button>`,
+        )}</div>
+    </div>
+  </div>`;
+}
+
 // --- Timer (countdown / stopwatch) -----------------------------------------
 export interface TimerOptions {
   mode?: "countdown" | "stopwatch";

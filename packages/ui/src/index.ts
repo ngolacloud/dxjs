@@ -38,6 +38,10 @@ export * from "./rating.ts";
 export * from "./gantt.ts";
 export * from "./planner.ts";
 export * from "./searchfilter.ts";
+// Visible interactive components (overlays, disclosure, board).
+export * from "./overlay.ts";
+export * from "./disclosure.ts";
+export * from "./kanban.ts";
 
 // --- App shell ------------------------------------------------------------
 export interface NavItem {

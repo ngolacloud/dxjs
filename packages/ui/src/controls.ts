@@ -6,6 +6,7 @@
 // takes an options object and reactive accessors where it helps, matching the
 // rest of the kit.
 
+import { signal } from "@dxjs/core";
 import { html, list, type TemplateResult } from "@dxjs/dom";
 import { read, nextId, cx, sizeClass, type Maybe, type Size, type Tone } from "./base.ts";
 
@@ -252,4 +253,75 @@ export function radioGroup(o: RadioGroupOptions): TemplateResult {
       </label>`;
     },
   )}</div>`;
+}
+
+// --- Tags input ------------------------------------------------------------
+export interface TagsInputOptions {
+  value: Maybe<string[]>;
+  onChange?: (tags: string[]) => void;
+  placeholder?: string;
+  size?: Size;
+  /** Reject duplicate tags (default true). */
+  unique?: boolean;
+  /** Characters that commit the draft into a tag (default Enter + comma). */
+  separators?: string[];
+  disabled?: Maybe<boolean>;
+  ariaLabel?: string;
+}
+
+/** A token/tag entry field. Type and press Enter (or comma) to add a tag;
+ *  Backspace on an empty draft removes the last tag; each tag has a × button.
+ *  Controlled via `value` + `onChange`. */
+export function tagsInput(o: TagsInputOptions): TemplateResult {
+  const draft = signal("");
+  const tags = (): string[] => read(o.value ?? []);
+  const seps = o.separators ?? [","];
+
+  const commit = (): void => {
+    const t = draft().trim();
+    if (!t) return;
+    if ((o.unique ?? true) && tags().includes(t)) {
+      draft.set("");
+      return;
+    }
+    o.onChange?.([...tags(), t]);
+    draft.set("");
+  };
+  const removeAt = (i: number): void => {
+    o.onChange?.(tags().filter((_t, idx) => idx !== i));
+  };
+  const onKey = (e: KeyboardEvent): void => {
+    if (e.key === "Enter" || seps.includes(e.key)) {
+      e.preventDefault();
+      commit();
+    } else if (e.key === "Backspace" && draft() === "" && tags().length > 0) {
+      removeAt(tags().length - 1);
+    }
+  };
+
+  return html`<div class=${cx("dx-tags", sizeClass(o.size))} role="group" aria-label=${o.ariaLabel ?? false}>
+    ${list(
+      () => tags(),
+      (t, i) => `${i}:${t}`,
+      (t, i) =>
+        html`<span class="dx-tag">${t}<button
+          class="dx-tag-x"
+          type="button"
+          aria-label=${`Remove ${t}`}
+          ?disabled=${() => read(o.disabled ?? false)}
+          @click=${() => removeAt(i)}
+        >×</button></span>`,
+    )}
+    <input
+      class="dx-tags-input"
+      type="text"
+      placeholder=${o.placeholder ?? false}
+      aria-label=${o.ariaLabel ?? "Add a tag"}
+      .value=${() => draft()}
+      ?disabled=${() => read(o.disabled ?? false)}
+      @input=${(e: Event) => draft.set((e.target as HTMLInputElement).value)}
+      @keydown=${onKey}
+      @blur=${() => commit()}
+    />
+  </div>`;
 }
