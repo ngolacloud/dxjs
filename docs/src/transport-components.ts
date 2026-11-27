@@ -23,6 +23,21 @@ const GROUPS: Record<string, { en: string; pt: string }> = {
 };
 const groupOf = (d: ComponentDoc) => d.group ?? "Componentes";
 
+/** Components whose preview is small: these sit side by side with their code on
+ *  a wide column (see .comp.is-compact in docs/transport.html). Big ones —
+ *  tables, boards, calendars, shells, wide overlays — keep the full width. */
+const COMPACT = new Set([
+  "c-button", "c-field", "c-rating", "c-select2", "c-buttongroup", "c-badge", "c-input", "c-textarea",
+  "c-select", "c-switch", "c-checkbox", "c-radio", "c-tagsinput", "c-pill", "c-statcard", "c-alert",
+  "c-modal", "c-tooltip", "c-skeleton", "c-spinner", "c-progress", "c-meter", "c-topprogress",
+  "c-emptystate", "c-segmented", "c-breadcrumb", "c-navpanel", "c-avatar", "c-divider", "c-space",
+  "c-dropdown", "c-timeline", "c-popover", "c-popconfirm", "c-contextmenu", "c-datepicker",
+  "c-timer", "c-slider", "c-numberinput", "c-timepicker", "c-exportmenu", "c-virtuallist",
+  "c-sparkline", "c-metric", "c-image", "c-video", "c-tree", "c-taskpanel", "c-icon",
+  "c-bottomsheet", "c-actionsheet", "c-tabbar", "c-fab", "c-swipeactions", "c-pulltorefresh",
+  "c-pickerwheel",
+]);
+
 const PROSE: Record<string, string> = {
   Components: "Componentes",
   "Components · @dxjs/ui": "Componentes · @dxjs/ui",
@@ -77,11 +92,12 @@ function section(d: ComponentDoc): string {
   const panels = tabs
     .map(([t, , body], i) => `<div role="tabpanel" id="${d.id}-p-${t}" aria-labelledby="${d.id}-t-${t}"${i ? " hidden" : ""}>${body}</div>`)
     .join("");
-  return `<section class="doc comp" id="${d.id}">
+  return `<section class="doc comp${COMPACT.has(d.id) ? " is-compact" : ""}" id="${d.id}">
   <p class="eyebrow">Component · ${esc(g.en)}</p>
   <h2><code>${esc(d.name)}</code></h2>
   <p class="sub">${md(d.lead)}</p>
   <div class="comp-import"><code>${esc(d.importLine)}</code></div>
+  <div class="comp-body">
   <div class="pv">
     <div class="pv-bar"><span class="pv-label">Live result</span>
       <div class="pv-toggle" role="group" aria-label="Preview size">
@@ -94,6 +110,7 @@ function section(d: ComponentDoc): string {
     </div></div>
   </div>
   <div class="tabs" data-tabs><div class="tablist" role="tablist" aria-label="${esc(d.name)}">${tablist}</div>${panels}</div>
+  </div>
 </section>`;
 }
 
@@ -168,6 +185,55 @@ function build(): void {
   // Live demos, mounted as they come near the viewport (81 at once would make the
   // first paint pay for components nobody has scrolled to).
   const docsById = new Map(componentDocs.map((d) => [d.id, d]));
+  /** Size a frame to what it shows. Flow content sets the height as usual; an
+   *  open overlay (a position:fixed root — modal, drawer, sheet, palette) needs
+   *  room the flow doesn't give it, so the frame grows while one is open and
+   *  shrinks back when it closes. Menus anchored below a trigger (absolute)
+   *  count through their bottom edge. Full-frame layers (backdrops, roots) are
+   *  skipped, or a frame could never shrink. */
+  const OVERLAY_ROOM = 560;
+  const fit = (frame: HTMLElement) => {
+    const fb = frame.getBoundingClientRect();
+    if (!fb.height) return;
+    const all = [...frame.querySelectorAll<HTMLElement>("*")];
+    const fixed = all.filter((n) => getComputedStyle(n).position === "fixed");
+    let need = 0;
+    let bar = 0; // a fixed bar or FAB that stays on screen: room for its own height
+    let overlayOpen = false; // a fixed layer covering the frame: an open modal/sheet/palette
+    for (const f of fixed) {
+      const r = f.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      if (r.height >= fb.height - 2) overlayOpen = true;
+      else bar = Math.max(bar, r.height);
+    }
+    for (const n of all) {
+      if (fixed.some((f) => f.contains(n))) continue;
+      const r = n.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      const cs = getComputedStyle(n);
+      if (cs.visibility === "hidden") continue;
+      if (cs.position === "absolute" && r.height >= fb.height - 2) continue;
+      need = Math.max(need, r.bottom - fb.top);
+    }
+    const target = Math.max(96, Math.ceil(need + 22 + bar), overlayOpen ? OVERLAY_ROOM : 0);
+    const now = parseFloat(frame.style.minHeight) || 0;
+    if (Math.abs(target - now) > 2) frame.style.minHeight = `${target}px`;
+  };
+  const watchFit = (frame: HTMLElement) => {
+    let queued = false;
+    const schedule = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        fit(frame);
+      });
+    };
+    new MutationObserver(schedule).observe(frame, { subtree: true, childList: true, attributes: true, characterData: true });
+    frame.addEventListener("transitionend", schedule);
+    schedule();
+  };
+
   const mountDemo = (frame: HTMLElement) => {
     if (frame.dataset.mounted) return;
     frame.dataset.mounted = "1";
@@ -176,6 +242,7 @@ function build(): void {
     frame.textContent = "";
     try {
       mount(component(() => d.demo()), frame, {});
+      watchFit(frame);
     } catch (err) {
       frame.textContent = `preview failed: ${String(err)}`;
       frame.classList.add("pv-error");
