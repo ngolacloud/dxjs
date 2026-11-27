@@ -365,47 +365,73 @@ section.comp > h2 code { font-family: var(--mono); font-size: 26px; letter-spaci
     </section>
 
     <section class="doc" id="cli">
-      <p class="eyebrow">Quickstart · CLI</p>
+      <p class="eyebrow">Quickstart · no build</p>
       <h2>Run it in the browser</h2>
-      <p class="sub">dxjs ships <code>dxdev</code> — a dev server with CSP-safe hot-module reload. Point it at an
-        entry module and open the printed URL.</p>
+      <p class="sub">No bundler, no build step: install the packages from the GitHub Release, point an import
+        map at them and serve the folder. The same files work under a strict CSP.</p>
       <div class="steps">
         <div class="step">
           <div class="sn">1</div>
           <div>
-            <h3>Write a tiny app</h3>
-            <p>An entry module that renders reactive markup.</p>
-            <figure class="code"><figcaption><span class="fname">src/app.ts</span><button class="copy">Copy</button></figcaption>
-<pre><code>import { signal } from "@dxjs/core";
-import { html, render } from "@dxjs/dom";
-
-const count = signal(0);
-render(
-  html`&lt;button @click=${() =&gt; count.set(count() + 1)}&gt;clicked ${count}&lt;/button&gt;`,
-  document.getElementById("app"),
-);</code></pre></figure>
+            <h3>Install the packages</h3>
+            <p>From the release tarballs, into a new folder.</p>
+            <figure class="code"><figcaption><span class="fname">terminal</span><button class="copy">Copy</button></figcaption>
+<pre><code>mkdir counter &amp;&amp; cd counter
+npm install https://github.com/ngolacloud/dxjs/releases/download/v__DXJS_VERSION__/dxjs-{core,dom,component}-__DXJS_VERSION__.tgz</code></pre></figure>
           </div>
         </div>
         <div class="step">
           <div class="sn">2</div>
           <div>
-            <h3>Start the dev server</h3>
-            <p>Flags: <code>--port</code>, <code>--host</code>, <code>--root</code>, <code>--css a.css,b.css</code>, <code>--title</code>. In this repo, <code>npm&nbsp;run&nbsp;dev</code> is the shortcut.</p>
-            <figure class="code"><figcaption><span class="fname">terminal</span><button class="copy">Copy</button></figcaption>
-<pre><code>node --conditions=development packages/dev/bin/dxdev.mjs src/app.ts --port 5173</code></pre></figure>
+            <h3>Write index.html</h3>
+            <p>The import map points each <code>@dxjs/*</code> name at the installed file; the module imports them by name.</p>
+            <figure class="code"><figcaption><span class="fname">index.html</span><button class="copy">Copy</button></figcaption>
+<pre><code>&lt;!doctype html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;title&gt;dxjs counter&lt;/title&gt;
+  &lt;script type="importmap"&gt;
+    {
+      "imports": {
+        "@dxjs/core": "./node_modules/@dxjs/core/dist/index.js",
+        "@dxjs/dom": "./node_modules/@dxjs/dom/dist/index.js",
+        "@dxjs/component": "./node_modules/@dxjs/component/dist/index.js"
+      }
+    }
+  &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+  &lt;script type="module"&gt;
+    import { signal } from "@dxjs/core";
+    import { html } from "@dxjs/dom";
+    import { component, mount } from "@dxjs/component";
+
+    const Counter = component(() =&gt; {
+      const n = signal(0);
+      return html`&lt;button @click=${() =&gt; n.update((x) =&gt; x + 1)}&gt;n = ${() =&gt; n()}&lt;/button&gt;`;
+    });
+
+    mount(Counter, document.getElementById("app"), {});
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre></figure>
           </div>
         </div>
         <div class="step">
           <div class="sn">3</div>
           <div>
-            <h3>Open the printed URL</h3>
-            <p>Edit <code>src/app.ts</code> and the browser hot-reloads — no full refresh, signals survive.</p>
-            <div class="term"><span class="pr">$</span> npm run dev
-<br /><span class="dim">dxjs dev server →</span> <span class="url">http://127.0.0.1:5173/</span>  <span class="dim">(strict CSP, HMR)</span>
-<br /><span class="ok">▸</span> open <span class="url">http://localhost:5173</span></div>
+            <h3>Serve the folder and open it</h3>
+            <p>Modules need HTTP, not <code>file://</code>. Any static server works.</p>
+            <div class="term"><span class="pr">$</span> python3 -m http.server 5173
+<br /><span class="dim">Serving HTTP on</span> <span class="url">http://127.0.0.1:5173/</span>
+<br /><span class="ok">▸</span> open <span class="url">http://127.0.0.1:5173</span></div>
           </div>
         </div>
       </div>
+      <div class="callout"><span class="ci">⚑</span><p>Building a real app? The <a href="#project">full project</a> bundles with esbuild and
+        serves the API and the app from one origin — the setup to copy when a backend is involved.</p></div>
     </section>
 
     <section class="doc" id="reactivity">
@@ -1528,6 +1554,19 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
     "node:http · zero deps": "node:http · 0 deps",
     "A NgolaCloud open-source project.": "Um projecto de código aberto da NgolaCloud.",
     "Top ↑": "Topo ↑",
+    // quickstart (import map)
+    "Quickstart · no build": "Arranque · sem build",
+    "No bundler, no build step: install the packages from the GitHub Release, point an import map at them and serve the folder. The same files work under a strict CSP.":
+      "Sem bundler, sem passo de build: instala os pacotes a partir da GitHub Release, aponta-lhes um import map e serve a pasta. Os mesmos ficheiros funcionam com uma CSP estrita.",
+    "Install the packages": "Instala os pacotes",
+    "From the release tarballs, into a new folder.": "A partir dos tarballs da release, numa pasta nova.",
+    "Write index.html": "Escreve o index.html",
+    "The import map points each @dxjs/* name at the installed file; the module imports them by name.":
+      "O import map aponta cada nome <code>@dxjs/*</code> para o ficheiro instalado; o módulo importa-os pelo nome.",
+    "Serve the folder and open it": "Serve a pasta e abre-a",
+    "Modules need HTTP, not file://. Any static server works.": "Os módulos precisam de HTTP, não de <code>file://</code>. Qualquer servidor estático serve.",
+    "Building a real app? The full project bundles with esbuild and serves the API and the app from one origin — the setup to copy when a backend is involved.":
+      "A construir uma app a sério? O <a href=\"#project\">projecto completo</a> compila com esbuild e serve a API e a app na mesma origem — a montagem a copiar quando há um backend.",
     // install note
     "The @dxjs/* packages ship as tarballs on each GitHub Release. The @dxjs name on the npm registry belongs to an unrelated project, so npm install @dxjs/… would install someone else's code.":
       "Os pacotes <code>@dxjs/*</code> são publicados como tarballs em cada GitHub Release. O nome <code>@dxjs</code> no registo npm pertence a outro projecto, por isso <code>npm install @dxjs/…</code> instalaria código de outra pessoa.",
