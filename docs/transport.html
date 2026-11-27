@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>dxjs — connect any backend</title>
+<!-- dx:ui-css (docs/build.mjs inlines packages/ui/ui.css here, for the live component previews) -->
 <style>
 /* ============================================================================
    dxjs transport guide — self-contained light doc page.
@@ -145,7 +146,7 @@ pre code { font-size: 13.5px; line-height: 1.75; color: var(--code-ink); white-s
 
 /* --- steps (CLI) --------------------------------------------------------- */
 .steps { display: grid; gap: 14px; margin: 22px 0; }
-.step { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+.step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 16px; align-items: start; } /* minmax: a wide code block scrolls inside, not the page */
 .step .sn { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: var(--accent-weak); color: var(--accent); font-variant-numeric: tabular-nums; }
 .step h3 { font-size: 16px; margin: 4px 0 2px; }
 .step p { margin: 0 0 8px; color: var(--muted); font-size: 14.5px; }
@@ -184,6 +185,46 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
 .footer-in { max-width: 1240px; margin: 0 auto; padding: 28px 24px; display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; color: var(--muted); font-size: 14px; }
 .footer-in .wordmark { font-size: 15px; } .footer-in nav { margin-left: auto; display: flex; gap: 18px; }
 
+/* --- components (docs/src/transport-components.ts) ------------------------ */
+section.comp > h2 code { font-family: var(--mono); font-size: 26px; letter-spacing: -.02em; color: var(--ink); background: none; padding: 0; }
+.comp-import { margin: 14px 0 0; }
+.comp-import code { font-size: 13px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 9px; }
+.comp-note { color: var(--ink-soft); font-size: 14.5px; margin: 16px 18px 4px; max-width: var(--measure); }
+.comp-note code { background: var(--accent-weak); color: var(--accent); padding: 1.5px 6px; border-radius: 6px; font-size: .88em; }
+.comp .tabs [role="tabpanel"] .tablewrap { margin: 0; border: 0; border-radius: 0; }
+.cgroups { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 22px 0 6px; }
+.cgroup { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow); }
+.cgroup h3 { font-size: 15px; margin: 0 0 4px; }
+.cgroup .chip { font-family: var(--mono); font-weight: 500; color: var(--ink-soft); }
+.cgroup .chip:hover { border-color: var(--accent); color: var(--accent); }
+/* Live preview: code tabs below, the preview at full width above them. Desktop
+   mode keeps a 680px "screen" and scrolls inside the stage when the column is
+   narrower — never clipped; Mobile shows a 360px phone. */
+.pv { margin: 22px 0 18px; }
+.pv-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pv-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); }
+.pv-toggle { margin-left: auto; display: inline-flex; gap: 2px; padding: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; }
+.pv-seg { font: inherit; font-family: var(--ui); font-size: 12.5px; font-weight: 600; padding: 4px 11px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.pv-seg.is-active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(16,23,38,.08); }
+.pv-stage { border-radius: 14px; overflow-x: auto; }
+.pv-stage.is-mobile { background: var(--surface-2); padding: 18px; display: flex; justify-content: center; }
+.pv-device { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.pv-stage.is-desktop .pv-device { min-width: min-content; }
+.pv-stage.is-mobile .pv-device { width: 360px; max-width: 100%; border-radius: 26px; border-color: var(--line-strong); }
+.pv-chrome { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.pv-dot { width: 10px; height: 10px; border-radius: 50%; background: #d7dce7; }
+.pv-dot:nth-child(1) { background: #f87171; } .pv-dot:nth-child(2) { background: #fbbf24; } .pv-dot:nth-child(3) { background: #34d399; }
+.pv-url { margin-left: 8px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.pv-stage.is-mobile .pv-dot, .pv-stage.is-mobile .pv-url { display: none; }
+/* The frame is the containing block for position:fixed descendants (transform),
+   so a tabBar, fab, topProgress or an open sheet stays inside its preview instead
+   of covering the guide; min-height gives a fixed bar room to show. */
+.pv-frame { padding: 22px; font-size: 14px; line-height: 1.5; position: relative; transform: translateZ(0); min-height: 120px; }
+.pv-stage.is-desktop .pv-frame { min-width: 680px; }
+.pv-stage.is-mobile .pv-frame { padding: 16px 14px; }
+.pv-wait { color: var(--faint); }
+.pv-error { color: var(--petal); font-family: var(--mono); font-size: 13px; }
+
 /* --- responsive ---------------------------------------------------------- */
 @media (max-width: 920px) {
   .shell { grid-template-columns: 1fr; gap: 0; }
@@ -202,6 +243,7 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
       <a href="#cli">Quickstart</a>
       <a href="#backend">Backends</a>
       <a href="#adapters">Adapters</a>
+      <a href="#components">Components</a>
       <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
       <button class="langtoggle" type="button" aria-label="Switch to English">EN</button>
       <a class="pill" href="#backend"><span class="dot" aria-hidden="true"></span> Connect a backend</a>
@@ -237,6 +279,8 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
       <a href="#livesignal">liveSignal</a>
       <a href="#openapi">openapiClient</a>
     </div>
+    <!-- filled by docs/src/transport-components.ts: one group per component group -->
+    <div id="dx-comp-nav"></div>
   </aside>
 
   <main>
@@ -1220,6 +1264,8 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
         keeps calling <code>api.call(...)</code> regardless of what the server speaks.</p></div>
     </section>
 
+    <!-- filled by docs/src/transport-components.ts: every @dxjs/ui component, live -->
+    <div id="dx-components"></div>
   </main>
 </div>
 
@@ -1235,6 +1281,7 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
   </div>
 </footer>
 
+<!-- dx:components-js (docs/build.mjs inlines the component bundle here, before the page script) -->
 <script>
 /* Progressive enhancement only — the page is fully readable without JS. */
 (function () {
@@ -1459,6 +1506,8 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
     ["// a minimal SOAP endpoint (production: JAX-WS / a WSDL stack)", "// um endpoint SOAP mínimo (produção: JAX-WS / uma stack WSDL)"],
     ["# a minimal SOAP endpoint (production: spyne / a WSDL stack)", "# um endpoint SOAP mínimo (produção: spyne / uma stack WSDL)"],
   ];
+  // pt-AO prose handed over by the component bundle (docs/src/transport-components.ts).
+  if (window.__DX_PROSE) Object.keys(window.__DX_PROSE).forEach(function (k) { PROSE[k] = window.__DX_PROSE[k]; });
   function norm(s) { return s.replace(/\s+/g, " ").trim(); }
   // Normalise the dictionary keys too, so authoring whitespace (nbsp, wraps) can't
   // break a lookup — both sides are compared after the same collapse.
@@ -1467,7 +1516,7 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
     ".topnav a, .side-group h4, .side-group a, .eyebrow, .hero h1, .hero .lead, .cta-row a, " +
     "section.doc > h2, section.doc > .sub, .vcard h3, .vcard p, .step h3, .step p, .pair-label, " +
     ".wire, .adapter-head .what, figure.code figcaption .run, .callout p, thead th, tbody td:last-child, " +
-    ".footer-in > span, .footer-in nav a"));
+    ".footer-in > span, .footer-in nav a, .pv-label, .pv-seg, .tablist button.tx, .comp-note, .cgroup h3"));
   proseEls.forEach(function (el) { el.__en = el.innerHTML; el.__k = norm(el.textContent); });
   var codeEls = Array.prototype.slice.call(document.querySelectorAll("pre code"));
   codeEls.forEach(function (c) { c.__en = c.textContent; });
@@ -1497,11 +1546,20 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
         var code = fig && fig.querySelector("code");
         text = code ? code.textContent : "";
       }
-      navigator.clipboard && navigator.clipboard.writeText(text).then(function () {
+      function selectCode() {
+        // Clipboard refused (some app views): select the text so Ctrl/⌘+C works.
+        var fig = btn.closest("figure") || btn.parentNode;
+        var target = fig && (fig.querySelector("code") || fig.querySelector("span:not(.prompt)"));
+        if (!target) return;
+        var range = document.createRange(); range.selectNodeContents(target);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+      }
+      if (!navigator.clipboard) { selectCode(); return; }
+      navigator.clipboard.writeText(text).then(function () {
         var label = btn.textContent;
         btn.textContent = "Copied"; btn.classList.add("done");
         setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 1400);
-      });
+      }, selectCode);
     });
   });
 
