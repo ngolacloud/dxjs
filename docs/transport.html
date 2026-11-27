@@ -66,6 +66,8 @@ code { font-family: var(--mono); font-size: .9em; }
 .pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 999px; background: var(--petal); color: #fff !important; font-weight: 600; font-size: 14px; box-shadow: 0 2px 8px -2px rgba(229,72,77,.6); }
 .pill:hover { background: #d53b40; }
 .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 3px rgba(255,255,255,.3); }
+.langtoggle { font: inherit; font-size: 13px; font-weight: 700; font-family: var(--ui); cursor: pointer; background: var(--surface); border: 1px solid var(--line-strong); color: var(--muted); border-radius: 8px; padding: 6px 11px; letter-spacing: .04em; }
+.langtoggle:hover { border-color: var(--accent); color: var(--accent); }
 
 /* --- shell --------------------------------------------------------------- */
 .shell { max-width: 1240px; margin: 0 auto; padding: 0 24px; display: grid; grid-template-columns: 236px minmax(0, 1fr); gap: 48px; }
@@ -199,6 +201,7 @@ footer { border-top: 1px solid var(--line); margin-top: 40px; }
       <a href="#backend">Backends</a>
       <a href="#adapters">Adapters</a>
       <a href="https://github.com/ngolacloud/dxjs">GitHub</a>
+      <button class="langtoggle" type="button" aria-label="Switch to English">EN</button>
       <a class="pill" href="#backend"><span class="dot" aria-hidden="true"></span> Connect a backend</a>
     </nav>
   </div>
@@ -795,9 +798,171 @@ const users = await api.call("listUsers", { q: "ana" });   // validated before i
     out += esc(src.slice(last));
     return out;
   }
-  document.querySelectorAll("pre code").forEach(function (code) {
-    code.innerHTML = highlight(code.textContent);
-  });
+  // ---- bilingual pt-AO / en (default pt-AO) ------------------------------
+  // Keyed by the English source text. Prose is swapped as innerHTML; code stays
+  // identical and only its // and # COMMENTS are translated (string replace).
+  var PROSE = {
+    // top nav + sidebar
+    "Quickstart": "Arranque",
+    "Adapters": "Adaptadores",
+    "Connect a backend": '<span class="dot" aria-hidden="true"></span> Ligar um backend',
+    "Get started": "Começar",
+    "Overview": "Visão geral",
+    "Run it in the browser": "Correr no browser",
+    "Reactivity": "Reactividade",
+    "The transport port": "O porto de transporte",
+    "REST · your language": "REST · na tua linguagem",
+    "Live (SSE) · your language": "Ao vivo (SSE) · na tua linguagem",
+    "Reactive data": "Dados reactivos",
+    "Which adapter?": "Que adaptador?",
+    // eyebrows
+    "NgolaCloud · open source · 0 runtime deps": "NgolaCloud · código aberto · 0 dependências em runtime",
+    "Quickstart · CLI": "Arranque · CLI",
+    "Transport · ADR 0001": "Transporte · ADR 0001",
+    "Backend → dxjs": "Backend → dxjs",
+    "Backend → dxjs · streaming": "Backend → dxjs · streaming",
+    "Reference · adapters": "Referência · adaptadores",
+    "Reference": "Referência",
+    // hero
+    "One app.Any backend.": 'Uma app.<br /><span class="accent">Qualquer backend.</span>',
+    "dxjs is a tiny reactive framework with a protocol-neutral transport port. Bring a backend in Python, Go, Rust or Node — describe the operation once and connect from the frontend in three lines.":
+      "O dxjs é um framework reactivo minúsculo com um porto de transporte neutro quanto ao protocolo. Traz um backend em Python, Go, Rust ou Node — descreve a operação uma vez e liga-te a partir do frontend em três linhas.",
+    "Connect a real backend →": "Ligar um backend real →",
+    // overview
+    "Small, reactive, honest about the network": "Pequeno, reactivo, honesto quanto à rede",
+    "A fine-grained signal graph renders the DOM, a string renderer does CSP-safe SSR, and the transport layer keeps your data-fetching code identical no matter what language the server is written in.":
+      "Um grafo de sinais fino renderiza o DOM, um renderizador de strings faz SSR seguro para CSP, e a camada de transporte mantém o teu código de obtenção de dados idêntico, seja qual for a linguagem do servidor.",
+    "Fine-grained reactive": "Reactividade fina",
+    "Signals, computeds and effects — no virtual DOM, no re-render pass. ~1.5 KB gzipped core.":
+      "Sinais, computeds e efeitos — sem DOM virtual, sem passagem de re-render. Núcleo ~1,5 KB gzipped.",
+    "Protocol-neutral": "Neutro quanto ao protocolo",
+    "One method() descriptor; adapters map it to REST, Connect, SSE, WebSocket or in-process.":
+      "Um descritor <code>method()</code>; os adaptadores mapeiam-no para REST, Connect, SSE, WebSocket ou em processo.",
+    "Strict-CSP SSR": "SSR com CSP estrita",
+    "String + streaming renderers escape every sink; no eval, no inline handlers, edge-ready.":
+      "Renderizadores de string + streaming escapam cada sink; sem <code>eval</code>, sem handlers inline, prontos para edge.",
+    // CLI
+    "dxjs ships dxdev — a dev server with CSP-safe hot-module reload. Point it at an entry module and open the printed URL.":
+      "O dxjs traz o <code>dxdev</code> — um servidor de desenvolvimento com hot-module reload seguro para CSP. Aponta-o a um módulo de entrada e abre o URL impresso.",
+    "Write a tiny app": "Escreve uma app pequena",
+    "An entry module that renders reactive markup.": "Um módulo de entrada que renderiza markup reactivo.",
+    "Start the dev server": "Arranca o servidor de desenvolvimento",
+    "Flags: --port, --host, --root, --css a.css,b.css, --title. In this repo, npm run dev is the shortcut.":
+      "Flags: <code>--port</code>, <code>--host</code>, <code>--root</code>, <code>--css a.css,b.css</code>, <code>--title</code>. Neste repositório, <code>npm&nbsp;run&nbsp;dev</code> é o atalho.",
+    "Open the printed URL": "Abre o URL impresso",
+    "Edit src/app.ts and the browser hot-reloads — no full refresh, signals survive.":
+      "Edita <code>src/app.ts</code> e o browser faz hot-reload — sem refresh total, os sinais sobrevivem.",
+    // reactivity
+    "The whole model, in twenty lines": "O modelo inteiro, em vinte linhas",
+    "A signal holds state, a computed derives from it, an effect runs when its reads change, and html / render bind the DOM to those reads — surgically.":
+      "Um <code>signal</code> guarda estado, um <code>computed</code> deriva dele, um <code>effect</code> corre quando as suas leituras mudam, e <code>html</code>&#8202;/&#8202;<code>render</code> ligam o DOM a essas leituras — cirurgicamente.",
+    // transport
+    "Describe the operation once": "Descreve a operação uma vez",
+    "A method() is a protocol-neutral descriptor. A Transport adapter knows how to put it on a wire. createRpcClient gives you a typed call (unary) and live (server-stream) over whichever adapter you bootstrap with.":
+      "Um <code>method()</code> é um descritor neutro quanto ao protocolo. Um adaptador <em>Transport</em> sabe como o pôr no fio. O <code>createRpcClient</code> dá-te um <code>call</code> tipado (unário) e <code>live</code> (server-stream) sobre o adaptador que escolheres no arranque.",
+    // backend REST
+    "Your backend, your language": "O teu backend, a tua linguagem",
+    "The same two endpoints — GET /v1/users/:id and POST /v1/users — in Python, Go, Rust and Node.js, each with permissive CORS so the browser can reach it. Then connect from dxjs.":
+      "Os mesmos dois endpoints — <code>GET /v1/users/:id</code> e <code>POST /v1/users</code> — em Python, Go, Rust e Node.js, cada um com CORS permissivo para o browser lá chegar. Depois liga-te a partir do dxjs.",
+    "BE Backend · pick a language": '<span class="n">BE</span> Backend · escolhe uma linguagem',
+    "FE Frontend · dxjs, identical for every backend above": '<span class="n">FE</span> Frontend · dxjs, igual para qualquer backend acima',
+    "→dxjs calls GET http://127.0.0.1:8000/v1/users/42 and POST /v1/users. Swap the backend language and this frontend file never changes — only baseUrl matters.":
+      '<span class="arrow">→</span><span>O dxjs chama <b>GET</b> <code>http://127.0.0.1:8000/v1/users/42</code> e <b>POST</b> <code>/v1/users</code>. Troca a linguagem do backend e este ficheiro de frontend nunca muda — só o <code>baseUrl</code> importa.</span>',
+    // backend SSE
+    "Live updates, your language": "Actualizações ao vivo, na tua linguagem",
+    "A text/event-stream at GET /v1/prices/:symbol/stream pushing one JSON frame per second — in all four languages — consumed by dxjs with auto-reconnect.":
+      "Um <code>text/event-stream</code> em <code>GET /v1/prices/:symbol/stream</code> a empurrar um frame JSON por segundo — nas quatro linguagens — consumido pelo dxjs com reconexão automática.",
+    "BE Streaming backend · pick a language": '<span class="n">BE</span> Backend de streaming · escolhe uma linguagem',
+    "FE Frontend · dxjs consumes the stream": '<span class="n">FE</span> Frontend · dxjs consome a stream',
+    "→dxjs opens text/event-stream at /v1/prices/KZ/stream via plain fetch (so custom headers & auth work — no EventSource). Each language above emits the same data: {…}\\n\\n frames.":
+      '<span class="arrow">→</span><span>O dxjs abre <code>text/event-stream</code> em <code>/v1/prices/KZ/stream</code> via <code>fetch</code> simples (por isso headers e autenticação próprios funcionam — sem <code>EventSource</code>). Cada linguagem acima emite os mesmos frames <code>data: {…}\\n\\n</code>.</span>',
+    // adapters
+    "Every adapter, one client API": "Cada adaptador, uma só API de cliente",
+    "All of these feed createRpcClient. Capability chips are the adapter's real runtime caps.":
+      "Todos estes alimentam o <code>createRpcClient</code>. Os chips de capacidade são os <code>caps</code> reais do adaptador em runtime.",
+    "Typed JSON over HTTP — the everyday default.": "JSON tipado sobre HTTP — o padrão do dia-a-dia.",
+    "Connect / gRPC-web unary (JSON).": "Connect / gRPC-web unário (JSON).",
+    "Server-Sent Events — live server→client streams.": "Server-Sent Events — streams ao vivo servidor→cliente.",
+    "WebSocket — bidirectional, low-latency streams.": "WebSocket — streams bidireccionais de baixa latência.",
+    "In-process handlers — tests, demos, a monolith.": "Handlers em processo — testes, demos, um monólito.",
+    "dxjs running inside/next to the backend binary.": "dxjs a correr dentro/ao lado do binário do backend.",
+    "→Browsers can't set an Authorization header on the WS handshake, so the credential is the first frame. Your server must authenticate it and emit nothing until it validates.":
+      '<span class="arrow">→</span><span>Os browsers não conseguem pôr um header <code>Authorization</code> no handshake WS, por isso a credencial é o primeiro frame. <b>O teu servidor tem de a autenticar e não emitir nada até a validar.</b></span>',
+    // reactive data
+    "resource() — a fetch that reacts": "resource() — um fetch que reage",
+    "Wrap any transport call in a resource for a reactive accessor with loading/error, cancellation and idempotency-gated retries.":
+      "Embrulha qualquer chamada de transporte num <code>resource</code> para um accessor reactivo com <code>loading</code>/<code>error</code>, cancelamento e retries condicionados por idempotência.",
+    "liveSignal — a value that stays live": "liveSignal — um valor que se mantém vivo",
+    "Fed by the transport's native stream when it has one (SSE, WebSocket), and polling when it doesn't — the call site is the same either way.":
+      "Alimentado pela stream nativa do transporte quando há uma (SSE, WebSocket), e por polling quando não há — o local de chamada é o mesmo em qualquer caso.",
+    "openapiClient — typed from your spec": "openapiClient — tipado a partir da tua spec",
+    "Point @dxjs/openapi at an openapi.json and get a client whose calls are validated against the request schema — over any adapter.":
+      "Aponta o <code>@dxjs/openapi</code> a um <code>openapi.json</code> e recebe um cliente cujas chamadas são validadas contra o schema do pedido — sobre qualquer adaptador.",
+    "Siblings @dxjs/soap and @dxjs/proto add SOAP and protobuf over the same port — the UI keeps calling api.call(...) regardless of what the server speaks.":
+      "Os irmãos <b>@dxjs/soap</b> e <b>@dxjs/proto</b> adicionam SOAP e protobuf sobre o mesmo porto — a UI continua a chamar <code>api.call(...)</code> seja o que for que o servidor fala.",
+    // matrix
+    "Which adapter should I use?": "Que adaptador devo usar?",
+    "Capabilities are each adapter's real caps — what the port guarantees at runtime.":
+      "As capacidades são os <code>caps</code> reais de cada adaptador — o que o porto garante em runtime.",
+    "Adapter": "Adaptador", "Carries": "Transporta", "Capabilities": "Capacidades", "Reach for it when…": "Usa quando…",
+    "a plain REST/JSON API — the default.": "uma API REST/JSON simples — o padrão.",
+    "the backend is a gRPC service with Connect.": "o backend é um serviço gRPC com Connect.",
+    "server→client live updates over plain HTTP.": "actualizações ao vivo servidor→cliente sobre HTTP simples.",
+    "low-latency or two-way streams (chat, presence).": "streams de baixa latência ou bidireccionais (chat, presença).",
+    "tests, demos, or a monolith before it splits.": "testes, demos, ou um monólito antes de se dividir.",
+    "dxjs runs inside/next to the backend (SSR).": "dxjs corre dentro/ao lado do backend (SSR).",
+    "Need unary over one transport and streams over another? composeTransport(unary, stream) stitches them into one client — exactly what the SSE example does with REST + SSE.":
+      "Precisas de unário num transporte e streams noutro? <code>composeTransport(unary, stream)</code> cose-os num só cliente — exactamente o que o exemplo SSE faz com REST + SSE.",
+    // run-notes + footer
+    "go run . · listens on :8000": "go run . · escuta em :8000",
+    "node server.js · listens on :8000 · zero deps": "node server.js · escuta em :8000 · 0 deps",
+    "node:http · zero deps": "node:http · 0 deps",
+    "A NgolaCloud open-source project.": "Um projecto de código aberto da NgolaCloud.",
+    "Top ↑": "Topo ↑",
+  };
+  var COMMENTS = [
+    ["// re-runs when count changes", "// volta a correr quando count muda"],
+    ["// Compose: unary over REST, streams over SSE — one client.", "// Compõe: unário por REST, streams por SSE — um só cliente."],
+    ["// one object per SSE frame; resumes from the last id on drop", "// um objecto por frame SSE; retoma do último id em caso de queda"],
+    ["// id carries the fully-qualified service + method:", "// o id carrega o serviço + método totalmente qualificados:"],
+    ["// → POST /user.v1.UserService/GetUser  (Connect unary, JSON)", "// → POST /user.v1.UserService/GetUser  (Connect unário, JSON)"],
+    ['// stream-only → compose with a unary transport (see "Live updates" above)', '// só stream → compõe com um transporte unário (ver "Actualizações ao vivo" acima)'],
+    ['// FIRST frame {type:"authorization",…}, before the request', '// PRIMEIRO frame {type:"authorization",…}, antes do pedido'],
+    ["// Same api.call / api.live call sites — no HTTP. Split into services later by swapping the adapter.", "// Mesmos api.call / api.live — sem HTTP. Divide em serviços depois, trocando o adaptador."],
+    ["// A Rust/Seiva host rendering SSR hands dxjs its dispatcher — no HTTP round-trip.", "// Um host Rust/Seiva a renderizar SSR entrega ao dxjs o seu dispatcher — sem ida-e-volta HTTP."],
+    ["// Pass an accessor for the request → re-fetches when userId() changes.", "// Passa um accessor para o pedido → refaz o fetch quando userId() muda."],
+    ["// used only if the transport has no native stream", "// usado só se o transporte não tiver stream nativa"],
+    ["// validated before it leaves the browser", "// validado antes de sair do browser"],
+    ["// unary", "// unário"],
+  ];
+  function norm(s) { return s.replace(/\s+/g, " ").trim(); }
+  // Normalise the dictionary keys too, so authoring whitespace (nbsp, wraps) can't
+  // break a lookup — both sides are compared after the same collapse.
+  var PN = {}; Object.keys(PROSE).forEach(function (k) { PN[norm(k)] = PROSE[k]; });
+  var proseEls = Array.prototype.slice.call(document.querySelectorAll(
+    ".topnav a, .side-group h4, .side-group a, .eyebrow, .hero h1, .hero .lead, .cta-row a, " +
+    "section.doc > h2, section.doc > .sub, .vcard h3, .vcard p, .step h3, .step p, .pair-label, " +
+    ".wire, .adapter-head .what, figure.code figcaption .run, .callout p, thead th, tbody td:last-child, " +
+    ".footer-in > span, .footer-in nav a"));
+  proseEls.forEach(function (el) { el.__en = el.innerHTML; el.__k = norm(el.textContent); });
+  var codeEls = Array.prototype.slice.call(document.querySelectorAll("pre code"));
+  codeEls.forEach(function (c) { c.__en = c.textContent; });
+  function trComments(src) { for (var i = 0; i < COMMENTS.length; i++) src = src.split(COMMENTS[i][0]).join(COMMENTS[i][1]); return src; }
+  function applyLang(lang) {
+    document.documentElement.setAttribute("lang", lang === "pt" ? "pt-AO" : "en");
+    proseEls.forEach(function (el) {
+      el.innerHTML = lang === "pt" && PN[el.__k] != null ? PN[el.__k] : el.__en;
+    });
+    codeEls.forEach(function (c) { c.innerHTML = highlight(lang === "pt" ? trComments(c.__en) : c.__en); });
+    var btn = document.querySelector(".langtoggle");
+    if (btn) { btn.textContent = lang === "pt" ? "EN" : "PT"; btn.setAttribute("aria-label", lang === "pt" ? "Switch to English" : "Mudar para português"); }
+    try { localStorage.setItem("dxlang", lang); } catch (e) {}
+  }
+  var saved; try { saved = localStorage.getItem("dxlang"); } catch (e) {}
+  var lang = saved === "en" || saved === "pt" ? saved : "pt";
+  applyLang(lang);
+  var langBtn = document.querySelector(".langtoggle");
+  if (langBtn) langBtn.addEventListener("click", function () { lang = lang === "pt" ? "en" : "pt"; applyLang(lang); });
 
   // Copy buttons.
   document.querySelectorAll(".copy").forEach(function (btn) {
