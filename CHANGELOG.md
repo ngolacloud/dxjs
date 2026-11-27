@@ -4,6 +4,25 @@ All notable changes to dxjs are recorded here. The project follows
 [Semantic Versioning](https://semver.org) and the policy in [VERSIONING.md](./VERSIONING.md);
 all `@dxjs/*` packages share one version line.
 
+## 1.4.0 — 2026-11-27
+
+Additive release — a large `@dxjs/ui` component fleet and documentation, on top
+of 1.3.0; every 1.3.0 program keeps compiling and behaving.
+
+- **`@dxjs/ui` — ~80 components.** Controls, feedback, navigation & layout,
+  overlays, pickers & data, media, planning boards and touch surfaces
+  (bottomSheet, actionSheet, tabBar, fab, swipeActions, pullToRefresh,
+  pickerWheel). Classes only — CSP-safe, no inline styles. An adaptive
+  touch/responsive layer engages below ~560px with no per-view tuning.
+- **Docs.** The official docs site gains a per-component page for every piece
+  (live demo + usage + props) and an `@dxjs/ui` handbook reference (grouped
+  `example()` cards), plus a live component gallery (`examples/ui-gallery`).
+  The `@dxjs/transport` guide adds the gRPC/RPC/SOAP protocols and a bilingual
+  pt-AO/EN toggle.
+
+Distribution is unchanged: the packages are **not on npm**; each is attached to
+the GitHub Release as an `npm pack` tarball.
+
 ## 1.3.0 — 2026-11-27
 
 Additive release — one new package and new `@dxjs/dom` exports; every 1.2.0
