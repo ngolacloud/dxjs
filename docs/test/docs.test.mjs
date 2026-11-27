@@ -117,6 +117,14 @@ test("dxjs docs site renders, navigates, runs live examples & charts under stric
     // Live examples carry a Desktop/Mobile preview toggle; switching to Mobile
     // constrains the preview frame.
     assert.ok(await page.$(".pv-seg"), "device Desktop/Mobile toggle on the live example");
+    // The desktop preview is never clipped: the device grows to its content (the
+    // stage scrolls if the column is narrower). A side-by-side code|preview split
+    // once hid half of every preview behind `overflow: hidden`.
+    const hidden = await page.evaluate(() => {
+      const d = document.querySelector(".pv-stage.is-desktop .pv-device");
+      return d ? d.scrollWidth - d.clientWidth : -1;
+    });
+    assert.ok(hidden >= 0 && hidden <= 2, `desktop preview not clipped (hidden ${hidden}px)`);
     await page.click(".pv-toggle .pv-seg >> text=Mobile");
     assert.ok(await page.$(".pv-stage.is-mobile"), "preview switched to the mobile frame");
     const before = (await page.textContent(".demo-out")).trim();
